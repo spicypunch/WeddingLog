@@ -171,6 +171,33 @@ using (wedding_id = (select wedding_id from public.profiles where id = auth.uid(
 
 ---
 
+## 4-2) Supabase MCP 연결 (Codex, 개발 편의)
+
+이 프로젝트는 Supabase MCP를 Codex에 연결해두었습니다. (앱 런타임과는 무관하며, 개발 편의용입니다.)
+
+- MCP 설정 저장 위치: `~/.codex/config.toml` (레포에 커밋되지 않음)
+- 프로젝트 Ref: `wmfzhnoxdmfniewgcmzu`
+- MCP URL:
+  - `https://mcp.supabase.com/mcp?project_ref=wmfzhnoxdmfniewgcmzu&read_only=false`
+
+연결/로그인:
+```bash
+codex mcp list
+codex mcp add supabase --url "https://mcp.supabase.com/mcp?project_ref=wmfzhnoxdmfniewgcmzu&read_only=false"
+codex mcp login supabase
+```
+
+확인/제거:
+```bash
+codex mcp get supabase
+codex mcp remove supabase
+```
+
+정상 상태 예시:
+- `codex mcp list` 출력에서 `supabase ... Auth: OAuth`로 표시됨
+
+---
+
 ## 5) 앱 엔트리 / DI 초기화
 
 Android:
