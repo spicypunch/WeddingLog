@@ -332,6 +332,18 @@ cd /Users/jm/StudioProjects/WeddingLedger
 ./gradlew :composeApp:compileKotlinIosSimulatorArm64
 ```
 
+iOS(Framework 링크 확인, Xcode 빌드가 여기서 터지면 실패):
+```bash
+cd /Users/jm/StudioProjects/WeddingLedger
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+./gradlew :composeApp:linkDebugFrameworkIosArm64
+```
+
+iOS 빌드 주의:
+- Supabase `realtime-kt` 포함 상태에서 Kotlin/Native compiler cache 빌드가 크래시 나는 케이스가 있어, 현재는 캐시를 비활성화했습니다.
+  - 설정 파일: `/Users/jm/StudioProjects/WeddingLedger/gradle.properties`
+  - 설정 값: `kotlin.native.cacheKind=none`
+
 ---
 
 ## 11) 현재 남아있는 TODO (우선순위 제안)
