@@ -17,6 +17,7 @@ fun AppNavHost(
     navController: NavHostController,
     themeStyle: WeddingLogThemeStyle,
     onThemeStyleChange: (WeddingLogThemeStyle) -> Unit,
+    onLogout: () -> Unit,
 ) {
     NavHost(
         navController = navController,
@@ -43,7 +44,8 @@ fun AppNavHost(
             SettingsRoute(
                 themeStyle = themeStyle,
                 onThemeStyleChange = onThemeStyleChange,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onLogout = onLogout,
             )
         }
     }

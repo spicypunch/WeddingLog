@@ -8,6 +8,7 @@ fun SettingsRoute(
     themeStyle: WeddingLogThemeStyle,
     onThemeStyleChange: (WeddingLogThemeStyle) -> Unit,
     onBack: () -> Unit,
+    onLogout: () -> Unit,
 ) {
     SettingsScreen(
         state = SettingsUiState.sample(themeStyle),
@@ -15,8 +16,8 @@ fun SettingsRoute(
             when (action) {
                 SettingsAction.OnClickBack -> onBack()
                 is SettingsAction.OnSelectTheme -> onThemeStyleChange(action.style)
+                SettingsAction.OnClickLogout -> onLogout()
                 SettingsAction.OnClickCopyInviteCode,
-                SettingsAction.OnClickLogout,
                 SettingsAction.OnClickProfileEdit,
                 SettingsAction.OnClickNotificationSettings,
                 SettingsAction.OnClickAccountSettings,
@@ -25,4 +26,3 @@ fun SettingsRoute(
         }
     )
 }
-

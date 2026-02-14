@@ -1,13 +1,12 @@
 package kr.jm.weddingledger.feature.auth.domain.usecase
 
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
-import kr.jm.weddingledger.feature.auth.domain.model.AuthUser
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 
 class SignUpUseCase(
     private val authRepository: AuthRepository
 ) {
-    suspend operator fun invoke(email: String, password: String): AuthResult<AuthUser> {
+    suspend operator fun invoke(email: String, password: String): AuthResult<Unit> {
         if (email.isBlank()) {
             return AuthResult.Error("이메일을 입력해주세요")
         }
