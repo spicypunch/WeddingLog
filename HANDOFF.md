@@ -332,17 +332,6 @@ cd /Users/jm/StudioProjects/WeddingLedger
 ./gradlew :composeApp:compileKotlinIosSimulatorArm64
 ```
 
-iPhone 실기기 테스트(Xcode):
-1. 아이폰을 Mac에 연결하고 "이 컴퓨터를 신뢰" 허용
-2. (iOS 16+) `설정 > 개인정보 보호 및 보안 > 개발자 모드` 활성화
-3. Xcode에서 프로젝트 열기:
-   - `/Users/jm/StudioProjects/WeddingLedger/iosApp/iosApp.xcodeproj`
-4. Target `iosApp` > Signing & Capabilities:
-   - `Automatically manage signing` 체크
-   - Team을 본인 계정(Personal Team 등)으로 설정
-   - 필요 시 Bundle Identifier를 유니크하게 변경
-5. 디바이스를 내 아이폰으로 선택 후 `Cmd+R` 실행
-
 ---
 
 ## 11) 현재 남아있는 TODO (우선순위 제안)
