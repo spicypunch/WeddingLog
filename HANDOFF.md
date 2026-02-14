@@ -120,6 +120,29 @@ NavHost:
 앱 스캐폴드(App):
 - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/App.kt`
   - 현재 테마 변경은 in-memory `remember` 상태 (DataStore 저장은 TODO)
+  - Supabase Auth 상태에 따라 `AuthRoute` 또는 메인 UI로 분기(아래 "Auth 흐름" 참고)
+
+---
+
+## 7-1) Auth 흐름 (Supabase)
+
+현재 앱은 "로그인 전/후" 화면을 분리해두었습니다.
+
+- Auth 상태 관찰:
+  - UseCase: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/domain/usecase/ObserveAuthStateUseCase.kt`
+  - Model: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/domain/model/AuthState.kt`
+- App 분기:
+  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/App.kt`
+  - `AuthState.Loading`이면 `SplashScreen`
+  - `AuthState.Unauthenticated`이면 `AuthRoute`
+  - `AuthState.Authenticated`이면 BottomBar 포함 메인 UI
+- Auth UI(MVVM):
+  - ViewModel: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthViewModel.kt`
+  - Screen: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthScreen.kt`
+  - Route: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthRoute.kt`
+- 로그아웃:
+  - Settings 화면에서 `SettingsAction.OnClickLogout` -> `AppNavHost(onLogout)` -> `SignOutUseCase` 호출
+  - 파일: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/SettingsRoute.kt`
 
 ---
 
@@ -218,6 +241,9 @@ cd /Users/jm/StudioProjects/WeddingLedger
 - 현재 대부분 화면은 "샘플 상태" 기반(UI만 구현)
 - 목표:
   - `wedding_id` 기준 필터링
+  - RLS/정책/트리거 정리(중요): `profiles`, `checklists`는 Auth 기반으로 제한해야 함
+    - RLS off 상태면 anon 키만으로도 데이터 접근 가능(클라이언트 앱은 anon 키가 공개되므로 반드시 RLS 필요)
+    - 추천: `handle_new_user` 트리거로 `profiles` 자동 생성 + `wedding_id` 기본값 설정
   - Realtime로 동기화
   - Auth 로그인/세션 유지
 
@@ -286,4 +312,3 @@ cd /Users/jm/StudioProjects/WeddingLedger
    - Supabase CRUD 연결(P0)
    - 테마 영속화(P0)
    - 달력 로직/일정 추가 UI(P1)
-
