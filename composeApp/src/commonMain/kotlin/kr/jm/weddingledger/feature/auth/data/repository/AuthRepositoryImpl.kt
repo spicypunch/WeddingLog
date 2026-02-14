@@ -2,9 +2,12 @@ package kr.jm.weddingledger.feature.auth.data.repository
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.exception.AuthErrorCode
+import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.exceptions.RestException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
@@ -55,7 +58,8 @@ class AuthRepositoryImpl(
             }
             AuthResult.Success(Unit)
         } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "회원가입 중 오류가 발생했습니다")
+            logSupabaseException(e)
+            AuthResult.Error(e.toUserFriendlyMessage(defaultMessage = "회원가입에 실패했습니다"))
         }
     }
 
@@ -67,7 +71,8 @@ class AuthRepositoryImpl(
             }
             AuthResult.Success(Unit)
         } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "로그인 중 오류가 발생했습니다")
+            logSupabaseException(e)
+            AuthResult.Error(e.toUserFriendlyMessage(defaultMessage = "로그인에 실패했습니다"))
         }
     }
 
@@ -76,7 +81,8 @@ class AuthRepositoryImpl(
             supabaseClient.auth.signOut()
             AuthResult.Success(Unit)
         } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "로그아웃 중 오류가 발생했습니다")
+            logSupabaseException(e)
+            AuthResult.Error(e.toUserFriendlyMessage(defaultMessage = "로그아웃에 실패했습니다"))
         }
     }
 
@@ -85,11 +91,46 @@ class AuthRepositoryImpl(
             supabaseClient.auth.resetPasswordForEmail(email)
             AuthResult.Success(Unit)
         } catch (e: Exception) {
-            AuthResult.Error(e.message ?: "비밀번호 재설정 이메일 전송에 실패했습니다")
+            logSupabaseException(e)
+            AuthResult.Error(e.toUserFriendlyMessage(defaultMessage = "비밀번호 재설정 이메일 전송에 실패했습니다"))
         }
     }
 
     override fun isLoggedIn(): Boolean {
         return supabaseClient.auth.currentUserOrNull() != null
+    }
+}
+
+private fun Exception.toUserFriendlyMessage(defaultMessage: String): String {
+    return when (this) {
+        is AuthRestException -> when (this.errorCode) {
+            AuthErrorCode.InvalidCredentials -> "이메일 또는 비밀번호가 올바르지 않습니다."
+            AuthErrorCode.EmailNotConfirmed -> "이메일 인증이 필요합니다. 메일함에서 인증 후 다시 시도해주세요."
+            AuthErrorCode.EmailExists,
+            AuthErrorCode.UserAlreadyExists -> "이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용해주세요."
+            AuthErrorCode.SignupDisabled -> "현재 회원가입이 비활성화되어 있습니다."
+            AuthErrorCode.WeakPassword -> "비밀번호가 너무 약합니다. 더 강한 비밀번호로 다시 시도해주세요."
+            AuthErrorCode.OverRequestRateLimit -> "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
+            AuthErrorCode.ProviderEmailNeedsVerification -> "이메일 인증이 필요합니다. 메일함에서 인증 후 다시 시도해주세요."
+            null -> defaultMessage
+            else -> defaultMessage
+        }
+        is RestException -> defaultMessage
+        else -> defaultMessage
+    }
+}
+
+private fun logSupabaseException(e: Exception) {
+    // Avoid printing e.message (RestException includes URL + request headers).
+    when (e) {
+        is AuthRestException -> {
+            println("Supabase(Auth) error=${e.error} description=${e.errorDescription} status=${e.statusCode}")
+        }
+        is RestException -> {
+            println("Supabase error=${e.error} description=${e.description} status=${e.statusCode}")
+        }
+        else -> {
+            println("Auth error=${e::class.simpleName}")
+        }
     }
 }
