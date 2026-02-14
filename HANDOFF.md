@@ -55,9 +55,17 @@ Gradle 파일:
 
 Supabase URL/Anon Key는 `local.properties`에서 읽습니다.
 
+- Supabase 프로젝트:
+  - Project Ref: `wmfzhnoxdmfniewgcmzu`
+  - URL: `https://wmfzhnoxdmfniewgcmzu.supabase.co`
+
 - `local.properties` 키:
   - `SUPABASE_URL=...`
   - `SUPABASE_ANON_KEY=...`
+
+주의:
+- `local.properties`는 gitignore 대상입니다(키가 커밋/푸시되지 않게 하기 위함).
+- 키를 숨기는 것만으로는 보안이 해결되지 않습니다. 클라이언트 앱에는 결국 키가 포함될 수 있으므로, **RLS(행 수준 보안)**으로 서버에서 접근을 차단해야 합니다.
 
 `composeApp/build.gradle.kts`에서 Gradle task로 `BuildConfig.kt`를 생성합니다:
 - 생성 위치(빌드 산출물): `composeApp/build/generated/buildconfig/kr/jm/weddingledger/core/config/BuildConfig.kt`
@@ -69,6 +77,97 @@ Supabase Client 생성:
 Koin 등록:
 - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/di/CoreModule.kt`
 - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/di/AppModule.kt`
+
+---
+
+## 4-1) Supabase 보안(RLS) 권장 SQL (필수)
+
+아래 SQL은 개발/초기 단계에서 최소한의 보안(Authenticated 유저만 접근)을 잡기 위한 권장 설정입니다.
+
+핵심:
+- `auth.users`에 새 유저가 생성되면 `public.profiles` row가 자동 생성되도록 `handle_new_user` 트리거를 둡니다.
+- `profiles`는 본인 row만 접근 가능
+- `checklists`는 `profiles.wedding_id`가 같은 커플 데이터만 접근 가능
+
+```sql
+-- updated_at 트리거용 함수
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+-- 회원가입 시 profiles 자동 생성 + wedding_id 기본값(임시) = 본인 id
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, wedding_id)
+  values (new.id, new.email, new.id)
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+after insert on auth.users
+for each row execute function public.handle_new_user();
+
+-- RLS on
+alter table public.profiles enable row level security;
+alter table public.checklists enable row level security;
+
+-- profiles: 본인 row만
+drop policy if exists profiles_select_own on public.profiles;
+create policy profiles_select_own on public.profiles
+for select to authenticated
+using (id = auth.uid());
+
+drop policy if exists profiles_insert_own on public.profiles;
+create policy profiles_insert_own on public.profiles
+for insert to authenticated
+with check (id = auth.uid());
+
+drop policy if exists profiles_update_own on public.profiles;
+create policy profiles_update_own on public.profiles
+for update to authenticated
+using (id = auth.uid())
+with check (id = auth.uid());
+
+-- checklists: 내 wedding_id(= profiles.wedding_id) 범위만
+drop policy if exists checklists_select_wedding on public.checklists;
+create policy checklists_select_wedding on public.checklists
+for select to authenticated
+using (wedding_id = (select wedding_id from public.profiles where id = auth.uid()));
+
+drop policy if exists checklists_insert_wedding on public.checklists;
+create policy checklists_insert_wedding on public.checklists
+for insert to authenticated
+with check (wedding_id = (select wedding_id from public.profiles where id = auth.uid()));
+
+drop policy if exists checklists_update_wedding on public.checklists;
+create policy checklists_update_wedding on public.checklists
+for update to authenticated
+using (wedding_id = (select wedding_id from public.profiles where id = auth.uid()))
+with check (wedding_id = (select wedding_id from public.profiles where id = auth.uid()));
+
+drop policy if exists checklists_delete_wedding on public.checklists;
+create policy checklists_delete_wedding on public.checklists
+for delete to authenticated
+using (wedding_id = (select wedding_id from public.profiles where id = auth.uid()));
+```
+
+주의:
+- 위는 "커플 연결(초대코드)" 기능이 완성되기 전까지의 임시 기본값(`wedding_id = user.id`) 가정이 포함됩니다.
+- 실제 제품 단계에서는 wedding 생성/초대 흐름에 맞춰 `wedding_id`를 따로 발급/연결하도록 바꾸는 게 안전합니다.
 
 ---
 
@@ -233,6 +332,17 @@ cd /Users/jm/StudioProjects/WeddingLedger
 ./gradlew :composeApp:compileKotlinIosSimulatorArm64
 ```
 
+iPhone 실기기 테스트(Xcode):
+1. 아이폰을 Mac에 연결하고 "이 컴퓨터를 신뢰" 허용
+2. (iOS 16+) `설정 > 개인정보 보호 및 보안 > 개발자 모드` 활성화
+3. Xcode에서 프로젝트 열기:
+   - `/Users/jm/StudioProjects/WeddingLedger/iosApp/iosApp.xcodeproj`
+4. Target `iosApp` > Signing & Capabilities:
+   - `Automatically manage signing` 체크
+   - Team을 본인 계정(Personal Team 등)으로 설정
+   - 필요 시 Bundle Identifier를 유니크하게 변경
+5. 디바이스를 내 아이폰으로 선택 후 `Cmd+R` 실행
+
 ---
 
 ## 11) 현재 남아있는 TODO (우선순위 제안)
@@ -245,14 +355,17 @@ cd /Users/jm/StudioProjects/WeddingLedger
     - RLS off 상태면 anon 키만으로도 데이터 접근 가능(클라이언트 앱은 anon 키가 공개되므로 반드시 RLS 필요)
     - 추천: `handle_new_user` 트리거로 `profiles` 자동 생성 + `wedding_id` 기본값 설정
   - Realtime로 동기화
-  - Auth 로그인/세션 유지
+  - 첫 번째 실데이터 연동(추천): 체크리스트(S09 + M03) CRUD
 
 권장 작업 순서:
-1. Auth 플로우(로그인/회원가입 화면) 결정 및 네비게이션 연결
+1. Supabase RLS/정책/트리거 적용(위 4-1 참고)
 2. 각 feature별 Domain/Data 계층 추가:
    - Repository 인터페이스(도메인) + 구현(data)
    - Supabase PostgREST CRUD
 3. Presentation(Route)에서 ViewModel(또는 state holder)로 교체하고, Flow 기반 상태로 전환
+
+현재 Auth 상태:
+- 로그인/회원가입 UI + 앱 진입 분기(로그인 전/후)까지 구현되어 있음(7-1 참고)
 
 ### (P0) 테마 설정 영속화
 - 현재: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/App.kt`에서 `remember`로만 관리
@@ -306,9 +419,11 @@ cd /Users/jm/StudioProjects/WeddingLedger
 ## 14) 다음 세션이 바로 시작할 때 체크리스트
 
 1. `/Users/jm/StudioProjects/WeddingLedger/AGENTS.md` 확인 (전역 룰)
-2. `local.properties`에 Supabase 키가 설정되어 있는지 확인
-3. `./gradlew :composeApp:assembleDebug` / `./gradlew :composeApp:compileKotlinIosSimulatorArm64`로 빌드 확인
-4. 다음 작업을 무엇으로 잡을지 결정:
+2. Git 브랜치 확인(프로젝트 방침: `main`에서만 작업)
+   - `git checkout main && git pull`
+3. `local.properties`에 Supabase 키가 설정되어 있는지 확인
+4. `./gradlew :composeApp:assembleDebug` / `./gradlew :composeApp:compileKotlinIosSimulatorArm64`로 빌드 확인
+5. 다음 작업을 무엇으로 잡을지 결정:
    - Supabase CRUD 연결(P0)
    - 테마 영속화(P0)
    - 달력 로직/일정 추가 UI(P1)
