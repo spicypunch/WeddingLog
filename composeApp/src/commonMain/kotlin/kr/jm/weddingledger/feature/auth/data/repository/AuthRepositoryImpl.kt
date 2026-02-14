@@ -108,9 +108,14 @@ private fun Exception.toUserFriendlyMessage(defaultMessage: String): String {
             AuthErrorCode.EmailNotConfirmed -> "이메일 인증이 필요합니다. 메일함에서 인증 후 다시 시도해주세요."
             AuthErrorCode.EmailExists,
             AuthErrorCode.UserAlreadyExists -> "이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용해주세요."
+            AuthErrorCode.UserNotFound -> "가입되지 않은 이메일입니다."
             AuthErrorCode.SignupDisabled -> "현재 회원가입이 비활성화되어 있습니다."
+            AuthErrorCode.ProviderDisabled,
+            AuthErrorCode.EmailProviderDisabled -> "이메일 로그인이 비활성화되어 있습니다. Supabase 설정을 확인해주세요."
+            AuthErrorCode.UserBanned -> "이 계정은 차단되어 있습니다."
             AuthErrorCode.WeakPassword -> "비밀번호가 너무 약합니다. 더 강한 비밀번호로 다시 시도해주세요."
             AuthErrorCode.OverRequestRateLimit -> "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
+            AuthErrorCode.OverEmailSendRateLimit -> "이메일 전송 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
             AuthErrorCode.ProviderEmailNeedsVerification -> "이메일 인증이 필요합니다. 메일함에서 인증 후 다시 시도해주세요."
             null -> defaultMessage
             else -> defaultMessage
