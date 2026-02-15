@@ -9,5 +9,10 @@ interface MoneyRepository {
     suspend fun fetchSnapshot(): MoneyResult<MoneySnapshot>
     suspend fun addBudgetItem(item: NewBudgetItem): MoneyResult<Unit>
     suspend fun addExpense(expense: NewExpense): MoneyResult<Unit>
-}
 
+    suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit>
+    suspend fun updateExpense(id: String, expense: NewExpense): MoneyResult<Unit>
+
+    suspend fun deleteBudgetItem(id: String): MoneyResult<Unit>
+    suspend fun deleteExpense(id: String): MoneyResult<Unit>
+}

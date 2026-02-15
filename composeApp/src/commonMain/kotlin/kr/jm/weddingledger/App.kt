@@ -26,6 +26,7 @@ import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 import kr.jm.weddingledger.feature.auth.domain.usecase.ObserveAuthStateUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.auth.presentation.AuthRoute
+import kr.jm.weddingledger.feature.onboarding.presentation.OnboardingGateRoute
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.koinInject
 import kotlinx.coroutines.launch
@@ -47,43 +48,14 @@ fun App() {
                 )
             }
             is AuthState.Authenticated -> {
-                val navController = rememberNavController()
-                val backStackEntry by navController.currentBackStackEntryAsState()
                 val scope = rememberCoroutineScope()
                 val signOutUseCase: SignOutUseCase = koinInject()
 
-                Scaffold(
-                    modifier = Modifier.fillMaxSize(),
-                    bottomBar = {
-                        AppBottomBar(
-                            currentRoute = backStackEntry?.destination?.route,
-                            onNavigate = { destination ->
-                                navController.navigate(destination.route) {
-                                    launchSingleTop = true
-                                    restoreState = true
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
-                                    }
-                                }
-                            }
-                        )
-                    }
-                ) { innerPadding ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
-                        AppNavHost(
-                            navController = navController,
-                            themeStyle = themeStyle,
-                            onThemeStyleChange = { themeStyle = it },
-                            onLogout = {
-                                scope.launch { signOutUseCase() }
-                            }
-                        )
-                    }
-                }
+                OnboardingGateRoute(
+                    themeStyle = themeStyle,
+                    onThemeStyleChange = { themeStyle = it },
+                    onLogout = { scope.launch { signOutUseCase() } },
+                )
             }
         }
     }

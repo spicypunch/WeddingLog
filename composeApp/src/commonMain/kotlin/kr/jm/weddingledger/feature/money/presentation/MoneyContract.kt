@@ -21,6 +21,7 @@ data class MoneyUiState(
     val expenses: ExpensesUiState,
     val budget: BudgetUiState,
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val message: String? = null,
 ) {
     companion object {
@@ -64,27 +65,45 @@ data class ExpensesUiState(
                     items = listOf(
                         ExpenseListItem(
                             id = "exp-1",
+                            budgetItemId = "budget-2",
                             title = "드레스 대여",
                             dateText = "3월 15일",
                             amountText = "-1,200,000",
+                            amount = 1_200_000,
+                            date = LocalDate.parse("2026-03-15"),
+                            paymentMethod = PaymentMethod.Card,
+                            payer = Payer.Bride,
+                            memo = null,
                             icon = Icons.Rounded.Checkroom,
                             accent = Color(0xFFEF3948),
                             accentContainer = Color(0xFFFDE9EB),
                         ),
                         ExpenseListItem(
                             id = "exp-2",
+                            budgetItemId = "budget-1",
                             title = "웨딩홀 계약금",
                             dateText = "3월 10일",
                             amountText = "-1,000,000",
+                            amount = 1_000_000,
+                            date = LocalDate.parse("2026-03-10"),
+                            paymentMethod = PaymentMethod.Card,
+                            payer = Payer.Groom,
+                            memo = null,
                             icon = Icons.Rounded.Gavel,
                             accent = Color(0xFFF97316),
                             accentContainer = Color(0xFFFFEDD5),
                         ),
                         ExpenseListItem(
                             id = "exp-3",
+                            budgetItemId = "budget-1",
                             title = "청첩장 인쇄",
                             dateText = "3월 05일",
                             amountText = "-250,000",
+                            amount = 250_000,
+                            date = LocalDate.parse("2026-03-05"),
+                            paymentMethod = PaymentMethod.Cash,
+                            payer = Payer.Bride,
+                            memo = null,
                             icon = Icons.Rounded.Print,
                             accent = Color(0xFF3B82F6),
                             accentContainer = Color(0xFFDBEAFE),
@@ -96,9 +115,15 @@ data class ExpensesUiState(
                     items = listOf(
                         ExpenseListItem(
                             id = "exp-4",
+                            budgetItemId = "budget-2",
                             title = "스냅 사진 예약",
                             dateText = "2월 28일",
                             amountText = "-500,000",
+                            amount = 500_000,
+                            date = LocalDate.parse("2026-02-28"),
+                            paymentMethod = PaymentMethod.Card,
+                            payer = Payer.Bride,
+                            memo = null,
                             icon = Icons.Rounded.CameraAlt,
                             accent = Color(0xFFA855F7),
                             accentContainer = Color(0xFFF3E8FF),
@@ -127,9 +152,15 @@ data class ExpenseSection(
 
 data class ExpenseListItem(
     val id: String,
+    val budgetItemId: String,
     val title: String,
     val dateText: String,
     val amountText: String,
+    val amount: Int,
+    val date: LocalDate,
+    val paymentMethod: PaymentMethod,
+    val payer: Payer,
+    val memo: String?,
     val icon: ImageVector,
     val accent: Color,
     val accentContainer: Color,
@@ -172,9 +203,9 @@ data class BudgetUiState(
                     accentContainer = Color(0xFFFDE9EB),
                     isExpanded = true,
                     subItems = listOf(
-                        BudgetSubItem(label = "대관료", valueText = "200만원"),
-                        BudgetSubItem(label = "식대 (계약금)", valueText = "100만원"),
-                        BudgetSubItem(label = "부대비용", valueText = "미지출", isEmpty = true),
+                        BudgetSubItem(id = "budget-11", label = "대관료", valueText = "200만원", targetAmount = 2_000_000),
+                        BudgetSubItem(id = "budget-12", label = "식대 (계약금)", valueText = "100만원", targetAmount = 1_000_000),
+                        BudgetSubItem(id = "budget-13", label = "부대비용", valueText = "미지출", isEmpty = true, targetAmount = 0),
                     )
                 ),
                 BudgetCategoryItem(
@@ -225,9 +256,12 @@ data class BudgetCategoryItem(
 )
 
 data class BudgetSubItem(
+    val id: String,
     val label: String,
     val valueText: String,
     val isEmpty: Boolean = false,
+    val targetAmount: Int,
+    val memo: String? = null,
 )
 
 sealed interface MoneyAction {
@@ -236,6 +270,7 @@ sealed interface MoneyAction {
     data object OnClickAdd : MoneyAction
     data class OnToggleBudgetCategory(val id: String) : MoneyAction
     data class OnClickBudgetAddItem(val categoryId: String) : MoneyAction
+    data class OnClickBudgetItem(val id: String) : MoneyAction
     data class OnClickExpense(val id: String) : MoneyAction
 
     data object OnRefresh : MoneyAction
@@ -255,4 +290,25 @@ sealed interface MoneyAction {
         val payer: Payer,
         val memo: String?,
     ) : MoneyAction
+
+    data class OnUpdateBudgetItem(
+        val id: String,
+        val categoryId: String,
+        val name: String,
+        val targetAmount: Int,
+        val memo: String?,
+    ) : MoneyAction
+
+    data class OnUpdateExpense(
+        val id: String,
+        val budgetItemId: String,
+        val amount: Int,
+        val date: LocalDate,
+        val paymentMethod: PaymentMethod,
+        val payer: Payer,
+        val memo: String?,
+    ) : MoneyAction
+
+    data class OnDeleteBudgetItem(val id: String) : MoneyAction
+    data class OnDeleteExpense(val id: String) : MoneyAction
 }

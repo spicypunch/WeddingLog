@@ -7,6 +7,10 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kr.jm.weddingledger.feature.money.data.dto.BudgetItemInsertDto
 import kr.jm.weddingledger.feature.money.data.dto.BudgetItemRowDto
 import kr.jm.weddingledger.feature.money.data.dto.CategoryInsertDto
@@ -111,6 +115,90 @@ class MoneyRepositoryImpl(
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "지출 저장에 실패했습니다."))
+        }
+    }
+
+    override suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit> {
+        return try {
+            val payload = buildJsonObject {
+                put("category_id", JsonPrimitive(item.categoryId))
+                put("name", JsonPrimitive(item.name.trim()))
+                put("target_amount", JsonPrimitive(item.targetAmount))
+
+                val memo = item.memo?.trim()?.takeIf { it.isNotEmpty() }
+                if (memo == null) put("memo", JsonNull) else put("memo", JsonPrimitive(memo))
+            }
+
+            supabaseClient
+                .from("budget_items")
+                .update(payload) {
+                    filter { eq("id", id) }
+                }
+
+            MoneyResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "예산 항목 수정에 실패했습니다."))
+        }
+    }
+
+    override suspend fun updateExpense(id: String, expense: NewExpense): MoneyResult<Unit> {
+        return try {
+            val payload = buildJsonObject {
+                put("budget_item_id", JsonPrimitive(expense.budgetItemId))
+                put("amount", JsonPrimitive(expense.amount))
+                put("date", JsonPrimitive(expense.date.toString()))
+                put("payment_method", JsonPrimitive(expense.paymentMethod.toDbValue()))
+                put("payer", JsonPrimitive(expense.payer.toDbValue()))
+
+                val memo = expense.memo?.trim()?.takeIf { it.isNotEmpty() }
+                if (memo == null) put("memo", JsonNull) else put("memo", JsonPrimitive(memo))
+            }
+
+            supabaseClient
+                .from("expenses")
+                .update(payload) {
+                    filter { eq("id", id) }
+                }
+
+            MoneyResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "지출 수정에 실패했습니다."))
+        }
+    }
+
+    override suspend fun deleteBudgetItem(id: String): MoneyResult<Unit> {
+        return try {
+            supabaseClient
+                .from("budget_items")
+                .delete {
+                    filter { eq("id", id) }
+                }
+
+            MoneyResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "예산 항목 삭제에 실패했습니다."))
+        }
+    }
+
+    override suspend fun deleteExpense(id: String): MoneyResult<Unit> {
+        return try {
+            supabaseClient
+                .from("expenses")
+                .delete {
+                    filter { eq("id", id) }
+                }
+
+            MoneyResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "지출 삭제에 실패했습니다."))
         }
     }
 
@@ -259,4 +347,3 @@ private fun logSupabaseThrowable(t: Throwable) {
         else -> println("Money error=${t::class.simpleName}")
     }
 }
-

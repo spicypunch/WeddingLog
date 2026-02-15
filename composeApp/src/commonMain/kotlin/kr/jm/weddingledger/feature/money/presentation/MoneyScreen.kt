@@ -22,6 +22,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -42,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun MoneyScreen(
     state: MoneyUiState,
@@ -95,7 +100,16 @@ fun MoneyScreen(
             )
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        val pullToRefreshState = rememberPullRefreshState(
+            refreshing = state.isRefreshing,
+            onRefresh = { onAction(MoneyAction.OnRefresh) },
+        )
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .pullRefresh(pullToRefreshState)
+        ) {
             when (state.selectedTab) {
                 MoneyTab.Expenses -> ExpensesTab(
                     state = state.expenses,
@@ -108,6 +122,14 @@ fun MoneyScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+
+            PullRefreshIndicator(
+                refreshing = state.isRefreshing,
+                state = pullToRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+            )
 
             FloatingActionButton(
                 onClick = { onAction(MoneyAction.OnClickAdd) },
@@ -351,7 +373,8 @@ private fun BudgetTab(
             BudgetCategoryCard(
                 item = category,
                 onToggle = { onAction(MoneyAction.OnToggleBudgetCategory(category.id)) },
-                onClickAddItem = { onAction(MoneyAction.OnClickBudgetAddItem(category.id)) }
+                onClickAddItem = { onAction(MoneyAction.OnClickBudgetAddItem(category.id)) },
+                onClickBudgetItem = { onAction(MoneyAction.OnClickBudgetItem(it)) },
             )
         }
         item { Spacer(modifier = Modifier.height(24.dp)) }
@@ -452,6 +475,7 @@ private fun BudgetCategoryCard(
     item: BudgetCategoryItem,
     onToggle: () -> Unit,
     onClickAddItem: () -> Unit,
+    onClickBudgetItem: (String) -> Unit,
 ) {
     val borderColor = if (item.isExpanded) item.accent.copy(alpha = 0.25f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
     Card(
@@ -548,22 +572,29 @@ private fun BudgetCategoryCard(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     item.subItems.forEach { sub ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            onClick = { onClickBudgetItem(sub.id) },
+                            color = Color.Transparent,
                         ) {
-                            Text(
-                                text = sub.label,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = sub.valueText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (sub.isEmpty) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                                fontWeight = if (sub.isEmpty) FontWeight.Normal else FontWeight.SemiBold
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = sub.label,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = sub.valueText,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (sub.isEmpty) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                                    fontWeight = if (sub.isEmpty) FontWeight.Normal else FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
 

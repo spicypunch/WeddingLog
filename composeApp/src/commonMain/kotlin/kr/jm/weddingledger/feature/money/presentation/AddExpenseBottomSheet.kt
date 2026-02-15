@@ -1,5 +1,6 @@
 package kr.jm.weddingledger.feature.money.presentation
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -54,7 +56,9 @@ import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpenseBottomSheet(
+    title: String,
     state: AddExpenseUiState,
+    showDelete: Boolean,
     onDismiss: () -> Unit,
     onAction: (AddExpenseAction) -> Unit,
 ) {
@@ -72,7 +76,7 @@ fun AddExpenseBottomSheet(
                 .fillMaxHeight(0.92f)
         ) {
             WeddingLogSheetHeader(
-                title = "지출 추가",
+                title = title,
                 onClose = { onAction(AddExpenseAction.OnClickClose) },
             )
 
@@ -137,6 +141,30 @@ fun AddExpenseBottomSheet(
             Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
 
             Column(modifier = Modifier.padding(16.dp)) {
+                if (showDelete) {
+                    OutlinedButton(
+                        onClick = { onAction(AddExpenseAction.OnClickDelete) },
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.error.copy(alpha = 0.55f),
+                        ),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Text(
+                            text = "삭제하기",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 Button(
                     onClick = { onAction(AddExpenseAction.OnClickSave) },
                     enabled = state.isSaveEnabled,
@@ -267,7 +295,7 @@ private fun CategorySelector(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "카테고리",
+            text = "예산 항목",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium

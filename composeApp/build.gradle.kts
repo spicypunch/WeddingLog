@@ -54,6 +54,7 @@ kotlin {
             // Compose
             implementation(compose.runtime)
             implementation(compose.foundation)
+            implementation(compose.material) // needed for pull-to-refresh (multiplatform)
             implementation(compose.material3)
             implementation(compose.ui)
             implementation(compose.materialIconsExtended)

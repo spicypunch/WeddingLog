@@ -37,6 +37,7 @@ data class AddBudgetItemUiState(
 sealed interface AddBudgetItemAction {
     data object OnClickClose : AddBudgetItemAction
     data object OnClickSave : AddBudgetItemAction
+    data object OnClickDelete : AddBudgetItemAction
 
     data class OnSelectCategory(val id: String) : AddBudgetItemAction
     data class OnNameChange(val value: String) : AddBudgetItemAction

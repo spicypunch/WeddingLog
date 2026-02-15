@@ -26,12 +26,20 @@ import kr.jm.weddingledger.feature.money.domain.model.NewBudgetItem
 import kr.jm.weddingledger.feature.money.domain.model.NewExpense
 import kr.jm.weddingledger.feature.money.domain.usecase.AddBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddExpenseUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.DeleteBudgetItemUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.DeleteExpenseUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.FetchMoneySnapshotUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.UpdateBudgetItemUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.UpdateExpenseUseCase
 
 class MoneyViewModel(
     private val fetchMoneySnapshotUseCase: FetchMoneySnapshotUseCase,
     private val addBudgetItemUseCase: AddBudgetItemUseCase,
     private val addExpenseUseCase: AddExpenseUseCase,
+    private val updateBudgetItemUseCase: UpdateBudgetItemUseCase,
+    private val updateExpenseUseCase: UpdateExpenseUseCase,
+    private val deleteBudgetItemUseCase: DeleteBudgetItemUseCase,
+    private val deleteExpenseUseCase: DeleteExpenseUseCase,
 ) : ViewModel() {
 
     private val expandedCategoryIds = linkedSetOf<String>()
@@ -58,19 +66,24 @@ class MoneyViewModel(
             is MoneyAction.OnSelectTab -> _state.update { it.copy(selectedTab = action.tab) }
             is MoneyAction.OnSelectExpenseFilter -> selectExpenseFilter(action.categoryId)
             is MoneyAction.OnToggleBudgetCategory -> toggleBudgetCategory(action.id)
-            MoneyAction.OnRefresh -> refresh(showLoading = true)
+            MoneyAction.OnRefresh -> refresh(showLoading = false, isRefreshing = true)
 
             is MoneyAction.OnCreateBudgetItem -> createBudgetItem(action)
             is MoneyAction.OnCreateExpense -> createExpense(action)
+            is MoneyAction.OnUpdateBudgetItem -> updateBudgetItem(action)
+            is MoneyAction.OnUpdateExpense -> updateExpense(action)
+            is MoneyAction.OnDeleteBudgetItem -> deleteBudgetItem(action)
+            is MoneyAction.OnDeleteExpense -> deleteExpense(action)
 
             MoneyAction.OnClickAdd -> Unit // handled in Route (bottom sheets)
             is MoneyAction.OnClickBudgetAddItem -> Unit // handled in Route (bottom sheet)
-            is MoneyAction.OnClickExpense -> Unit // TODO: detail screen
+            is MoneyAction.OnClickBudgetItem -> Unit // handled in Route (bottom sheet)
+            is MoneyAction.OnClickExpense -> Unit // handled in Route (bottom sheet)
         }
     }
 
-    private fun refresh(showLoading: Boolean) {
-        _state.update { it.copy(isLoading = showLoading, message = null) }
+    private fun refresh(showLoading: Boolean, isRefreshing: Boolean = false) {
+        _state.update { it.copy(isLoading = showLoading, isRefreshing = isRefreshing, message = null) }
 
         viewModelScope.launch {
             when (val result = fetchMoneySnapshotUseCase()) {
@@ -79,7 +92,7 @@ class MoneyViewModel(
                     applySnapshot(result.data)
                 }
                 is MoneyResult.Error -> {
-                    _state.update { it.copy(isLoading = false, message = result.message) }
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
                 }
             }
         }
@@ -98,6 +111,7 @@ class MoneyViewModel(
                 budget = budgetUi,
                 expenses = expensesUi,
                 isLoading = false,
+                isRefreshing = false,
                 message = null,
             )
         }
@@ -116,7 +130,7 @@ class MoneyViewModel(
     }
 
     private fun createBudgetItem(action: MoneyAction.OnCreateBudgetItem) {
-        _state.update { it.copy(isLoading = true, message = null) }
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
 
         viewModelScope.launch {
             val item = NewBudgetItem(
@@ -128,13 +142,13 @@ class MoneyViewModel(
 
             when (val result = addBudgetItemUseCase(item)) {
                 is MoneyResult.Success -> refresh(showLoading = false)
-                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
             }
         }
     }
 
     private fun createExpense(action: MoneyAction.OnCreateExpense) {
-        _state.update { it.copy(isLoading = true, message = null) }
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
 
         viewModelScope.launch {
             val expense = NewExpense(
@@ -148,7 +162,67 @@ class MoneyViewModel(
 
             when (val result = addExpenseUseCase(expense)) {
                 is MoneyResult.Success -> refresh(showLoading = false)
-                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+            }
+        }
+    }
+
+    private fun updateBudgetItem(action: MoneyAction.OnUpdateBudgetItem) {
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
+
+        viewModelScope.launch {
+            val item = NewBudgetItem(
+                categoryId = action.categoryId,
+                name = action.name,
+                targetAmount = action.targetAmount,
+                memo = action.memo,
+            )
+
+            when (val result = updateBudgetItemUseCase(action.id, item)) {
+                is MoneyResult.Success -> refresh(showLoading = false)
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+            }
+        }
+    }
+
+    private fun updateExpense(action: MoneyAction.OnUpdateExpense) {
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
+
+        viewModelScope.launch {
+            val expense = NewExpense(
+                budgetItemId = action.budgetItemId,
+                amount = action.amount,
+                date = action.date,
+                paymentMethod = action.paymentMethod,
+                payer = action.payer,
+                memo = action.memo,
+            )
+
+            when (val result = updateExpenseUseCase(action.id, expense)) {
+                is MoneyResult.Success -> refresh(showLoading = false)
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+            }
+        }
+    }
+
+    private fun deleteBudgetItem(action: MoneyAction.OnDeleteBudgetItem) {
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
+
+        viewModelScope.launch {
+            when (val result = deleteBudgetItemUseCase(action.id)) {
+                is MoneyResult.Success -> refresh(showLoading = false)
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+            }
+        }
+    }
+
+    private fun deleteExpense(action: MoneyAction.OnDeleteExpense) {
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
+
+        viewModelScope.launch {
+            when (val result = deleteExpenseUseCase(action.id)) {
+                is MoneyResult.Success -> refresh(showLoading = false)
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
             }
         }
     }
@@ -224,9 +298,15 @@ private fun MoneySnapshot.toExpensesUiState(
 
                         ExpenseListItem(
                             id = exp.id,
+                            budgetItemId = exp.budgetItemId,
                             title = budgetItem?.name ?: "지출",
                             dateText = "${exp.date.monthNumber}월 ${exp.date.dayOfMonth}일",
                             amountText = "-${formatNumber(exp.amount)}",
+                            amount = exp.amount,
+                            date = exp.date,
+                            paymentMethod = exp.paymentMethod,
+                            payer = exp.payer,
+                            memo = exp.memo,
                             icon = visuals.icon,
                             accent = visuals.accent,
                             accentContainer = visuals.accentContainer,
@@ -290,9 +370,12 @@ private fun MoneySnapshot.toBudgetUiState(
             subItems = items.map { item ->
                 val spent = expensesByBudgetItemId[item.id].orEmpty().sumOf { it.amount }
                 BudgetSubItem(
+                    id = item.id,
                     label = item.name,
                     valueText = if (spent <= 0) "미지출" else formatKrw(spent),
                     isEmpty = spent <= 0,
+                    targetAmount = item.targetAmount,
+                    memo = item.memo,
                 )
             },
             isOverBudget = target > 0 && used > target,

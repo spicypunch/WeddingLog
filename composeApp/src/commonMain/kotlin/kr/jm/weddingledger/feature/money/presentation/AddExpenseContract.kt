@@ -42,6 +42,7 @@ data class AddExpenseUiState(
 sealed interface AddExpenseAction {
     data object OnClickClose : AddExpenseAction
     data object OnClickSave : AddExpenseAction
+    data object OnClickDelete : AddExpenseAction
     data object OnClickDate : AddExpenseAction
     data class OnAmountChange(val value: String) : AddExpenseAction
     data class OnSelectBudgetItem(val id: String) : AddExpenseAction
