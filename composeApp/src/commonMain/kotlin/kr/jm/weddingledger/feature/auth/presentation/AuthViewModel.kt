@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResetPasswordUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInUseCase
@@ -69,9 +70,14 @@ class AuthViewModel(
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
-            val result = when (snapshot.mode) {
-                AuthMode.SignIn -> signInUseCase(snapshot.email.trim(), snapshot.password)
-                AuthMode.SignUp -> signUpUseCase(snapshot.email.trim(), snapshot.password)
+            val result = try {
+                when (snapshot.mode) {
+                    AuthMode.SignIn -> signInUseCase(snapshot.email.trim(), snapshot.password)
+                    AuthMode.SignUp -> signUpUseCase(snapshot.email.trim(), snapshot.password)
+                }
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                AuthResult.Error("요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
             }
 
             when (result) {
@@ -114,7 +120,12 @@ class AuthViewModel(
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
-            val result = resetPasswordUseCase(snapshot.email.trim())
+            val result = try {
+                resetPasswordUseCase(snapshot.email.trim())
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                AuthResult.Error("요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
+            }
             when (result) {
                 is AuthResult.Success -> {
                     _state.update {
