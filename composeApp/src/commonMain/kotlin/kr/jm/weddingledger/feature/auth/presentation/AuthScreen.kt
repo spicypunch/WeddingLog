@@ -490,7 +490,9 @@ private fun SignUpScreen(
             }
 
             // Bottom action bar
-            Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 HorizontalDivider(color = fieldBorder)
                 Box(modifier = Modifier.padding(24.dp)) {
                     Button(
