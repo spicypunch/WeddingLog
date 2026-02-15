@@ -1,6 +1,6 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
-작성일: 2026-02-14  
+작성일: 2026-02-15  
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 이 문서는 "새로운 세션"이 이 파일만 읽고도 바로 작업을 이어갈 수 있도록, 현재 코드 상태/결정/구조/다음 작업을 최대한 구체적으로 정리한 인수인계서입니다.
@@ -173,7 +173,7 @@ using (wedding_id = (select wedding_id from public.profiles where id = auth.uid(
 
 ## 4-2) Supabase MCP 연결 (Codex, 개발 편의)
 
-이 프로젝트는 Supabase MCP를 Codex에 연결해두었습니다. (앱 런타임과는 무관하며, 개발 편의용입니다.)
+Codex에서 Supabase MCP를 연결해두면 SQL 조회/수정 등을 채팅에서 바로 할 수 있어 편합니다. (앱 런타임과는 무관하며, 개발 편의용입니다.)
 
 - MCP 설정 저장 위치: `~/.codex/config.toml` (레포에 커밋되지 않음)
 - 프로젝트 Ref: `wmfzhnoxdmfniewgcmzu`
@@ -385,6 +385,10 @@ iOS 빌드 주의:
 - Supabase `realtime-kt` 포함 상태에서 Kotlin/Native compiler cache 빌드가 크래시 나는 케이스가 있어, 현재는 캐시를 비활성화했습니다.
   - 설정 파일: `/Users/jm/StudioProjects/WeddingLedger/gradle.properties`
   - 설정 값: `kotlin.native.cacheKind=none`
+- iOS에서 Auth 시 `IrLinkageError`가 나면서 회원가입 요청은 서버에서 성공(유저 생성)하지만 앱에서는 실패로 보이는 현상이 있었습니다.
+  - 원인(추정): Supabase-kt `3.1.4` iOS KLIB이 Kotlin `2.1.20`으로 빌드되어(KLIB manifest 확인) Kotlin `2.3.0` 프로젝트와 ABI 미스매치 가능성이 큼
+  - 해결: Supabase BOM을 `3.3.0`으로 업데이트하여 Kotlin `2.3.0` KLIB으로 정렬
+    - 설정 파일: `/Users/jm/StudioProjects/WeddingLedger/gradle/libs.versions.toml`
 
 ---
 
