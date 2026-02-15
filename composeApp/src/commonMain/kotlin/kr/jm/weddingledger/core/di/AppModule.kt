@@ -1,9 +1,11 @@
 package kr.jm.weddingledger.core.di
 
 import kr.jm.weddingledger.feature.auth.di.authModule
+import kr.jm.weddingledger.feature.schedule.di.scheduleModule
 import org.koin.core.module.Module
 
 fun appModules(): List<Module> = listOf(
     coreModule,
-    authModule
+    authModule,
+    scheduleModule,
 )

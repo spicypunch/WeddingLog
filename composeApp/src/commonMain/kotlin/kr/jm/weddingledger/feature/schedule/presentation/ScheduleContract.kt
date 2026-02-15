@@ -177,6 +177,8 @@ data class UpcomingScheduleItem(
 
 data class ChecklistUiState(
     val groups: List<ChecklistGroup>,
+    val isLoading: Boolean = false,
+    val message: String? = null,
 ) {
     val totalCount: Int
         get() = groups.sumOf { it.items.size }
@@ -194,6 +196,8 @@ data class ChecklistUiState(
         get() = "${completedCount}/${totalCount}개"
 
     companion object {
+        fun empty(): ChecklistUiState = ChecklistUiState(groups = emptyList())
+
         fun sample(): ChecklistUiState = ChecklistUiState(
             groups = listOf(
                 ChecklistGroup(
@@ -333,4 +337,13 @@ sealed interface ScheduleAction {
     data class OnClickUpcomingSchedule(val id: String) : ScheduleAction
     data class OnToggleChecklistItem(val itemId: String) : ScheduleAction
     data class OnClickChecklistItemMore(val itemId: String) : ScheduleAction
+
+    data object OnRefreshChecklist : ScheduleAction
+    data class OnCreateChecklist(
+        val title: String,
+        val dTag: String,
+        val isCompleted: Boolean,
+        val memo: String,
+    ) : ScheduleAction
+    data class OnDeleteChecklist(val id: String) : ScheduleAction
 }

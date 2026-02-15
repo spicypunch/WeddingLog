@@ -1,60 +1,38 @@
 package kr.jm.weddingledger.feature.schedule.presentation
 
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun ScheduleRoute() {
-    var uiState by remember { mutableStateOf(ScheduleUiState.sample()) }
+    val viewModel: ScheduleViewModel = koinViewModel()
+    val uiState by viewModel.state.collectAsState()
 
     var activeSheet by remember { mutableStateOf<ScheduleSheet?>(null) }
     var addChecklistState by remember { mutableStateOf(AddChecklistUiState.sample()) }
+    var pendingDeleteChecklistId by remember { mutableStateOf<String?>(null) }
 
     ScheduleScreen(
         state = uiState,
         onAction = { action ->
             when (action) {
-                is ScheduleAction.OnSelectTab -> uiState = uiState.copy(selectedTab = action.tab)
                 ScheduleAction.OnClickAdd -> {
                     activeSheet = when (uiState.selectedTab) {
                         ScheduleTab.Schedule -> ScheduleSheet.AddChecklist // TODO: add schedule item later
                         ScheduleTab.Checklist -> ScheduleSheet.AddChecklist
                     }
+                    addChecklistState = AddChecklistUiState.sample()
                 }
-                ScheduleAction.OnClickPrevMonth -> Unit // TODO
-                ScheduleAction.OnClickNextMonth -> Unit // TODO
-                is ScheduleAction.OnSelectCalendarDay -> {
-                    uiState = uiState.copy(
-                        calendar = uiState.calendar.copy(
-                            cells = uiState.calendar.cells.map { cell ->
-                                if (cell.id == action.dayId && cell.inMonth && !cell.isDDay) {
-                                    cell.copy(isSelected = true)
-                                } else {
-                                    cell.copy(isSelected = false)
-                                }
-                            }
-                        )
-                    )
-                }
-                ScheduleAction.OnClickViewAllUpcoming -> Unit // TODO
-                is ScheduleAction.OnClickUpcomingSchedule -> Unit // TODO
-                is ScheduleAction.OnToggleChecklistItem -> {
-                    uiState = uiState.copy(
-                        checklist = uiState.checklist.copy(
-                            groups = uiState.checklist.groups.map { group ->
-                                group.copy(
-                                    items = group.items.map { item ->
-                                        if (item.id == action.itemId) item.copy(isDone = !item.isDone) else item
-                                    }
-                                )
-                            }
-                        )
-                    )
-                }
-                is ScheduleAction.OnClickChecklistItemMore -> Unit // TODO: context menu
+                is ScheduleAction.OnClickChecklistItemMore -> pendingDeleteChecklistId = action.itemId
+                else -> viewModel.onAction(action)
             }
         }
     )
@@ -68,7 +46,18 @@ fun ScheduleRoute() {
                 onAction = { act ->
                     when (act) {
                         AddChecklistAction.OnClickClose -> activeSheet = null
-                        AddChecklistAction.OnClickSave -> activeSheet = null // TODO: persist + sync
+                        AddChecklistAction.OnClickSave -> {
+                            viewModel.onAction(
+                                ScheduleAction.OnCreateChecklist(
+                                    title = addChecklistState.title,
+                                    dTag = addChecklistState.selectedDTag,
+                                    isCompleted = addChecklistState.isCompleted,
+                                    memo = addChecklistState.memo,
+                                )
+                            )
+                            activeSheet = null
+                            addChecklistState = AddChecklistUiState.sample()
+                        }
                         AddChecklistAction.OnClickTargetDate -> Unit // TODO: date picker
                         is AddChecklistAction.OnTitleChange -> addChecklistState = addChecklistState.copy(title = act.value)
                         is AddChecklistAction.OnSelectDTag -> addChecklistState = addChecklistState.copy(selectedDTag = act.value)
@@ -78,6 +67,29 @@ fun ScheduleRoute() {
                 }
             )
         }
+    }
+
+    pendingDeleteChecklistId?.let { id ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteChecklistId = null },
+            title = { Text(text = "삭제할까요?") },
+            text = { Text(text = "이 할 일을 체크리스트에서 삭제합니다.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.onAction(ScheduleAction.OnDeleteChecklist(id))
+                        pendingDeleteChecklistId = null
+                    }
+                ) {
+                    Text(text = "삭제")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteChecklistId = null }) {
+                    Text(text = "취소")
+                }
+            }
+        )
     }
 }
 

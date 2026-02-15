@@ -524,6 +524,27 @@ private fun ChecklistTab(
             )
         }
 
+        if (state.isLoading) {
+            item(key = "checklist-loading") {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+            }
+        }
+
+        state.message?.let { message ->
+            item(key = "checklist-message") {
+                InlineMessage(
+                    text = message,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
         state.groups.forEach { group ->
             stickyHeader(key = "header-${group.id}") {
                 ChecklistGroupHeader(
@@ -770,5 +791,29 @@ private fun ChecklistCheckbox(
                 modifier = Modifier.size(14.dp)
             )
         }
+    }
+}
+
+@Composable
+private fun InlineMessage(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+        contentColor = MaterialTheme.colorScheme.error,
+        shape = MaterialTheme.shapes.large,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.error.copy(alpha = 0.20f),
+        ),
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+        )
     }
 }
