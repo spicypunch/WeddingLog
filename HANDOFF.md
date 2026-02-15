@@ -274,6 +274,21 @@ NavHost:
 
 ## 8) 화면 매핑 현황 (Stitch HTML -> CMP)
 
+### Auth (로그인/회원가입)
+- S01 로그인 (미니멀 수정)
+- S02 회원가입 (미니멀)
+  - Route: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthRoute.kt`
+  - Screen: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthScreen.kt`
+  - ViewModel: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthViewModel.kt`
+  - Contract: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthContract.kt`
+
+Auth 화면 구현 메모:
+- `AuthMode.SignIn`(S01) / `AuthMode.SignUp`(S02) 모드 전환으로 1개의 Screen에서 분기
+- SignUp은 디자인 요구사항에 맞춰 다음을 추가로 받음:
+  - 비밀번호 확인(`passwordConfirm`)
+  - 이용약관 동의(`isTermsAccepted`)
+  - 비밀번호 표시 토글(`isPasswordVisible`)
+
 ### Home
 - S05 홈(미니멀)
   - Route: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/home/presentation/HomeRoute.kt`

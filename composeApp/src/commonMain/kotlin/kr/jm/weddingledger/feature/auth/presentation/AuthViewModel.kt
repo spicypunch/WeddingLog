@@ -25,6 +25,9 @@ class AuthViewModel(
         when (action) {
             is AuthAction.OnEmailChange -> _state.update { it.copy(email = action.value) }
             is AuthAction.OnPasswordChange -> _state.update { it.copy(password = action.value) }
+            is AuthAction.OnPasswordConfirmChange -> _state.update { it.copy(passwordConfirm = action.value) }
+            AuthAction.OnClickTogglePasswordVisibility -> _state.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
+            is AuthAction.OnTermsAcceptedChange -> _state.update { it.copy(isTermsAccepted = action.accepted) }
             AuthAction.OnClickToggleMode -> toggleMode()
             AuthAction.OnClickSubmit -> submit()
             AuthAction.OnClickResetPassword -> resetPassword()
@@ -40,6 +43,10 @@ class AuthViewModel(
                     AuthMode.SignIn -> AuthMode.SignUp
                     AuthMode.SignUp -> AuthMode.SignIn
                 },
+                password = "",
+                passwordConfirm = "",
+                isPasswordVisible = false,
+                isTermsAccepted = false,
                 message = null,
             )
         }
@@ -48,6 +55,17 @@ class AuthViewModel(
     private fun submit() {
         val snapshot = _state.value
         if (snapshot.isLoading) return
+
+        if (snapshot.mode == AuthMode.SignUp) {
+            if (snapshot.password != snapshot.passwordConfirm) {
+                _state.update { it.copy(message = AuthMessage.Error("비밀번호가 일치하지 않습니다.")) }
+                return
+            }
+            if (!snapshot.isTermsAccepted) {
+                _state.update { it.copy(message = AuthMessage.Error("이용약관 및 개인정보 처리방침에 동의해주세요.")) }
+                return
+            }
+        }
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
@@ -68,6 +86,9 @@ class AuthViewModel(
                                 it.copy(
                                     mode = AuthMode.SignIn,
                                     password = "",
+                                    passwordConfirm = "",
+                                    isPasswordVisible = false,
+                                    isTermsAccepted = false,
                                     isLoading = false,
                                     message = AuthMessage.Info("회원가입이 완료되었습니다. 로그인해주세요."),
                                 )
@@ -115,4 +136,3 @@ class AuthViewModel(
         }
     }
 }
-
