@@ -389,6 +389,8 @@ iOS 빌드 주의:
   - 원인(추정): Supabase-kt `3.1.4` iOS KLIB이 Kotlin `2.1.20`으로 빌드되어(KLIB manifest 확인) Kotlin `2.3.0` 프로젝트와 ABI 미스매치 가능성이 큼
   - 해결: Supabase BOM을 `3.3.0`으로 업데이트하여 Kotlin `2.3.0` KLIB으로 정렬
     - 설정 파일: `/Users/jm/StudioProjects/WeddingLedger/gradle/libs.versions.toml`
+  - 추가: Ktor가 `3.1.3`(요청)과 `3.3.3`(Supabase 전이 의존성)로 혼용되던 상태라, Ktor 버전도 `3.3.3`으로 맞춤
+    - 설정 파일: `/Users/jm/StudioProjects/WeddingLedger/gradle/libs.versions.toml`
 
 ---
 
