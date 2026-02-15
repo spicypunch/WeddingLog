@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -537,7 +538,8 @@ private fun BackgroundBlobs(primary: Color) {
         Box(
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = (-72).dp, end = (-72).dp)
+                // Compose padding does not allow negative values; use offset for "off-screen" placement.
+                .offset(x = 72.dp, y = (-72).dp)
                 .size(420.dp)
                 .background(primary.copy(alpha = alpha), CircleShape)
                 .blur(blurRadius)
@@ -545,7 +547,7 @@ private fun BackgroundBlobs(primary: Color) {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(bottom = (-72).dp, start = (-72).dp)
+                .offset(x = (-72).dp, y = 72.dp)
                 .size(360.dp)
                 .background(primary.copy(alpha = alpha), CircleShape)
                 .blur(blurRadius)
