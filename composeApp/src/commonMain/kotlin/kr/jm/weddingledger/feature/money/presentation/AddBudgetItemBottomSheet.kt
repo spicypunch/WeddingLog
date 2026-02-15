@@ -80,17 +80,17 @@ fun AddBudgetItemBottomSheet(
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    items(state.categoryLabels) { label ->
-                        val selected = label == state.selectedCategoryLabel
+                    items(state.categoryOptions) { option ->
+                        val selected = option.id == state.selectedCategoryId
                         Surface(
-                            onClick = { onAction(AddBudgetItemAction.OnSelectCategory(label)) },
+                            onClick = { onAction(AddBudgetItemAction.OnSelectCategory(option.id)) },
                             color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
                             contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             shape = CircleShape,
                             shadowElevation = if (selected) 2.dp else 0.dp,
                         ) {
                             Text(
-                                text = label,
+                                text = option.label,
                                 style = MaterialTheme.typography.labelLarge,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)

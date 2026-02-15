@@ -1,38 +1,37 @@
 package kr.jm.weddingledger.feature.money.presentation
 
-enum class PaymentMethod(val label: String) {
-    Card("카드"),
-    Cash("현금"),
-}
+import kotlinx.datetime.LocalDate
+import kr.jm.weddingledger.feature.money.domain.model.Payer
+import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 
-enum class Payer(val label: String) {
-    Groom("신랑"),
-    Bride("신부"),
-}
+data class BudgetItemOption(
+    val id: String,
+    val label: String,
+)
 
 data class AddExpenseUiState(
     val amount: String,
+    val date: LocalDate,
     val dateText: String,
-    val categoryOptions: List<String>,
-    val selectedCategoryLabel: String?,
+    val budgetItemOptions: List<BudgetItemOption>,
+    val selectedBudgetItemId: String?,
     val paymentMethod: PaymentMethod,
     val payer: Payer,
     val memo: String,
 ) {
     val isSaveEnabled: Boolean
-        get() = amount.trim().isNotEmpty() && selectedCategoryLabel != null
+        get() = amount.trim().isNotEmpty() && selectedBudgetItemId != null
 
     companion object {
         fun sample(): AddExpenseUiState = AddExpenseUiState(
             amount = "",
+            date = LocalDate.parse("2023-10-25"),
             dateText = "2023.10.25 (수)",
-            categoryOptions = listOf(
-                "웨딩홀 (대관료, 식대)",
-                "스드메 (스튜디오, 드레스)",
-                "혼수 / 예물",
-                "허니문",
+            budgetItemOptions = listOf(
+                BudgetItemOption(id = "budget-1", label = "웨딩홀 · 계약금"),
+                BudgetItemOption(id = "budget-2", label = "스드메 · 드레스"),
             ),
-            selectedCategoryLabel = null,
+            selectedBudgetItemId = null,
             paymentMethod = PaymentMethod.Card,
             payer = Payer.Bride,
             memo = "",
@@ -45,9 +44,8 @@ sealed interface AddExpenseAction {
     data object OnClickSave : AddExpenseAction
     data object OnClickDate : AddExpenseAction
     data class OnAmountChange(val value: String) : AddExpenseAction
-    data class OnSelectCategory(val label: String) : AddExpenseAction
+    data class OnSelectBudgetItem(val id: String) : AddExpenseAction
     data class OnSelectPaymentMethod(val method: PaymentMethod) : AddExpenseAction
     data class OnSelectPayer(val payer: Payer) : AddExpenseAction
     data class OnMemoChange(val value: String) : AddExpenseAction
 }
-

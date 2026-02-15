@@ -1,70 +1,58 @@
 package kr.jm.weddingledger.feature.money.presentation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.datetime.DayOfWeek
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlin.time.Clock
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun MoneyRoute() {
-    var selectedTab by remember { mutableStateOf(MoneyTab.Expenses) }
-    var expensesState by remember { mutableStateOf(ExpensesUiState.sample()) }
-    var budgetState by remember { mutableStateOf(BudgetUiState.sample()) }
+    val viewModel: MoneyViewModel = koinViewModel()
+    val uiState by viewModel.state.collectAsState()
 
     var activeSheet by remember { mutableStateOf<MoneySheet?>(null) }
     var addExpenseState by remember { mutableStateOf(AddExpenseUiState.sample()) }
     var addBudgetItemState by remember { mutableStateOf(AddBudgetItemUiState.sample()) }
 
     MoneyScreen(
-        selectedTab = selectedTab,
-        expensesState = expensesState,
-        budgetState = budgetState,
+        state = uiState,
         onAction = { action ->
             when (action) {
-                is MoneyAction.OnSelectTab -> selectedTab = action.tab
-                is MoneyAction.OnSelectExpenseFilter -> {
-                    expensesState = expensesState.copy(
-                        filters = expensesState.filters.map { it.copy(selected = it.label == action.label) }
-                    )
-                }
-                is MoneyAction.OnToggleBudgetCategory -> {
-                    budgetState = budgetState.copy(
-                        categories = budgetState.categories.map { category ->
-                            if (category.id == action.id) category.copy(isExpanded = !category.isExpanded) else category
-                        }
-                    )
-                }
                 MoneyAction.OnClickAdd -> {
-                    activeSheet = when (selectedTab) {
-                        MoneyTab.Expenses -> MoneySheet.AddExpense
+                    when (uiState.selectedTab) {
+                        MoneyTab.Expenses -> {
+                            activeSheet = MoneySheet.AddExpense
+                            addExpenseState = newAddExpenseState(uiState)
+                        }
                         MoneyTab.Budget -> {
-                            val budgetCategories = budgetState.categories.map { it.name }
-                            if (budgetCategories.isNotEmpty()) {
-                                addBudgetItemState = addBudgetItemState.copy(
-                                    categoryLabels = budgetCategories,
-                                    selectedCategoryLabel = budgetCategories.first()
-                                )
-                            }
-                            MoneySheet.AddBudgetItem(categoryId = null)
+                            activeSheet = MoneySheet.AddBudgetItem
+                            addBudgetItemState = newAddBudgetItemState(
+                                uiState = uiState,
+                                preselectedCategoryId = uiState.budget.categories.firstOrNull()?.id,
+                            )
                         }
                     }
                 }
                 is MoneyAction.OnClickBudgetAddItem -> {
-                    val budgetCategories = budgetState.categories.map { it.name }
-                    addBudgetItemState = addBudgetItemState.copy(
-                        categoryLabels = if (budgetCategories.isNotEmpty()) budgetCategories else addBudgetItemState.categoryLabels,
-                        selectedCategoryLabel = budgetState.categories.firstOrNull { it.id == action.categoryId }?.name
-                            ?: addBudgetItemState.selectedCategoryLabel
+                    activeSheet = MoneySheet.AddBudgetItem
+                    addBudgetItemState = newAddBudgetItemState(
+                        uiState = uiState,
+                        preselectedCategoryId = action.categoryId,
                     )
-                    activeSheet = MoneySheet.AddBudgetItem(categoryId = action.categoryId)
                 }
-                is MoneyAction.OnClickExpense -> Unit // TODO
+                else -> viewModel.onAction(action)
             }
         }
     )
 
-    when (val sheet = activeSheet) {
+    when (activeSheet) {
         null -> Unit
         MoneySheet.AddExpense -> {
             AddExpenseBottomSheet(
@@ -73,26 +61,61 @@ fun MoneyRoute() {
                 onAction = { act ->
                     when (act) {
                         AddExpenseAction.OnClickClose -> activeSheet = null
-                        AddExpenseAction.OnClickSave -> activeSheet = null // TODO: persist + sync
+                        AddExpenseAction.OnClickSave -> {
+                            val budgetItemId = addExpenseState.selectedBudgetItemId ?: return@AddExpenseBottomSheet
+                            val amount = parseAmountOrNull(addExpenseState.amount) ?: return@AddExpenseBottomSheet
+
+                            viewModel.onAction(
+                                MoneyAction.OnCreateExpense(
+                                    budgetItemId = budgetItemId,
+                                    amount = amount,
+                                    date = addExpenseState.date,
+                                    paymentMethod = addExpenseState.paymentMethod,
+                                    payer = addExpenseState.payer,
+                                    memo = addExpenseState.memo,
+                                )
+                            )
+
+                            activeSheet = null
+                            addExpenseState = newAddExpenseState(uiState)
+                        }
                         AddExpenseAction.OnClickDate -> Unit // TODO: date picker
                         is AddExpenseAction.OnAmountChange -> addExpenseState = addExpenseState.copy(amount = act.value)
                         is AddExpenseAction.OnMemoChange -> addExpenseState = addExpenseState.copy(memo = act.value)
-                        is AddExpenseAction.OnSelectCategory -> addExpenseState = addExpenseState.copy(selectedCategoryLabel = act.label)
+                        is AddExpenseAction.OnSelectBudgetItem -> addExpenseState = addExpenseState.copy(selectedBudgetItemId = act.id)
                         is AddExpenseAction.OnSelectPaymentMethod -> addExpenseState = addExpenseState.copy(paymentMethod = act.method)
                         is AddExpenseAction.OnSelectPayer -> addExpenseState = addExpenseState.copy(payer = act.payer)
                     }
                 }
             )
         }
-        is MoneySheet.AddBudgetItem -> {
+        MoneySheet.AddBudgetItem -> {
             AddBudgetItemBottomSheet(
                 state = addBudgetItemState,
                 onDismiss = { activeSheet = null },
                 onAction = { act ->
                     when (act) {
                         AddBudgetItemAction.OnClickClose -> activeSheet = null
-                        AddBudgetItemAction.OnClickSave -> activeSheet = null // TODO: persist + sync
-                        is AddBudgetItemAction.OnSelectCategory -> addBudgetItemState = addBudgetItemState.copy(selectedCategoryLabel = act.label)
+                        AddBudgetItemAction.OnClickSave -> {
+                            val categoryId = addBudgetItemState.selectedCategoryId ?: return@AddBudgetItemBottomSheet
+                            val target = parseAmountOrNull(addBudgetItemState.targetAmount) ?: return@AddBudgetItemBottomSheet
+
+                            viewModel.onAction(
+                                MoneyAction.OnCreateBudgetItem(
+                                    categoryId = categoryId,
+                                    name = addBudgetItemState.name,
+                                    targetAmount = target,
+                                    memo = addBudgetItemState.memo,
+                                )
+                            )
+
+                            activeSheet = null
+                            addBudgetItemState = newAddBudgetItemState(
+                                uiState = uiState,
+                                preselectedCategoryId = uiState.budget.categories.firstOrNull()?.id,
+                            )
+                        }
+                        is AddBudgetItemAction.OnSelectCategory -> addBudgetItemState = addBudgetItemState.copy(selectedCategoryId = act.id)
                         is AddBudgetItemAction.OnNameChange -> addBudgetItemState = addBudgetItemState.copy(name = act.value)
                         is AddBudgetItemAction.OnTargetAmountChange -> addBudgetItemState = addBudgetItemState.copy(targetAmount = act.value)
                         is AddBudgetItemAction.OnMemoChange -> addBudgetItemState = addBudgetItemState.copy(memo = act.value)
@@ -105,5 +128,56 @@ fun MoneyRoute() {
 
 private sealed interface MoneySheet {
     data object AddExpense : MoneySheet
-    data class AddBudgetItem(val categoryId: String?) : MoneySheet
+    data object AddBudgetItem : MoneySheet
+}
+
+private fun newAddExpenseState(uiState: MoneyUiState): AddExpenseUiState {
+    val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+    return AddExpenseUiState(
+        amount = "",
+        date = today,
+        dateText = today.toKoreanDateText(),
+        budgetItemOptions = uiState.expenses.budgetItemOptions,
+        selectedBudgetItemId = null,
+        paymentMethod = kr.jm.weddingledger.feature.money.domain.model.PaymentMethod.Card,
+        payer = kr.jm.weddingledger.feature.money.domain.model.Payer.Bride,
+        memo = "",
+    )
+}
+
+private fun newAddBudgetItemState(
+    uiState: MoneyUiState,
+    preselectedCategoryId: String?,
+): AddBudgetItemUiState {
+    val options = uiState.budget.categories.map { CategoryOption(id = it.id, label = it.name) }
+    val selectedId = preselectedCategoryId ?: options.firstOrNull()?.id
+    return AddBudgetItemUiState(
+        categoryOptions = options,
+        selectedCategoryId = selectedId,
+        name = "",
+        targetAmount = "",
+        memo = "",
+        helperText = null,
+    )
+}
+
+private fun parseAmountOrNull(value: String): Int? {
+    val digits = value.filter { it.isDigit() }
+    return digits.toIntOrNull()
+}
+
+private fun kotlinx.datetime.LocalDate.toKoreanDateText(): String {
+    val mm = monthNumber.toString().padStart(2, '0')
+    val dd = dayOfMonth.toString().padStart(2, '0')
+    return "${year}.$mm.$dd (${dayOfWeek.toKoreanShort()})"
+}
+
+private fun DayOfWeek.toKoreanShort(): String = when (this) {
+    DayOfWeek.MONDAY -> "월"
+    DayOfWeek.TUESDAY -> "화"
+    DayOfWeek.WEDNESDAY -> "수"
+    DayOfWeek.THURSDAY -> "목"
+    DayOfWeek.FRIDAY -> "금"
+    DayOfWeek.SATURDAY -> "토"
+    DayOfWeek.SUNDAY -> "일"
 }

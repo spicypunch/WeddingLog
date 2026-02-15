@@ -44,9 +44,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun MoneyScreen(
-    selectedTab: MoneyTab,
-    expensesState: ExpensesUiState,
-    budgetState: BudgetUiState,
+    state: MoneyUiState,
     onAction: (MoneyAction) -> Unit,
 ) {
     Column(
@@ -60,33 +58,52 @@ fun MoneyScreen(
         )
 
         TabRow(
-            selectedTabIndex = selectedTab.ordinal,
+            selectedTabIndex = state.selectedTab.ordinal,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary
         ) {
             MoneyTab.entries.forEachIndexed { index, tab ->
                 Tab(
-                    selected = selectedTab.ordinal == index,
+                    selected = state.selectedTab.ordinal == index,
                     onClick = { onAction(MoneyAction.OnSelectTab(tab)) },
                     text = {
                         Text(
                             text = tab.label,
-                            fontWeight = if (selectedTab.ordinal == index) FontWeight.SemiBold else FontWeight.Medium
+                            fontWeight = if (state.selectedTab.ordinal == index) FontWeight.SemiBold else FontWeight.Medium
                         )
                     }
                 )
             }
         }
 
+        if (state.isLoading) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+        }
+
+        state.message?.let { message ->
+            InlineMessage(
+                text = message,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+            )
+        }
+
         Box(modifier = Modifier.weight(1f)) {
-            when (selectedTab) {
+            when (state.selectedTab) {
                 MoneyTab.Expenses -> ExpensesTab(
-                    state = expensesState,
+                    state = state.expenses,
                     onAction = onAction,
                     modifier = Modifier.fillMaxSize()
                 )
                 MoneyTab.Budget -> BudgetTab(
-                    state = budgetState,
+                    state = state.budget,
                     onAction = onAction,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -188,7 +205,7 @@ private fun ExpensesTab(
                     ExpenseFilterChip(
                         label = chip.label,
                         selected = chip.selected,
-                        onClick = { onAction(MoneyAction.OnSelectExpenseFilter(chip.label)) }
+                        onClick = { onAction(MoneyAction.OnSelectExpenseFilter(chip.id)) }
                     )
                 }
             }
@@ -207,10 +224,10 @@ private fun ExpensesTab(
                         .padding(horizontal = 4.dp, vertical = 10.dp)
                 )
             }
-            items(section.items, key = { it.title }) { item ->
+            items(section.items, key = { it.id }) { item ->
                 ExpenseRow(
                     item = item,
-                    onClick = { onAction(MoneyAction.OnClickExpense(item.title)) }
+                    onClick = { onAction(MoneyAction.OnClickExpense(item.id)) }
                 )
             }
         }
@@ -561,5 +578,29 @@ private fun BudgetCategoryCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun InlineMessage(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+        contentColor = MaterialTheme.colorScheme.error,
+        shape = MaterialTheme.shapes.large,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.error.copy(alpha = 0.20f),
+        ),
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+        )
     }
 }

@@ -48,6 +48,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import kr.jm.weddingledger.core.ui.components.WeddingLogSheetHandle
 import kr.jm.weddingledger.core.ui.components.WeddingLogSheetHeader
+import kr.jm.weddingledger.feature.money.domain.model.Payer
+import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,9 +97,9 @@ fun AddExpenseBottomSheet(
                 )
 
                 CategorySelector(
-                    selected = state.selectedCategoryLabel,
-                    options = state.categoryOptions,
-                    onSelect = { onAction(AddExpenseAction.OnSelectCategory(it)) }
+                    selected = state.budgetItemOptions.firstOrNull { it.id == state.selectedBudgetItemId }?.label,
+                    options = state.budgetItemOptions,
+                    onSelect = { onAction(AddExpenseAction.OnSelectBudgetItem(it)) }
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -260,7 +262,7 @@ private fun DateRow(
 @Composable
 private fun CategorySelector(
     selected: String?,
-    options: List<String>,
+    options: List<BudgetItemOption>,
     onSelect: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -307,10 +309,10 @@ private fun CategorySelector(
             ) {
                 options.forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(text = option) },
+                        text = { Text(text = option.label) },
                         onClick = {
                             expanded = false
-                            onSelect(option)
+                            onSelect(option.id)
                         }
                     )
                 }
