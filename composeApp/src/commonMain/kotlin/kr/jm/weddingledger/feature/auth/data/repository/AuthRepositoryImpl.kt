@@ -66,9 +66,10 @@ class AuthRepositoryImpl(
                 this.password = password
             }
             AuthResult.Success(Unit)
-        } catch (e: Exception) {
-            logSupabaseThrowable(e)
-            AuthResult.Error(e.toUserFriendlyMessage(defaultMessage = "회원가입에 실패했습니다"))
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "회원가입에 실패했습니다"))
         }
     }
 
@@ -79,9 +80,10 @@ class AuthRepositoryImpl(
                 this.password = password
             }
             AuthResult.Success(Unit)
-        } catch (e: Exception) {
-            logSupabaseThrowable(e)
-            AuthResult.Error(e.toUserFriendlyMessage(defaultMessage = "로그인에 실패했습니다"))
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "로그인에 실패했습니다"))
         }
     }
 
@@ -89,9 +91,10 @@ class AuthRepositoryImpl(
         return try {
             supabaseClient.auth.signOut()
             AuthResult.Success(Unit)
-        } catch (e: Exception) {
-            logSupabaseThrowable(e)
-            AuthResult.Error(e.toUserFriendlyMessage(defaultMessage = "로그아웃에 실패했습니다"))
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "로그아웃에 실패했습니다"))
         }
     }
 
@@ -99,9 +102,10 @@ class AuthRepositoryImpl(
         return try {
             supabaseClient.auth.resetPasswordForEmail(email)
             AuthResult.Success(Unit)
-        } catch (e: Exception) {
-            logSupabaseThrowable(e)
-            AuthResult.Error(e.toUserFriendlyMessage(defaultMessage = "비밀번호 재설정 이메일 전송에 실패했습니다"))
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "비밀번호 재설정 이메일 전송에 실패했습니다"))
         }
     }
 
@@ -110,7 +114,7 @@ class AuthRepositoryImpl(
     }
 }
 
-private fun Exception.toUserFriendlyMessage(defaultMessage: String): String {
+private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
     return when (this) {
         is AuthRestException -> when (this.errorCode) {
             AuthErrorCode.InvalidCredentials -> "이메일 또는 비밀번호가 올바르지 않습니다."
