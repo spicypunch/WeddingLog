@@ -4,6 +4,8 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.random.Random
 import kotlinx.datetime.LocalDate
@@ -80,13 +82,8 @@ class OnboardingRepositoryImpl(
             val existing = loadProfile(userId)?.inviteCode?.trim()?.takeIf { it.isNotEmpty() }
             if (existing != null) return OnboardingResult.Success(existing)
 
-            val code = createUniqueInviteCode()
-            val payload = buildJsonObject { put("invite_code", JsonPrimitive(code)) }
-            supabaseClient
-                .from("profiles")
-                .update(payload) {
-                    filter { eq("id", userId) }
-                }
+            val code = assignInviteCodeWithRetry(userId)
+                ?: return OnboardingResult.Error("초대 코드를 생성하지 못했습니다. 잠시 후 다시 시도해주세요.")
 
             OnboardingResult.Success(code)
         } catch (t: Throwable) {
@@ -97,44 +94,21 @@ class OnboardingRepositoryImpl(
     }
 
     override suspend fun connectPartner(inviteCode: String): OnboardingResult<Unit> {
-        val input = inviteCode.trim().uppercase()
+        val input = normalizeInviteCode(inviteCode)
         if (input.isBlank()) return OnboardingResult.Error("초대 코드를 입력해주세요.")
+        if (!isValidInviteCode(input)) return OnboardingResult.Error("초대 코드는 W-1234 형식으로 입력해주세요.")
 
         return try {
             val (userId, email) = currentUserIdAndEmail()
             ensureProfileRow(userId = userId, email = email)
 
-            val inviter = supabaseClient
-                .from("profiles")
-                .select {
-                    filter { eq("invite_code", input) }
-                    limit(count = 1)
-                }
-                .decodeList<ProfileRowDto>()
-                .firstOrNull()
-                ?: return OnboardingResult.Error("초대 코드가 올바르지 않습니다.")
-
-            val weddingIdToJoin = inviter.weddingId ?: inviter.id
-
-            val payload = buildJsonObject {
-                put("wedding_id", JsonPrimitive(weddingIdToJoin))
-
-                // Best-effort: 상대방이 입력한 예식일 정보를 복사해 동일하게 시작할 수 있게 합니다.
-                put("wedding_date", inviter.weddingDate?.let { JsonPrimitive(it) } ?: JsonNull)
-                put("is_wedding_date_undecided", JsonPrimitive(inviter.isWeddingDateUndecided))
-            }
-
-            supabaseClient
-                .from("profiles")
-                .update(payload) {
-                    filter { eq("id", userId) }
-                }
+            callJoinWeddingRpc(input)
 
             OnboardingResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            OnboardingResult.Error("파트너 연결에 실패했습니다.")
+            OnboardingResult.Error(t.toPartnerConnectMessage())
         }
     }
 
@@ -158,23 +132,31 @@ class OnboardingRepositoryImpl(
         }
     }
 
-    private suspend fun createUniqueInviteCode(): String {
-        repeat(20) { // 충분한 시도 (충돌 시 재시도)
-            val code = "W-" + Random.nextInt(from = 0, until = 10_000).toString().padStart(4, '0')
-            val exists = runCatching {
+    private suspend fun assignInviteCodeWithRetry(userId: String): String? {
+        repeat(40) {
+            val code = generateInviteCode()
+            val payload = buildJsonObject { put("invite_code", JsonPrimitive(code)) }
+
+            try {
                 supabaseClient
                     .from("profiles")
-                    .select {
-                        filter { eq("invite_code", code) }
-                        limit(count = 1)
+                    .update(payload) {
+                        filter { eq("id", userId) }
                     }
-                    .decodeList<ProfileRowDto>()
-                    .isNotEmpty()
-            }.getOrDefault(false)
-            if (!exists) return code
+                return code
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                if (t.isInviteCodeConflict()) {
+                    // Retry on unique-key collision.
+                    return@repeat
+                }
+                throw t
+            }
         }
+        return null
+    }
 
-        // Fallback: 거의 발생하지 않음
+    private fun generateInviteCode(): String {
         return "W-" + Random.nextInt(from = 0, until = 10_000).toString().padStart(4, '0')
     }
 
@@ -208,12 +190,51 @@ class OnboardingRepositoryImpl(
         }
     }
 
+    private suspend fun callJoinWeddingRpc(inviteCode: String) {
+        val candidateParamNames = listOf("invite_code", "p_invite_code", "_invite_code")
+        var lastParamError: RestException? = null
+
+        for (paramName in candidateParamNames) {
+            try {
+                supabaseClient.postgrest.rpc(
+                    "join_wedding",
+                    buildJsonObject {
+                        put(paramName, JsonPrimitive(inviteCode))
+                    },
+                )
+                return
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                if (t is RestException && t.isJoinWeddingParamMismatch()) {
+                    lastParamError = t
+                    continue
+                }
+                throw t
+            }
+        }
+
+        throw lastParamError ?: IllegalStateException("join_wedding RPC 호출에 실패했습니다.")
+    }
+
     private fun currentUserIdAndEmail(): Pair<String, String?> {
         val user = supabaseClient.auth.currentUserOrNull()
             ?: throw IllegalStateException("로그인이 필요합니다.")
         return user.id to user.email
     }
 }
+
+private val inviteCodeRegex = Regex("^W-\\d{4}$")
+
+private fun normalizeInviteCode(value: String): String {
+    val compact = value.trim().uppercase().replace(" ", "")
+    val alnumAndDash = compact.filter { it.isLetterOrDigit() || it == '-' }
+    if (Regex("^W\\d{4}$").matches(alnumAndDash)) {
+        return "W-${alnumAndDash.drop(1)}"
+    }
+    return alnumAndDash
+}
+
+private fun isValidInviteCode(value: String): Boolean = inviteCodeRegex.matches(value)
 
 private fun ProfileRowDto.toDomain(): MyProfile = MyProfile(
     id = id,
@@ -241,3 +262,50 @@ private fun logSupabaseThrowable(t: Throwable) {
     }
 }
 
+private fun Throwable.toPartnerConnectMessage(): String {
+    return when (this) {
+        is RestException -> toPartnerConnectMessage()
+        is IllegalStateException -> "로그인이 필요합니다."
+        else -> "파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+    }
+}
+
+private fun RestException.toPartnerConnectMessage(): String {
+    val normalized = listOfNotNull(error, description)
+        .joinToString(separator = " ")
+        .lowercase()
+
+    return when {
+        normalized.contains("내 초대 코드는 사용할 수 없습니다") -> "내 초대 코드는 사용할 수 없습니다."
+        normalized.contains("초대 코드를 입력해 주세요") -> "초대 코드를 입력해주세요."
+        normalized.contains("초대 코드가 유효하지 않습니다") -> "초대 코드가 올바르지 않습니다."
+        normalized.contains("로그인 후 사용해 주세요") -> "로그인이 만료되었습니다. 다시 로그인 후 시도해주세요."
+        statusCode == 401 -> "로그인이 필요합니다."
+        statusCode == 403 || normalized.contains("permission denied") -> "권한 문제로 파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+        statusCode == 404 || (normalized.contains("join_wedding") && normalized.contains("does not exist")) ->
+            "서버 설정이 아직 반영되지 않았습니다. 잠시 후 다시 시도해주세요."
+        else -> "파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+    }
+}
+
+private fun RestException.isJoinWeddingParamMismatch(): Boolean {
+    val normalized = listOfNotNull(error, description)
+        .joinToString(separator = " ")
+        .lowercase()
+
+    return normalized.contains("join_wedding") &&
+        (
+            normalized.contains("does not exist") ||
+                normalized.contains("unexpected parameter")
+            )
+}
+
+private fun Throwable.isInviteCodeConflict(): Boolean {
+    if (this !is RestException) return false
+    val normalized = listOfNotNull(error, description)
+        .joinToString(separator = " ")
+        .lowercase()
+    return normalized.contains("duplicate key") ||
+        normalized.contains("profiles_invite_code_key") ||
+        normalized.contains("23505")
+}

@@ -20,6 +20,8 @@ val localProperties = Properties().apply {
 
 val supabaseUrl: String = localProperties.getProperty("SUPABASE_URL") ?: ""
 val supabaseAnonKey: String = localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""
+val appVersionCode: Int = 1
+val appVersionName: String = "1.0.0"
 
 kotlin {
     androidTarget {
@@ -42,6 +44,7 @@ kotlin {
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core.ktx)
             implementation(libs.koin.android)
             implementation(libs.ktor.client.okhttp)
         }
@@ -119,8 +122,8 @@ android {
         applicationId = "kr.jm.weddingledger"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
     }
     packaging {
         resources {
@@ -161,6 +164,8 @@ val generateBuildConfig by tasks.registering(Sync::class) {
         object BuildConfig {
             const val SUPABASE_URL = "$supabaseUrl"
             const val SUPABASE_ANON_KEY = "$supabaseAnonKey"
+            const val APP_VERSION_NAME = "$appVersionName"
+            const val APP_VERSION_CODE = $appVersionCode
         }
         """.trimIndent()
     )) {

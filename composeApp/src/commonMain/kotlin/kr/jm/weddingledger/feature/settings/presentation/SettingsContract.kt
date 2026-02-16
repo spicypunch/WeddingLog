@@ -5,15 +5,19 @@ import kr.jm.weddingledger.core.designsystem.WeddingLogThemeStyle
 data class SettingsUiState(
     val title: String,
     val coupleName: String,
+    val email: String,
     val inviteCode: String,
     val selectedTheme: WeddingLogThemeStyle,
+    val isLoading: Boolean = false,
+    val message: String? = null,
 ) {
     companion object {
         fun sample(selectedTheme: WeddingLogThemeStyle): SettingsUiState = SettingsUiState(
             title = "설정",
             coupleName = "신랑 김민수 & 신부 이나래",
+            email = "sample@weddinglog.app",
             inviteCode = "WDLG-1234",
-            selectedTheme = selectedTheme
+            selectedTheme = selectedTheme,
         )
     }
 }
@@ -29,5 +33,5 @@ sealed interface SettingsAction {
     data object OnClickAppInfo : SettingsAction
 
     data object OnClickLogout : SettingsAction
+    data object OnDismissMessage : SettingsAction
 }
-

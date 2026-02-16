@@ -13,15 +13,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.todayIn
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Clock
+import kotlin.time.Instant
 import org.koin.compose.viewmodel.koinViewModel
+import kr.jm.weddingledger.core.platform.shareText
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingStep
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -30,7 +29,6 @@ fun OnboardingRoute(
     viewModel: OnboardingViewModel = koinViewModel(),
 ) {
     val state by viewModel.state.collectAsState()
-    val clipboard = LocalClipboardManager.current
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -104,7 +102,7 @@ fun OnboardingRoute(
                     when (action) {
                         OnboardingAction.OnClickInviteShare -> {
                             if (state.partner.inviteCode.isNotBlank()) {
-                                clipboard.setText(AnnotatedString(state.partner.inviteCode))
+                                shareText(state.partner.inviteCode)
                             }
                             viewModel.onAction(action)
                         }

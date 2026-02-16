@@ -50,7 +50,9 @@ fun AppBottomBar(
 private fun TopLevelDestination.isSelected(currentRoute: String?): Boolean {
     // Nested screens should still highlight their parent tab where appropriate.
     return when (this) {
-        TopLevelDestination.Tools -> currentRoute == route || currentRoute == AppRoutes.Settings
+        TopLevelDestination.Tools -> currentRoute == route ||
+            currentRoute == AppRoutes.VenueComparison ||
+            currentRoute == AppRoutes.ValuesSurvey
         else -> currentRoute == route
     }
 }
@@ -62,4 +64,3 @@ private fun AppNavIcon(icon: ImageVector) {
         contentDescription = null
     )
 }
-

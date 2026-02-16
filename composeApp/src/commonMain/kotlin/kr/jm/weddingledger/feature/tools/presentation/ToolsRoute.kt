@@ -22,11 +22,13 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun ToolsRoute(
+    onOpenVenueComparison: () -> Unit,
+    onOpenValuesSurvey: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     ToolsScreen(
-        onOpenVenueComparison = { /* TODO */ },
-        onOpenValuesSurvey = { /* TODO */ },
+        onOpenVenueComparison = onOpenVenueComparison,
+        onOpenValuesSurvey = onOpenValuesSurvey,
         onOpenSettings = onOpenSettings
     )
 }
@@ -111,4 +113,3 @@ private fun ToolsCard(
         }
     }
 }
-

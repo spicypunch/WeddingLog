@@ -24,10 +24,10 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -80,7 +80,7 @@ fun AddExpenseBottomSheet(
                 onClose = { onAction(AddExpenseAction.OnClickClose) },
             )
 
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
 
             val scrollState = rememberScrollState()
             Column(
@@ -138,7 +138,7 @@ fun AddExpenseBottomSheet(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
 
             Column(modifier = Modifier.padding(16.dp)) {
                 if (showDelete) {

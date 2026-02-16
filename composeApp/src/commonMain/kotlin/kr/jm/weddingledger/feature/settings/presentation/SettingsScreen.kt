@@ -17,18 +17,19 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.ManageAccounts
 import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -41,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kr.jm.weddingledger.core.config.BuildConfig
 import kr.jm.weddingledger.core.designsystem.WeddingLogThemeStyle
 
 @Composable
@@ -58,11 +60,52 @@ fun SettingsScreen(
             onBack = { onAction(SettingsAction.OnClickBack) }
         )
 
+        if (state.isLoading) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+        }
+
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            state.message?.let { message ->
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+                        contentColor = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.large,
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Text(
+                                text = message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = { onAction(SettingsAction.OnDismissMessage) }) {
+                                Text(text = "닫기")
+                            }
+                        }
+                    }
+                }
+            }
+
             item {
                 ProfileSection(
                     coupleName = state.coupleName,
@@ -408,7 +451,7 @@ private fun SettingsList(
             SettingsItem(
                 icon = Icons.Rounded.NotificationsNone,
                 title = "알림 설정",
-                subtitle = "푸시 알림 및 소리",
+                subtitle = "기기 알림 권한 및 소리",
                 onClick = onClickNotifications
             )
             SettingsItem(
@@ -420,7 +463,7 @@ private fun SettingsList(
             SettingsItem(
                 icon = Icons.Rounded.Info,
                 title = "앱 정보",
-                subtitle = "버전 1.0.0",
+                subtitle = "버전 ${BuildConfig.APP_VERSION_NAME}",
                 onClick = onClickAppInfo
             )
         }
@@ -492,15 +535,14 @@ private fun Footer(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TextButton(onClick = onLogout) {
-            Icon(imageVector = Icons.Rounded.Logout, contentDescription = null)
+            Icon(imageVector = Icons.AutoMirrored.Rounded.Logout, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text(text = "로그아웃")
         }
         Text(
-            text = "WeddingLog v1.0.0",
+            text = "WeddingLog v${BuildConfig.APP_VERSION_NAME}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
-

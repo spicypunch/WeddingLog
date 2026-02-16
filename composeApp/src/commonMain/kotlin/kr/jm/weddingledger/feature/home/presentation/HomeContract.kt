@@ -23,6 +23,18 @@ data class HomeUiState(
     val recentExpenses: List<HomeRecentExpense>,
 ) {
     companion object {
+        fun empty(dDayTitle: String = "우리 결혼 준비 중"): HomeUiState = HomeUiState(
+            appName = "WeddingLog",
+            dDayTitle = dDayTitle,
+            remainingBudgetKrw = "₩0",
+            remainingPercentText = "0% 남음",
+            spentKrw = "지출 ₩0",
+            totalBudgetKrw = "총 예산 ₩0",
+            progressFraction = 0f,
+            categories = emptyList(),
+            recentExpenses = emptyList(),
+        )
+
         fun sample(): HomeUiState = HomeUiState(
             appName = "WeddingLog",
             dDayTitle = "우리 결혼 D-150",
@@ -107,4 +119,3 @@ sealed interface HomeAction {
     data class OnClickCategory(val name: String) : HomeAction
     data class OnClickRecentExpense(val title: String) : HomeAction
 }
-

@@ -1,5 +1,8 @@
 package kr.jm.weddingledger.feature.schedule.presentation
 
+import kotlinx.datetime.LocalDate
+import kr.jm.weddingledger.feature.schedule.domain.model.EventRepeatRule
+
 enum class ScheduleTab(val label: String) {
     Schedule("일정"),
     Checklist("체크리스트"),
@@ -24,6 +27,12 @@ data class CalendarUiState(
     val dayOfWeekLabels: List<String>,
     val cells: List<CalendarDayCell>,
     val upcoming: List<UpcomingScheduleItem>,
+    val upcomingTitle: String,
+    val upcomingEmptyText: String,
+    val selectedDayId: String? = null,
+    val searchQuery: String = "",
+    val sortType: UpcomingSortType = UpcomingSortType.DateAsc,
+    val message: String? = null,
 ) {
     companion object {
         fun sample(): CalendarUiState = CalendarUiState(
@@ -96,6 +105,9 @@ data class CalendarUiState(
             upcoming = listOf(
                 UpcomingScheduleItem(
                     id = "up-1",
+                    source = UpcomingSource.Event,
+                    sourceEntityId = "up-1",
+                    date = LocalDate(2023, 10, 14),
                     monthAbbr = "OCT",
                     dayOfMonth = "14",
                     title = "스튜디오 촬영",
@@ -103,9 +115,14 @@ data class CalendarUiState(
                     dTagText = "D-10",
                     tagTone = UpcomingTagTone.Primary,
                     isCompleted = false,
+                    eventStartTime = "14:00",
+                    eventLocation = "강남구 루브르 스튜디오",
                 ),
                 UpcomingScheduleItem(
                     id = "up-2",
+                    source = UpcomingSource.Event,
+                    sourceEntityId = "up-2",
+                    date = LocalDate(2023, 10, 9),
                     monthAbbr = "OCT",
                     dayOfMonth = "09",
                     title = "청첩장 모임",
@@ -113,9 +130,14 @@ data class CalendarUiState(
                     dTagText = "D-15",
                     tagTone = UpcomingTagTone.Primary,
                     isCompleted = false,
+                    eventStartTime = "19:00",
+                    eventLocation = "홍대입구역 3번 출구",
                 ),
                 UpcomingScheduleItem(
                     id = "up-3",
+                    source = UpcomingSource.Checklist,
+                    sourceEntityId = "up-3",
+                    date = LocalDate(2023, 10, 3),
                     monthAbbr = "OCT",
                     dayOfMonth = "03",
                     title = "드레스 피팅",
@@ -124,7 +146,9 @@ data class CalendarUiState(
                     tagTone = UpcomingTagTone.Neutral,
                     isCompleted = true,
                 ),
-            )
+            ),
+            upcomingTitle = "다가오는 일정",
+            upcomingEmptyText = "예정된 일정이 없어요.",
         )
     }
 }
@@ -147,6 +171,12 @@ enum class CalendarDotStyle {
     Neutral,
 }
 
+enum class UpcomingSortType(val label: String) {
+    DateAsc("날짜 빠른순"),
+    DateDesc("날짜 늦은순"),
+    Title("이름순"),
+}
+
 data class CalendarDayCell(
     val id: String,
     val day: Int,
@@ -157,6 +187,7 @@ data class CalendarDayCell(
     val textTone: CalendarDayTextTone = CalendarDayTextTone.Normal,
     val backgroundTone: CalendarDayBackgroundTone = CalendarDayBackgroundTone.None,
     val dotStyle: CalendarDotStyle? = null,
+    val markerCount: Int = 0,
 )
 
 enum class UpcomingTagTone {
@@ -164,8 +195,16 @@ enum class UpcomingTagTone {
     Neutral,
 }
 
+enum class UpcomingSource {
+    Event,
+    Checklist,
+}
+
 data class UpcomingScheduleItem(
     val id: String,
+    val source: UpcomingSource,
+    val sourceEntityId: String,
+    val date: LocalDate,
     val monthAbbr: String,
     val dayOfMonth: String,
     val title: String,
@@ -173,6 +212,10 @@ data class UpcomingScheduleItem(
     val dTagText: String,
     val tagTone: UpcomingTagTone,
     val isCompleted: Boolean,
+    val eventStartTime: String? = null,
+    val eventLocation: String? = null,
+    val eventMemo: String? = null,
+    val repeatRule: EventRepeatRule = EventRepeatRule.None,
 )
 
 data class ChecklistUiState(
@@ -321,7 +364,10 @@ enum class ChecklistItemSubtitleTone {
 
 data class ChecklistItem(
     val id: String,
+    val dTag: String? = null,
     val title: String,
+    val targetDate: LocalDate? = null,
+    val memo: String? = null,
     val subtitle: String?,
     val subtitleTone: ChecklistItemSubtitleTone,
     val isDone: Boolean,
@@ -330,11 +376,15 @@ data class ChecklistItem(
 sealed interface ScheduleAction {
     data class OnSelectTab(val tab: ScheduleTab) : ScheduleAction
     data object OnClickAdd : ScheduleAction
+    data object OnClickNotifications : ScheduleAction
     data object OnClickPrevMonth : ScheduleAction
     data object OnClickNextMonth : ScheduleAction
     data class OnSelectCalendarDay(val dayId: String) : ScheduleAction
+    data class OnCalendarQueryChange(val value: String) : ScheduleAction
+    data class OnSelectUpcomingSort(val value: UpcomingSortType) : ScheduleAction
     data object OnClickViewAllUpcoming : ScheduleAction
     data class OnClickUpcomingSchedule(val id: String) : ScheduleAction
+    data class OnClickUpcomingMore(val id: String) : ScheduleAction
     data class OnToggleChecklistItem(val itemId: String) : ScheduleAction
     data class OnClickChecklistItemMore(val itemId: String) : ScheduleAction
 
@@ -342,8 +392,35 @@ sealed interface ScheduleAction {
     data class OnCreateChecklist(
         val title: String,
         val dTag: String,
+        val targetDate: LocalDate?,
         val isCompleted: Boolean,
         val memo: String,
     ) : ScheduleAction
+    data class OnUpdateChecklist(
+        val id: String,
+        val title: String,
+        val dTag: String,
+        val targetDate: LocalDate?,
+        val isCompleted: Boolean,
+        val memo: String,
+    ) : ScheduleAction
+    data class OnCreateScheduleEvent(
+        val title: String,
+        val eventDate: LocalDate,
+        val startTime: String,
+        val location: String,
+        val memo: String,
+        val repeatRule: EventRepeatRule,
+    ) : ScheduleAction
+    data class OnUpdateScheduleEvent(
+        val id: String,
+        val title: String,
+        val eventDate: LocalDate,
+        val startTime: String,
+        val location: String,
+        val memo: String,
+        val repeatRule: EventRepeatRule,
+    ) : ScheduleAction
+    data class OnDeleteScheduleEvent(val id: String) : ScheduleAction
     data class OnDeleteChecklist(val id: String) : ScheduleAction
 }

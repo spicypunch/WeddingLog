@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -25,16 +26,20 @@ import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.NotificationsNone
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -60,10 +65,10 @@ fun ScheduleScreen(
     ) {
         ScheduleHeader(
             title = "WeddingLog",
-            onClickNotifications = { /* TODO */ },
+            onClickNotifications = { onAction(ScheduleAction.OnClickNotifications) },
         )
 
-        TabRow(
+        PrimaryTabRow(
             selectedTabIndex = state.selectedTab.ordinal,
             containerColor = MaterialTheme.colorScheme.background,
             contentColor = MaterialTheme.colorScheme.primary,
@@ -179,6 +184,41 @@ private fun CalendarTab(
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
         }
 
+        state.message?.let { message ->
+            item(key = "calendar-message") {
+                InlineMessage(
+                    text = message,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+
+        item(key = "calendar-search") {
+            OutlinedTextField(
+                value = state.searchQuery,
+                onValueChange = { onAction(ScheduleAction.OnCalendarQueryChange(it)) },
+                placeholder = { Text("일정/장소/메모 검색") },
+                singleLine = true,
+                leadingIcon = { Icon(imageVector = Icons.Rounded.Search, contentDescription = null) },
+                colors = OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+
+        item(key = "calendar-sort") {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(UpcomingSortType.entries) { option ->
+                    FilterChip(
+                        selected = state.sortType == option,
+                        onClick = { onAction(ScheduleAction.OnSelectUpcomingSort(option)) },
+                        label = { Text(text = option.label) },
+                    )
+                }
+            }
+        }
+
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -186,27 +226,43 @@ private fun CalendarTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Text(
-                    text = "다가오는 일정",
+                    text = state.upcomingTitle,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                TextButton(
-                    onClick = { onAction(ScheduleAction.OnClickViewAllUpcoming) },
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                ) {
-                    Text(
-                        text = "전체보기",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                if (state.selectedDayId != null) {
+                    TextButton(
+                        onClick = { onAction(ScheduleAction.OnClickViewAllUpcoming) },
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                    ) {
+                        Text(
+                            text = "전체보기",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
+            }
+        }
+
+        if (state.upcoming.isEmpty()) {
+            item(key = "upcoming-empty") {
+                EmptyUpcomingMessage(
+                    text = state.upcomingEmptyText,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
 
         items(state.upcoming, key = { it.id }) { item ->
             UpcomingScheduleCard(
                 item = item,
-                onClick = { onAction(ScheduleAction.OnClickUpcomingSchedule(item.id)) }
+                onClick = { onAction(ScheduleAction.OnClickUpcomingSchedule(item.id)) },
+                onClickMore = if (item.source == UpcomingSource.Event) {
+                    { onAction(ScheduleAction.OnClickUpcomingMore(item.id)) }
+                } else {
+                    null
+                },
             )
         }
     }
@@ -375,11 +431,42 @@ private fun CalendarDayCellView(
             Spacer(modifier = Modifier.height(4.dp))
 
             if (cell.dotStyle != null && !cell.isDDay) {
-                Box(
-                    modifier = Modifier
-                        .size(4.dp)
-                        .background(dotColor, CircleShape)
-                )
+                when {
+                    cell.markerCount <= 1 -> {
+                        Box(
+                            modifier = Modifier
+                                .size(4.dp)
+                                .background(dotColor, CircleShape)
+                        )
+                    }
+
+                    cell.markerCount == 2 -> {
+                        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            repeat(2) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .background(dotColor, CircleShape)
+                                )
+                            }
+                        }
+                    }
+
+                    else -> {
+                        Surface(
+                            color = dotColor.copy(alpha = 0.12f),
+                            contentColor = dotColor,
+                            shape = CircleShape,
+                        ) {
+                            Text(
+                                text = "${cell.markerCount}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 1.dp),
+                            )
+                        }
+                    }
+                }
             } else {
                 Spacer(modifier = Modifier.height(4.dp))
             }
@@ -401,6 +488,7 @@ private fun CalendarDayCellView(
 private fun UpcomingScheduleCard(
     item: UpcomingScheduleItem,
     onClick: () -> Unit,
+    onClickMore: (() -> Unit)?,
 ) {
     val alpha = if (item.isCompleted) 0.60f else 1f
     val titleDecoration = if (item.isCompleted) TextDecoration.LineThrough else null
@@ -487,18 +575,38 @@ private fun UpcomingScheduleCard(
                 }
             }
 
-            Surface(
-                color = tagContainer,
-                contentColor = tagContent,
-                shape = CircleShape,
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    text = item.dTagText,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = tagContent,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                )
+                if (onClickMore != null) {
+                    Surface(
+                        onClick = onClickMore,
+                        color = Color.Transparent,
+                        shape = CircleShape,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.MoreHoriz,
+                            contentDescription = "일정 더보기",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(4.dp)
+                        )
+                    }
+                }
+
+                Surface(
+                    color = tagContainer,
+                    contentColor = tagContent,
+                    shape = CircleShape,
+                ) {
+                    Text(
+                        text = item.dTagText,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = tagContent,
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
+                    )
+                }
             }
         }
     }
@@ -814,6 +922,32 @@ private fun InlineMessage(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun EmptyUpcomingMessage(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.large,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+        ),
+        modifier = modifier,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 18.dp),
         )
     }
 }

@@ -120,6 +120,7 @@ class MoneyRepositoryImpl(
 
     override suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit> {
         return try {
+            val weddingId = getWeddingId()
             val payload = buildJsonObject {
                 put("category_id", JsonPrimitive(item.categoryId))
                 put("name", JsonPrimitive(item.name.trim()))
@@ -133,6 +134,7 @@ class MoneyRepositoryImpl(
                 .from("budget_items")
                 .update(payload) {
                     filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
                 }
 
             MoneyResult.Success(Unit)
@@ -145,6 +147,7 @@ class MoneyRepositoryImpl(
 
     override suspend fun updateExpense(id: String, expense: NewExpense): MoneyResult<Unit> {
         return try {
+            val weddingId = getWeddingId()
             val payload = buildJsonObject {
                 put("budget_item_id", JsonPrimitive(expense.budgetItemId))
                 put("amount", JsonPrimitive(expense.amount))
@@ -160,6 +163,7 @@ class MoneyRepositoryImpl(
                 .from("expenses")
                 .update(payload) {
                     filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
                 }
 
             MoneyResult.Success(Unit)
@@ -172,10 +176,12 @@ class MoneyRepositoryImpl(
 
     override suspend fun deleteBudgetItem(id: String): MoneyResult<Unit> {
         return try {
+            val weddingId = getWeddingId()
             supabaseClient
                 .from("budget_items")
                 .delete {
                     filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
                 }
 
             MoneyResult.Success(Unit)
@@ -188,10 +194,12 @@ class MoneyRepositoryImpl(
 
     override suspend fun deleteExpense(id: String): MoneyResult<Unit> {
         return try {
+            val weddingId = getWeddingId()
             supabaseClient
                 .from("expenses")
                 .delete {
                     filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
                 }
 
             MoneyResult.Success(Unit)

@@ -1,13 +1,15 @@
 package kr.jm.weddingledger.feature.auth.data.repository
 
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.exception.AuthErrorCode
 import io.github.jan.supabase.auth.exception.AuthRestException
+import io.github.jan.supabase.auth.parseSessionFromUrl
 import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.status.RefreshFailureCause
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.exceptions.RestException
+import io.ktor.http.decodeURLQueryComponent
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -41,11 +43,7 @@ class AuthRepositoryImpl(
                         }
                     }
                     is SessionStatus.RefreshFailure -> {
-                        val msg = when (val cause = status.cause) {
-                            is RefreshFailureCause.NetworkError -> "네트워크 오류로 세션을 갱신하지 못했습니다. 다시 로그인해주세요."
-                            is RefreshFailureCause.InternalServerError -> "서버 오류로 세션을 갱신하지 못했습니다. 다시 로그인해주세요."
-                        }
-                        AuthState.Unauthenticated(reason = msg)
+                        AuthState.Unauthenticated(reason = "세션을 갱신하지 못했습니다. 다시 로그인해주세요.")
                     }
                     is SessionStatus.NotAuthenticated -> AuthState.Unauthenticated(
                         reason = if (status.isSignOut) null else null
@@ -58,6 +56,51 @@ class AuthRepositoryImpl(
                 logSupabaseThrowable(t)
                 emit(AuthState.Unauthenticated(reason = "로그인 상태를 불러오지 못했습니다. 네트워크 상태를 확인하고 다시 시도해주세요."))
             }
+
+    override suspend fun handleAuthDeepLink(url: String): AuthResult<Unit> {
+        return try {
+            val normalized = url.trim()
+            val queryParams = normalized.parseQueryParams()
+            val errorMessage = queryParams["error_description"]?.takeIf { it.isNotBlank() }
+                ?: queryParams["error"]?.takeIf { it.isNotBlank() }
+
+            if (errorMessage != null) {
+                return AuthResult.Error("인증 링크 처리 실패: $errorMessage")
+            }
+
+            val code = queryParams["code"]?.trim()
+            val tokenHash = queryParams["token_hash"]?.trim()
+            val otpType = queryParams["type"].toEmailOtpTypeOrNull()
+
+            when {
+                !code.isNullOrBlank() -> {
+                    supabaseClient.auth.exchangeCodeForSession(code)
+                }
+
+                normalized.contains("access_token=") && normalized.contains("refresh_token=") -> {
+                    val session = supabaseClient.auth.parseSessionFromUrl(normalized)
+                    supabaseClient.auth.importSession(session)
+                }
+
+                !tokenHash.isNullOrBlank() && otpType != null -> {
+                    supabaseClient.auth.verifyEmailOtp(
+                        type = otpType,
+                        tokenHash = tokenHash,
+                    )
+                }
+
+                else -> {
+                    return AuthResult.Error("지원하지 않는 인증 링크 형식입니다.")
+                }
+            }
+
+            AuthResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "인증 링크 처리에 실패했습니다."))
+        }
+    }
 
     override suspend fun signUp(email: String, password: String): AuthResult<Unit> {
         return try {
@@ -87,6 +130,20 @@ class AuthRepositoryImpl(
         }
     }
 
+    override suspend fun resendSignUpVerificationEmail(email: String): AuthResult<Unit> {
+        return try {
+            supabaseClient.auth.resendEmail(
+                type = OtpType.Email.SIGNUP,
+                email = email,
+            )
+            AuthResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "인증 메일 재전송에 실패했습니다"))
+        }
+    }
+
     override suspend fun signOut(): AuthResult<Unit> {
         return try {
             supabaseClient.auth.signOut()
@@ -111,6 +168,47 @@ class AuthRepositoryImpl(
 
     override fun isLoggedIn(): Boolean {
         return supabaseClient.auth.currentUserOrNull() != null
+    }
+}
+
+private fun String.parseQueryParams(): Map<String, String> {
+    val queryStart = indexOf('?')
+    if (queryStart < 0) return emptyMap()
+
+    val queryEnd = indexOf('#', startIndex = queryStart + 1).let { hashIndex ->
+        if (hashIndex == -1) length else hashIndex
+    }
+    val rawQuery = substring(queryStart + 1, queryEnd)
+    if (rawQuery.isBlank()) return emptyMap()
+
+    return rawQuery
+        .split('&')
+        .asSequence()
+        .mapNotNull { part ->
+            if (part.isBlank()) return@mapNotNull null
+            val separatorIndex = part.indexOf('=')
+            val rawKey = if (separatorIndex >= 0) part.substring(0, separatorIndex) else part
+            val rawValue = if (separatorIndex >= 0) part.substring(separatorIndex + 1) else ""
+            val key = rawKey.decodeUrlPart()
+            val value = rawValue.decodeUrlPart()
+            key.takeIf { it.isNotBlank() }?.let { it to value }
+        }
+        .toMap()
+}
+
+private fun String.decodeUrlPart(): String {
+    return runCatching { decodeURLQueryComponent(plusIsSpace = true) }.getOrDefault(this)
+}
+
+private fun String?.toEmailOtpTypeOrNull(): OtpType.Email? {
+    return when (this?.trim()?.lowercase()) {
+        "signup" -> OtpType.Email.SIGNUP
+        "magiclink", "magic_link" -> OtpType.Email.MAGIC_LINK
+        "invite" -> OtpType.Email.INVITE
+        "recovery" -> OtpType.Email.RECOVERY
+        "email_change", "emailchange" -> OtpType.Email.EMAIL_CHANGE
+        "email" -> OtpType.Email.EMAIL
+        else -> null
     }
 }
 

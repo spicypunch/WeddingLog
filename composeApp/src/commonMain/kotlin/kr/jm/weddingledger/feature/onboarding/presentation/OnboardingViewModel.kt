@@ -56,7 +56,7 @@ class OnboardingViewModel(
                 it.copy(partner = it.partner.copy(partnerCodeInput = action.value))
             }
             OnboardingAction.OnClickInviteShare -> {
-                _state.update { it.copy(message = "초대 코드를 복사했습니다.") }
+                _state.update { it.copy(message = "초대 코드 공유 창을 열었습니다.") }
             }
             OnboardingAction.OnClickConnectPartner -> connectPartner()
             OnboardingAction.OnClickSkipPartner -> completeOnboarding()
@@ -157,8 +157,17 @@ class OnboardingViewModel(
     }
 
     private fun connectPartner() {
-        val code = _state.value.partner.partnerCodeInput
+        val rawCode = _state.value.partner.partnerCodeInput
+        val code = normalizeInviteCode(rawCode)
         if (code.trim().isBlank()) return
+        if (!isValidInviteCode(code)) {
+            _state.update { it.copy(message = "초대 코드는 W-1234 형식으로 입력해주세요.") }
+            return
+        }
+
+        if (code != rawCode) {
+            _state.update { it.copy(partner = it.partner.copy(partnerCodeInput = code)) }
+        }
 
         _state.update { it.copy(isLoading = true, message = null) }
 
@@ -187,3 +196,15 @@ class OnboardingViewModel(
     }
 }
 
+private val inviteCodeRegex = Regex("^W-\\d{4}$")
+
+private fun normalizeInviteCode(value: String): String {
+    val compact = value.trim().uppercase().replace(" ", "")
+    val alnumAndDash = compact.filter { it.isLetterOrDigit() || it == '-' }
+    if (Regex("^W\\d{4}$").matches(alnumAndDash)) {
+        return "W-${alnumAndDash.drop(1)}"
+    }
+    return alnumAndDash
+}
+
+private fun isValidInviteCode(value: String): Boolean = inviteCodeRegex.matches(value)

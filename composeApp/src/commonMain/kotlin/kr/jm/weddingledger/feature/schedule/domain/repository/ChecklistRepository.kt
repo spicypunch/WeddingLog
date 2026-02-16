@@ -7,7 +7,7 @@ import kr.jm.weddingledger.feature.schedule.domain.model.ScheduleResult
 interface ChecklistRepository {
     suspend fun fetchChecklist(): ScheduleResult<List<ChecklistTask>>
     suspend fun createChecklist(task: NewChecklistTask): ScheduleResult<Unit>
+    suspend fun updateChecklist(id: String, task: NewChecklistTask): ScheduleResult<Unit>
     suspend fun setChecked(id: String, checked: Boolean): ScheduleResult<Unit>
     suspend fun deleteChecklist(id: String): ScheduleResult<Unit>
 }
-

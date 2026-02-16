@@ -7,6 +7,7 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -70,8 +71,44 @@ class ChecklistRepositoryImpl(
         }
     }
 
+    override suspend fun updateChecklist(id: String, task: NewChecklistTask): ScheduleResult<Unit> {
+        return try {
+            val weddingId = getWeddingId()
+
+            val payload = buildJsonObject {
+                put("title", JsonPrimitive(task.title.trim()))
+                put("group_title", JsonPrimitive(task.groupTitle))
+                put("d_day_tag", JsonPrimitive(task.dTag))
+                put("is_checked", JsonPrimitive(task.isChecked))
+
+                if (task.targetDate == null) {
+                    put("target_date", JsonNull)
+                } else {
+                    put("target_date", JsonPrimitive(task.targetDate.toString()))
+                }
+
+                val memo = task.memo?.trim()?.takeIf { it.isNotEmpty() }
+                if (memo == null) put("memo", JsonNull) else put("memo", JsonPrimitive(memo))
+            }
+
+            supabaseClient
+                .from("checklists")
+                .update(payload) {
+                    filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
+                }
+
+            ScheduleResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            ScheduleResult.Error(t.toUserFriendlyMessage(defaultMessage = "체크리스트 수정에 실패했습니다."))
+        }
+    }
+
     override suspend fun setChecked(id: String, checked: Boolean): ScheduleResult<Unit> {
         return try {
+            val weddingId = getWeddingId()
             val payload = buildJsonObject {
                 put("is_checked", JsonPrimitive(checked))
             }
@@ -80,6 +117,7 @@ class ChecklistRepositoryImpl(
                 .from("checklists")
                 .update(payload) {
                     filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
                 }
 
             ScheduleResult.Success(Unit)
@@ -92,10 +130,12 @@ class ChecklistRepositoryImpl(
 
     override suspend fun deleteChecklist(id: String): ScheduleResult<Unit> {
         return try {
+            val weddingId = getWeddingId()
             supabaseClient
                 .from("checklists")
                 .delete {
                     filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
                 }
 
             ScheduleResult.Success(Unit)
@@ -178,4 +218,3 @@ private fun logSupabaseThrowable(t: Throwable) {
         else -> println("Checklist error=${t::class.simpleName}")
     }
 }
-

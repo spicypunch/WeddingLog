@@ -286,6 +286,14 @@ private fun CategorySummarySection(
                 CategoryCard(category = category, onClick = { onClickCategory(category.name) })
             }
         }
+
+        if (categories.isEmpty()) {
+            Text(
+                text = "아직 집계된 카테고리 지출이 없어요.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -355,12 +363,21 @@ private fun RecentExpensesSection(
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(8.dp)) {
-                items.forEach { item ->
-                    RecentExpenseRow(
-                        item = item,
-                        onClick = { onClickExpense(item.title) }
-                    )
+            if (items.isEmpty()) {
+                Text(
+                    text = "최근 지출이 없어요.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
+                )
+            } else {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    items.forEach { item ->
+                        RecentExpenseRow(
+                            item = item,
+                            onClick = { onClickExpense(item.title) }
+                        )
+                    }
                 }
             }
         }
@@ -422,4 +439,3 @@ private fun RecentExpenseRow(
         }
     }
 }
-

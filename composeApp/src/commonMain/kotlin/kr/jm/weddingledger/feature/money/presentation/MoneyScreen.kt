@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -33,9 +34,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,10 +60,11 @@ fun MoneyScreen(
     ) {
         MoneyHeader(
             title = "나의 웨딩 관리",
-            onClickSettings = { /* TODO */ }
+            onClickNotifications = { onAction(MoneyAction.OnClickNotifications) },
+            onClickSettings = { onAction(MoneyAction.OnClickSettings) }
         )
 
-        TabRow(
+        PrimaryTabRow(
             selectedTabIndex = state.selectedTab.ordinal,
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.primary
@@ -148,6 +150,7 @@ fun MoneyScreen(
 @Composable
 private fun MoneyHeader(
     title: String,
+    onClickNotifications: () -> Unit,
     onClickSettings: () -> Unit,
 ) {
     Row(
@@ -164,13 +167,24 @@ private fun MoneyHeader(
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.SemiBold
         )
-        Surface(
-            onClick = onClickSettings,
-            color = Color.Transparent,
-            shape = CircleShape
-        ) {
-            Box(modifier = Modifier.padding(8.dp)) {
-                Icon(imageVector = Icons.Rounded.Settings, contentDescription = "설정")
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Surface(
+                onClick = onClickNotifications,
+                color = Color.Transparent,
+                shape = CircleShape
+            ) {
+                Box(modifier = Modifier.padding(8.dp)) {
+                    Icon(imageVector = Icons.Rounded.NotificationsNone, contentDescription = "알림")
+                }
+            }
+            Surface(
+                onClick = onClickSettings,
+                color = Color.Transparent,
+                shape = CircleShape
+            ) {
+                Box(modifier = Modifier.padding(8.dp)) {
+                    Icon(imageVector = Icons.Rounded.Settings, contentDescription = "설정")
+                }
             }
         }
     }
@@ -219,16 +233,88 @@ private fun ExpensesTab(
         }
 
         item {
+            FilterSectionLabel(text = "카테고리")
+        }
+
+        item {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 0.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                items(state.filters) { chip ->
+                items(state.categoryFilters) { chip ->
                     ExpenseFilterChip(
                         label = chip.label,
                         selected = chip.selected,
                         onClick = { onAction(MoneyAction.OnSelectExpenseFilter(chip.id)) }
                     )
+                }
+            }
+        }
+
+        item {
+            FilterSectionLabel(text = "기간")
+        }
+
+        item {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(state.periodFilters) { chip ->
+                    ExpenseFilterChip(
+                        label = chip.option.label,
+                        selected = chip.selected,
+                        onClick = { onAction(MoneyAction.OnSelectExpensePeriodFilter(chip.option)) }
+                    )
+                }
+            }
+        }
+
+        item {
+            FilterSectionLabel(text = "상태")
+        }
+
+        item {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 0.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(state.statusFilters) { chip ->
+                    ExpenseFilterChip(
+                        label = chip.option.label,
+                        selected = chip.selected,
+                        onClick = { onAction(MoneyAction.OnSelectExpenseStatusFilter(chip.option)) }
+                    )
+                }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FilterSectionLabel(text = "저장된 필터", modifier = Modifier.weight(1f))
+                TextButton(onClick = { onAction(MoneyAction.OnSaveExpenseFilterPreset) }) {
+                    Text(text = "현재 조합 저장")
+                }
+            }
+        }
+
+        if (state.presets.isNotEmpty()) {
+            item {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 0.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    items(state.presets, key = { it.id }) { chip ->
+                        ExpenseFilterChip(
+                            label = chip.label,
+                            selected = chip.selected,
+                            onClick = { onAction(MoneyAction.OnSelectExpenseFilterPreset(chip.id)) }
+                        )
+                    }
                 }
             }
         }
@@ -254,6 +340,20 @@ private fun ExpensesTab(
             }
         }
     }
+}
+
+@Composable
+private fun FilterSectionLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.SemiBold,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -364,8 +464,8 @@ private fun BudgetTab(
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
-                TextButton(onClick = { /* TODO */ }) {
-                    Text(text = "필터")
+                TextButton(onClick = { onAction(MoneyAction.OnToggleBudgetFilter) }) {
+                    Text(text = if (state.isOverBudgetOnly) "초과 예산만" else "전체")
                 }
             }
         }

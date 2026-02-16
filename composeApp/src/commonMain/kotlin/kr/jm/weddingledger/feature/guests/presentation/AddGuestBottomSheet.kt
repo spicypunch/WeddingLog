@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -16,10 +17,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Help
 import androidx.compose.material.icons.rounded.Cancel
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
-import androidx.compose.material.icons.rounded.Help
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -50,6 +51,9 @@ fun AddGuestBottomSheet(
     state: AddGuestUiState,
     onDismiss: () -> Unit,
     onAction: (AddGuestAction) -> Unit,
+    sheetTitle: String = "하객 추가",
+    saveButtonText: String = "저장하기",
+    onClickDelete: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -65,7 +69,7 @@ fun AddGuestBottomSheet(
                 .fillMaxHeight(0.92f)
         ) {
             WeddingLogSheetHeader(
-                title = "하객 추가",
+                title = sheetTitle,
                 onClose = { onAction(AddGuestAction.OnClickClose) }
             )
 
@@ -106,6 +110,11 @@ fun AddGuestBottomSheet(
                     onSelect = { onAction(AddGuestAction.OnSelectAttendance(it)) }
                 )
 
+                NoteSection(
+                    note = state.note,
+                    onNoteChange = { onAction(AddGuestAction.OnNoteChange(it)) }
+                )
+
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
@@ -125,10 +134,36 @@ fun AddGuestBottomSheet(
                     Icon(imageVector = Icons.Rounded.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "저장하기",
+                        text = saveButtonText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                }
+
+                if (onClickDelete != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Surface(
+                        onClick = onClickDelete,
+                        color = Color.Transparent,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.45f)),
+                        shape = MaterialTheme.shapes.large,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = "하객 삭제",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -386,7 +421,7 @@ private fun AttendanceSection(
                 val isSelected = status == selected
                 val icon = when (status) {
                     GuestAttendanceStatus.Attending -> Icons.Rounded.CheckCircle
-                    GuestAttendanceStatus.Undecided -> Icons.Rounded.Help
+                    GuestAttendanceStatus.Undecided -> Icons.AutoMirrored.Rounded.Help
                     GuestAttendanceStatus.NotAttending -> Icons.Rounded.Cancel
                 }
                 Surface(
@@ -417,5 +452,40 @@ private fun AttendanceSection(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NoteSection(
+    note: String,
+    onNoteChange: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "메모 (선택)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+        TextField(
+            value = note,
+            onValueChange = onNoteChange,
+            placeholder = {
+                Text(
+                    text = "관계/참석 메모를 기록하세요.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f),
+                )
+            },
+            minLines = 2,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }

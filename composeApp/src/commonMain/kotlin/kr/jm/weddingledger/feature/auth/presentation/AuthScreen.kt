@@ -199,6 +199,17 @@ private fun SignInScreen(
                     },
                 )
 
+                if (state.shouldShowVerificationGuide) {
+                    EmailVerificationGuideCard(
+                        email = state.email.trim(),
+                        remainingAttempts = state.remainingResendAttempts,
+                        resendButtonLabel = state.resendButtonLabel,
+                        canResend = state.isResendVerificationEnabled,
+                        isResending = state.isResendingVerificationEmail,
+                        onClickResend = { onAction(AuthAction.OnClickResendVerificationEmail) },
+                    )
+                }
+
                 if (state.message != null) {
                     AuthMessageBanner(
                         message = state.message,
@@ -245,7 +256,7 @@ private fun SignInScreen(
                 ) {
                     TextButton(
                         onClick = { onAction(AuthAction.OnClickToggleMode) },
-                        enabled = !state.isLoading,
+                        enabled = !state.isLoading && !state.isResendingVerificationEmail,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                     ) {
                         Text(
@@ -262,7 +273,7 @@ private fun SignInScreen(
                     )
                     TextButton(
                         onClick = { onAction(AuthAction.OnClickResetPassword) },
-                        enabled = !state.isLoading,
+                        enabled = !state.isLoading && !state.isResendingVerificationEmail,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                     ) {
                         Text(
@@ -640,5 +651,72 @@ private fun AuthMessageBanner(
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
         )
+    }
+}
+
+@Composable
+private fun EmailVerificationGuideCard(
+    email: String,
+    remainingAttempts: Int,
+    resendButtonLabel: String,
+    canResend: Boolean,
+    isResending: Boolean,
+    onClickResend: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
+        contentColor = MaterialTheme.colorScheme.primary,
+        shape = RoundedCornerShape(12.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "이메일 인증이 필요합니다",
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = if (email.isNotBlank()) {
+                    "${email} 메일함에서 인증 링크를 눌러주세요."
+                } else {
+                    "메일함에서 인증 링크를 눌러주세요."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "남은 재전송 ${remainingAttempts}회",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(
+                    onClick = onClickResend,
+                    enabled = canResend,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                ) {
+                    if (isResending) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    } else {
+                        Text(
+                            text = resendButtonLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                    }
+                }
+            }
+        }
     }
 }

@@ -1,9 +1,11 @@
 package kr.jm.weddingledger.feature.auth.di
 
 import kr.jm.weddingledger.feature.auth.data.repository.AuthRepositoryImpl
+import kr.jm.weddingledger.feature.auth.domain.usecase.HandleAuthDeepLinkUseCase
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 import kr.jm.weddingledger.feature.auth.domain.usecase.GetCurrentUserUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ObserveAuthStateUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.ResendSignUpVerificationEmailUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResetPasswordUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
@@ -18,9 +20,11 @@ val authModule = module {
     factory { SignUpUseCase(get()) }
     factory { SignInUseCase(get()) }
     factory { SignOutUseCase(get()) }
+    factory { HandleAuthDeepLinkUseCase(get()) }
     factory { ResetPasswordUseCase(get()) }
+    factory { ResendSignUpVerificationEmailUseCase(get()) }
     factory { GetCurrentUserUseCase(get()) }
     factory { ObserveAuthStateUseCase(get()) }
 
-    viewModel { AuthViewModel(get(), get(), get()) }
+    viewModel { AuthViewModel(get(), get(), get(), get()) }
 }

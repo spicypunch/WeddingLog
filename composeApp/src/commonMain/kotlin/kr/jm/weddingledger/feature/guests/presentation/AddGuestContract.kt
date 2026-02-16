@@ -17,6 +17,7 @@ data class AddGuestUiState(
     val side: GuestSide,
     val relationship: GuestRelationshipLevel,
     val expectedGiftAmount: String,
+    val note: String,
     val quickAddAmounts: List<String>,
     val attendance: GuestAttendanceStatus,
 ) {
@@ -29,6 +30,7 @@ data class AddGuestUiState(
             side = GuestSide.Bride,
             relationship = GuestRelationshipLevel.Normal,
             expectedGiftAmount = "50,000",
+            note = "",
             quickAddAmounts = listOf("30,000", "50,000", "100,000"),
             attendance = GuestAttendanceStatus.Undecided,
         )
@@ -44,5 +46,5 @@ sealed interface AddGuestAction {
     data class OnExpectedGiftAmountChange(val value: String) : AddGuestAction
     data class OnQuickAddExpectedGift(val value: String) : AddGuestAction
     data class OnSelectAttendance(val value: GuestAttendanceStatus) : AddGuestAction
+    data class OnNoteChange(val value: String) : AddGuestAction
 }
-

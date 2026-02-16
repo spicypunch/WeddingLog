@@ -18,14 +18,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowForward
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -221,7 +221,7 @@ fun PartnerConnectScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Divider(modifier = Modifier.weight(1f), color = border)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = border)
                     Text(
                         text = "OR",
                         style = MaterialTheme.typography.labelSmall,
@@ -229,7 +229,7 @@ fun PartnerConnectScreen(
                         color = textSub,
                         modifier = Modifier.padding(horizontal = 10.dp),
                     )
-                    Divider(modifier = Modifier.weight(1f), color = border)
+                    HorizontalDivider(modifier = Modifier.weight(1f), color = border)
                 }
 
                 // Partner code input
@@ -305,7 +305,7 @@ fun PartnerConnectScreen(
                             }
                             Text(text = "파트너 연결하기", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold)
                             Spacer(modifier = Modifier.width(10.dp))
-                            Icon(imageVector = Icons.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(imageVector = Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -328,4 +328,3 @@ fun PartnerConnectScreen(
         }
     }
 }
-

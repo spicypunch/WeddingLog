@@ -2,6 +2,7 @@ package kr.jm.weddingledger.feature.guests.presentation
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,11 +26,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,13 +83,17 @@ private fun GuestsList(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            GuestsHeader()
+            GuestsHeader(
+                onClickMore = { onAction(GuestsAction.OnRefresh) },
+            )
         }
 
         item {
             SummaryCards(
                 totalGuestsText = state.totalGuestsText,
-                expectedGiftTotalText = state.expectedGiftTotalText
+                expectedGiftTotalText = state.expectedGiftTotalText,
+                expectedAttendanceText = state.expectedAttendanceText,
+                expectedAttendingGiftText = state.expectedAttendingGiftText,
             )
         }
 
@@ -102,6 +109,42 @@ private fun GuestsList(
                 filters = state.filters,
                 onSelect = { onAction(GuestsAction.OnSelectFilter(it)) }
             )
+        }
+
+        if (state.groupSummaries.isNotEmpty()) {
+            item(key = "group-summary") {
+                GroupSummaryRow(summaries = state.groupSummaries)
+            }
+        }
+
+        if (state.isLoading) {
+            item(key = "guests-loading") {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+            }
+        }
+
+        state.message?.let { message ->
+            item(key = "guests-message") {
+                GuestsInlineMessage(
+                    text = message,
+                    onDismiss = { onAction(GuestsAction.OnDismissMessage) },
+                )
+            }
+        }
+
+        if (!state.isLoading && state.sections.isEmpty()) {
+            item(key = "guests-empty") {
+                GuestsEmptyState(
+                    onRefresh = { onAction(GuestsAction.OnRefresh) },
+                    onAdd = { onAction(GuestsAction.OnClickAdd) },
+                )
+            }
         }
 
         state.sections.forEach { section ->
@@ -121,7 +164,15 @@ private fun GuestsList(
             items(section.items, key = { it.id }) { item ->
                 GuestRow(
                     item = item,
-                    onClick = { onAction(GuestsAction.OnClickGuest(item.id)) }
+                    onClick = { onAction(GuestsAction.OnClickGuest(item.id)) },
+                    onClickStatus = {
+                        onAction(
+                            GuestsAction.OnQuickSetAttendance(
+                                id = item.id,
+                                value = item.status.next(),
+                            )
+                        )
+                    },
                 )
             }
         }
@@ -129,7 +180,9 @@ private fun GuestsList(
 }
 
 @Composable
-private fun GuestsHeader() {
+private fun GuestsHeader(
+    onClickMore: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -144,7 +197,7 @@ private fun GuestsHeader() {
             fontWeight = FontWeight.Bold
         )
         Surface(
-            onClick = { /* TODO */ },
+            onClick = onClickMore,
             color = Color.Transparent,
             shape = CircleShape,
         ) {
@@ -162,53 +215,128 @@ private fun GuestsHeader() {
 private fun SummaryCards(
     totalGuestsText: String,
     expectedGiftTotalText: String,
+    expectedAttendanceText: String,
+    expectedAttendingGiftText: String,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)),
-            shape = MaterialTheme.shapes.large,
-            modifier = Modifier.weight(1f)
-        ) {
-            androidx.compose.foundation.layout.Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "총 하객",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = totalGuestsText,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatsCard(
+                title = "총 하객",
+                value = totalGuestsText,
+                isPrimary = false,
+                modifier = Modifier.weight(1f),
+            )
+            StatsCard(
+                title = "예상 축의금",
+                value = expectedGiftTotalText,
+                isPrimary = true,
+                modifier = Modifier.weight(1f),
+            )
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            StatsCard(
+                title = "참석 예상",
+                value = expectedAttendanceText,
+                isPrimary = false,
+                modifier = Modifier.weight(1f),
+            )
+            StatsCard(
+                title = "참석 기준 축의금",
+                value = expectedAttendingGiftText,
+                isPrimary = false,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
 
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-            shape = MaterialTheme.shapes.large,
-            modifier = Modifier.weight(1f)
+@Composable
+private fun StatsCard(
+    title: String,
+    value: String,
+    isPrimary: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val containerColor = if (isPrimary) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.06f)
+    }
+    val titleColor = if (isPrimary) {
+        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f)
+    } else {
+        MaterialTheme.colorScheme.primary
+    }
+    val valueColor = if (isPrimary) {
+        MaterialTheme.colorScheme.onPrimary
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+    Card(
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        shape = MaterialTheme.shapes.large,
+        modifier = modifier,
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            androidx.compose.foundation.layout.Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelSmall,
+                color = titleColor,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleLarge,
+                color = valueColor,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GroupSummaryRow(
+    summaries: List<GuestGroupSummary>,
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(summaries, key = { it.id }) { item ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = MaterialTheme.shapes.large,
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+                modifier = Modifier.width(160.dp),
             ) {
-                Text(
-                    text = "예상 축의금",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.9f),
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = expectedGiftTotalText,
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = item.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = item.countText,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        text = item.attendanceText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = item.giftText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
             }
         }
     }
@@ -300,6 +428,7 @@ private fun FilterRow(
 private fun GuestRow(
     item: GuestListItem,
     onClick: () -> Unit,
+    onClickStatus: () -> Unit,
 ) {
     val statusColor = when (item.status) {
         GuestAttendanceStatus.Attending -> Color(0xFF10B981)
@@ -344,7 +473,7 @@ private fun GuestRow(
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                androidx.compose.foundation.layout.Column(
+                Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -368,7 +497,7 @@ private fun GuestRow(
                 }
             }
 
-            androidx.compose.foundation.layout.Column(
+            Column(
                 horizontalAlignment = Alignment.End,
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -379,19 +508,99 @@ private fun GuestRow(
                     fontWeight = FontWeight.Bold
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .background(statusColor, CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = item.status.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = statusColor,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Surface(
+                        onClick = onClickStatus,
+                        color = Color.Transparent,
+                        shape = MaterialTheme.shapes.small,
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(6.dp)
+                                    .background(statusColor, CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = item.status.label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = statusColor,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GuestsEmptyState(
+    onRefresh: () -> Unit,
+    onAdd: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "아직 등록된 하객이 없어요.",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "첫 하객을 추가하거나 목록을 새로고침해 주세요.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TextButton(onClick = onRefresh) { Text(text = "새로고침") }
+                TextButton(onClick = onAdd) { Text(text = "하객 추가") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GuestsInlineMessage(
+    text: String,
+    onDismiss: () -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.error.copy(alpha = 0.08f),
+        contentColor = MaterialTheme.colorScheme.error,
+        shape = MaterialTheme.shapes.large,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.colorScheme.error.copy(alpha = 0.20f),
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onDismiss) {
+                Text(text = "닫기")
             }
         }
     }
@@ -412,3 +621,10 @@ private fun TagChip(text: String) {
     }
 }
 
+private fun GuestAttendanceStatus.next(): GuestAttendanceStatus {
+    return when (this) {
+        GuestAttendanceStatus.Undecided -> GuestAttendanceStatus.Attending
+        GuestAttendanceStatus.Attending -> GuestAttendanceStatus.NotAttending
+        GuestAttendanceStatus.NotAttending -> GuestAttendanceStatus.Undecided
+    }
+}

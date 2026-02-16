@@ -8,8 +8,7 @@ class AddChecklistUseCase(
     private val repository: ChecklistRepository,
 ) {
     suspend operator fun invoke(task: NewChecklistTask): ScheduleResult<Unit> {
-        if (task.title.isBlank()) return ScheduleResult.Error("할 일 제목을 입력해주세요.")
+        validateChecklistTask(task)?.let { return it }
         return repository.createChecklist(task)
     }
 }
-

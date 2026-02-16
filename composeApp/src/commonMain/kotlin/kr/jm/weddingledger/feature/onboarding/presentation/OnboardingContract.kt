@@ -1,6 +1,7 @@
 package kr.jm.weddingledger.feature.onboarding.presentation
 
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.number
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingStep
 import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
 
@@ -31,7 +32,7 @@ data class ProfileSetupUiState(
     val weddingDateText: String
         get() = when {
             isDateUndecided -> "아직 정해지지 않았어요"
-            weddingDate != null -> "${weddingDate.year}.${weddingDate.monthNumber.toString().padStart(2, '0')}.${weddingDate.dayOfMonth.toString().padStart(2, '0')}"
+            weddingDate != null -> "${weddingDate.year}.${weddingDate.month.number.toString().padStart(2, '0')}.${weddingDate.day.toString().padStart(2, '0')}"
             else -> "날짜를 선택해주세요"
         }
 
@@ -80,4 +81,3 @@ sealed interface OnboardingAction {
 
     data object OnDismissMessage : OnboardingAction
 }
-

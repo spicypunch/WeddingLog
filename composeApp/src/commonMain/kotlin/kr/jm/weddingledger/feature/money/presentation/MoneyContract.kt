@@ -36,7 +36,10 @@ data class MoneyUiState(
 data class ExpensesUiState(
     val monthTitle: String,
     val totalSpentKrw: String,
-    val filters: List<ExpenseFilterChip>,
+    val categoryFilters: List<ExpenseFilterChip>,
+    val periodFilters: List<ExpensePeriodFilterChip>,
+    val statusFilters: List<ExpenseStatusFilterChip>,
+    val presets: List<ExpenseFilterPresetChip>,
     val sections: List<ExpenseSection>,
     val budgetItemOptions: List<BudgetItemOption>,
 ) {
@@ -44,7 +47,10 @@ data class ExpensesUiState(
         fun empty(): ExpensesUiState = ExpensesUiState(
             monthTitle = "이번 달 지출",
             totalSpentKrw = "0",
-            filters = listOf(ExpenseFilterChip(id = null, label = "전체", selected = true)),
+            categoryFilters = listOf(ExpenseFilterChip(id = null, label = "전체", selected = true)),
+            periodFilters = listOf(ExpensePeriodFilterChip(option = ExpensePeriodFilterOption.All, selected = true)),
+            statusFilters = listOf(ExpenseStatusFilterChip(option = ExpenseStatusFilterOption.All, selected = true)),
+            presets = emptyList(),
             sections = emptyList(),
             budgetItemOptions = emptyList(),
         )
@@ -52,12 +58,22 @@ data class ExpensesUiState(
         fun sample(): ExpensesUiState = ExpensesUiState(
             monthTitle = "이번 달 지출",
             totalSpentKrw = "2,450,000",
-            filters = listOf(
+            categoryFilters = listOf(
                 ExpenseFilterChip(id = null, label = "전체", selected = true),
                 ExpenseFilterChip(id = "food", label = "식비", selected = false),
                 ExpenseFilterChip(id = "contract", label = "계약금", selected = false),
                 ExpenseFilterChip(id = "dress", label = "드레스", selected = false),
                 ExpenseFilterChip(id = "studio", label = "스튜디오", selected = false),
+            ),
+            periodFilters = ExpensePeriodFilterOption.entries.map {
+                ExpensePeriodFilterChip(option = it, selected = it == ExpensePeriodFilterOption.ThisMonth)
+            },
+            statusFilters = ExpenseStatusFilterOption.entries.map {
+                ExpenseStatusFilterChip(option = it, selected = it == ExpenseStatusFilterOption.All)
+            },
+            presets = listOf(
+                ExpenseFilterPresetChip(id = "preset-1", label = "이번 달 고액", selected = false),
+                ExpenseFilterPresetChip(id = "preset-2", label = "드레스 메모", selected = false),
             ),
             sections = listOf(
                 ExpenseSection(
@@ -145,6 +161,34 @@ data class ExpenseFilterChip(
     val selected: Boolean,
 )
 
+enum class ExpensePeriodFilterOption(val label: String) {
+    All("전체 기간"),
+    ThisMonth("이번 달"),
+    Last3Months("최근 3개월"),
+}
+
+data class ExpensePeriodFilterChip(
+    val option: ExpensePeriodFilterOption,
+    val selected: Boolean,
+)
+
+enum class ExpenseStatusFilterOption(val label: String) {
+    All("전체"),
+    HighAmount("50만원 이상"),
+    HasMemo("메모 있음"),
+}
+
+data class ExpenseStatusFilterChip(
+    val option: ExpenseStatusFilterOption,
+    val selected: Boolean,
+)
+
+data class ExpenseFilterPresetChip(
+    val id: String,
+    val label: String,
+    val selected: Boolean,
+)
+
 data class ExpenseSection(
     val title: String,
     val items: List<ExpenseListItem>,
@@ -172,6 +216,7 @@ data class BudgetUiState(
     val usedAmountText: String,
     val remainingAmountText: String,
     val usedProgress: Float,
+    val isOverBudgetOnly: Boolean = false,
     val categories: List<BudgetCategoryItem>,
 ) {
     companion object {
@@ -181,6 +226,7 @@ data class BudgetUiState(
             usedAmountText = "₩0",
             remainingAmountText = "₩0 남음",
             usedProgress = 0f,
+            isOverBudgetOnly = false,
             categories = emptyList(),
         )
 
@@ -190,6 +236,7 @@ data class BudgetUiState(
             usedAmountText = "1,250만원",
             remainingAmountText = "1,750만원 남음",
             usedProgress = 0.41f,
+            isOverBudgetOnly = false,
             categories = listOf(
                 BudgetCategoryItem(
                     id = "wedding_hall",
@@ -267,7 +314,14 @@ data class BudgetSubItem(
 sealed interface MoneyAction {
     data class OnSelectTab(val tab: MoneyTab) : MoneyAction
     data class OnSelectExpenseFilter(val categoryId: String?) : MoneyAction
+    data class OnSelectExpensePeriodFilter(val option: ExpensePeriodFilterOption) : MoneyAction
+    data class OnSelectExpenseStatusFilter(val option: ExpenseStatusFilterOption) : MoneyAction
+    data object OnSaveExpenseFilterPreset : MoneyAction
+    data class OnSelectExpenseFilterPreset(val id: String) : MoneyAction
     data object OnClickAdd : MoneyAction
+    data object OnClickNotifications : MoneyAction
+    data object OnClickSettings : MoneyAction
+    data object OnToggleBudgetFilter : MoneyAction
     data class OnToggleBudgetCategory(val id: String) : MoneyAction
     data class OnClickBudgetAddItem(val categoryId: String) : MoneyAction
     data class OnClickBudgetItem(val id: String) : MoneyAction

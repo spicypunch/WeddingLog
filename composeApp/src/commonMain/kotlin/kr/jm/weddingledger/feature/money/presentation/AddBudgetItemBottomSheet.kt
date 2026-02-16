@@ -18,8 +18,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -65,7 +65,7 @@ fun AddBudgetItemBottomSheet(
                 onClose = { onAction(AddBudgetItemAction.OnClickClose) }
             )
 
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
 
             val scrollState = rememberScrollState()
             Column(
@@ -194,7 +194,7 @@ fun AddBudgetItemBottomSheet(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Divider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
 
             Column(modifier = Modifier.padding(16.dp)) {
                 if (showDelete) {

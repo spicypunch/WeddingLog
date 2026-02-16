@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import kotlin.time.Instant
@@ -26,6 +27,18 @@ import org.koin.compose.viewmodel.koinViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MoneyRoute() {
+    MoneyRoute(
+        onOpenNotifications = {},
+        onOpenSettings = {},
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MoneyRoute(
+    onOpenNotifications: () -> Unit,
+    onOpenSettings: () -> Unit,
+) {
     val viewModel: MoneyViewModel = koinViewModel()
     val uiState by viewModel.state.collectAsState()
 
@@ -79,6 +92,8 @@ fun MoneyRoute() {
                     activeSheet = MoneySheet.EditExpense(action.id)
                     addExpenseState = newEditExpenseState(uiState, item)
                 }
+                MoneyAction.OnClickNotifications -> onOpenNotifications()
+                MoneyAction.OnClickSettings -> onOpenSettings()
                 else -> viewModel.onAction(action)
             }
         }
@@ -399,8 +414,8 @@ private fun findExpense(uiState: MoneyUiState, expenseId: String): ExpenseListIt
 }
 
 private fun kotlinx.datetime.LocalDate.toKoreanDateText(): String {
-    val mm = monthNumber.toString().padStart(2, '0')
-    val dd = dayOfMonth.toString().padStart(2, '0')
+    val mm = month.number.toString().padStart(2, '0')
+    val dd = day.toString().padStart(2, '0')
     return "${year}.$mm.$dd (${dayOfWeek.toKoreanShort()})"
 }
 
