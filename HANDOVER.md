@@ -1,21 +1,23 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
-작성일: 2026-02-16  
-워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
+작성일: 2026-02-19  
+워크스페이스: `/Users/mackim/AndroidStudioProjects/WeddingLedger`
 
 ---
 
 ## 0) 퀵스타트
 
-1) 전역 규칙 확인: `/Users/jm/StudioProjects/WeddingLedger/AGENTS.md`  
-2) Supabase 키 확인: `/Users/jm/StudioProjects/WeddingLedger/local.properties`  
+1) 전역 규칙 확인: `/Users/mackim/AndroidStudioProjects/WeddingLedger/AGENTS.md`  
+2) Supabase 키 확인: `/Users/mackim/AndroidStudioProjects/WeddingLedger/local.properties`  
 3) 빌드/테스트:
 
 ```bash
-cd /Users/jm/StudioProjects/WeddingLedger
-./gradlew :composeApp:compileDebugKotlinAndroid -x test
-./gradlew :composeApp:compileKotlinIosSimulatorArm64 -x test
-./gradlew :composeApp:allTests
+cd /Users/mackim/AndroidStudioProjects/WeddingLedger
+./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:testDebugUnitTest
+./gradlew :composeApp:compileTestKotlinIosSimulatorArm64
+# UI(instrumented) 테스트는 에뮬레이터/디바이스 연결 후 실행
+./gradlew :composeApp:connectedDebugAndroidTest
 ```
 
 ---
@@ -60,6 +62,9 @@ cd /Users/jm/StudioProjects/WeddingLedger
 - Tools:
   - 웨딩홀 비교 결과 공유(Top 결과 텍스트 공유) 지원
   - 즐겨찾기 우선 정렬 + 추천 점수 규칙 강화
+- 테스트:
+  - `commonTest` 대폭 확장 (도메인/usecase/flow + ViewModel 레이어) 및 Android 단위 테스트 103건 통과
+  - `androidInstrumentedTest` UI smoke 테스트 11건 추가(Auth/Home/Guests/Money/Schedule/Settings/Notifications/Onboarding/Tools)
 
 ---
 
@@ -68,36 +73,36 @@ cd /Users/jm/StudioProjects/WeddingLedger
 ### 2-1) 알림센터 + 로컬 리마인더
 
 - 신규 feature:
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/notifications/`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/notifications/`
 - 플랫폼 알림 스케줄링:
-  - Common expect: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/platform/LocalNotification.kt`
-  - Android actual: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/androidMain/kotlin/kr/jm/weddingledger/core/platform/LocalNotification.android.kt`
-  - iOS actual: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/iosMain/kotlin/kr/jm/weddingledger/core/platform/LocalNotification.ios.kt`
-  - Android receiver: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/androidMain/kotlin/kr/jm/weddingledger/core/platform/WeddingLedgerReminderReceiver.kt`
+  - Common expect: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/platform/LocalNotification.kt`
+  - Android actual: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/androidMain/kotlin/kr/jm/weddingledger/core/platform/LocalNotification.android.kt`
+  - iOS actual: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/iosMain/kotlin/kr/jm/weddingledger/core/platform/LocalNotification.ios.kt`
+  - Android receiver: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/androidMain/kotlin/kr/jm/weddingledger/core/platform/WeddingLedgerReminderReceiver.kt`
 - Android 설정:
   - `POST_NOTIFICATIONS` 권한 + 리시버 등록
-  - 파일: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/androidMain/AndroidManifest.xml`
+  - 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/androidMain/AndroidManifest.xml`
 
 ### 2-2) 네비게이션/설정 액션 연결
 
 - 신규 라우트:
   - `notifications`, `settings/profile-edit`, `settings/account`, `settings/app-info`
-  - 파일: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/navigation/AppRoutes.kt`
+  - 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/navigation/AppRoutes.kt`
 - `AppNavHost`에 알림센터/설정 서브화면 연결:
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/navigation/AppNavHost.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/navigation/AppNavHost.kt`
 - 설정 서브화면:
-  - 프로필 수정: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/ProfileEditRoute.kt`
-  - 계정 관리: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/AccountSettingsScreen.kt`
-  - 앱 정보: `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/AppInfoScreen.kt`
+  - 프로필 수정: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/ProfileEditRoute.kt`
+  - 계정 관리: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/AccountSettingsScreen.kt`
+  - 앱 정보: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/AppInfoScreen.kt`
 
 ### 2-3) 테스트 보강
 
 - `commonTest` 신규 테스트:
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/guests/domain/usecase/UpdateGuestUseCaseTest.kt`
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/schedule/domain/usecase/UpdateChecklistUseCaseTest.kt`
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/notifications/domain/usecase/ScheduleReminderUseCaseTest.kt`
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/auth/domain/usecase/ResendSignUpVerificationEmailUseCaseTest.kt`
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/money/domain/usecase/ExpenseFilterPreferenceUseCaseTest.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/guests/domain/usecase/UpdateGuestUseCaseTest.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/schedule/domain/usecase/UpdateChecklistUseCaseTest.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/notifications/domain/usecase/ScheduleReminderUseCaseTest.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/auth/domain/usecase/ResendSignUpVerificationEmailUseCaseTest.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonTest/kotlin/kr/jm/weddingledger/feature/money/domain/usecase/ExpenseFilterPreferenceUseCaseTest.kt`
 
 ### 2-4) P1 기능 대량 반영
 
@@ -141,6 +146,24 @@ cd /Users/jm/StudioProjects/WeddingLedger
 - 테스트:
   - `ExpenseFilterPreferenceUseCaseTest` 추가(조회/저장 유즈케이스 검증)
 
+### 2-7) 테스트 코드 완성 작업 (2026-02-19)
+
+- 공통 테스트 인프라/설정
+  - `composeApp/build.gradle.kts`
+    - `commonTest`에 `kotlinx.coroutines.test` 의존성 추가
+    - Android instrumented test용 `compose.uiTestJUnit4`, `androidx.test.ext:junit`, `espresso-core` 의존성 추가
+    - `testInstrumentationRunner` 유지
+  - `gradle/libs.versions.toml`
+    - `kotlinx-coroutines-test` alias 추가
+- 실패 테스트 수정
+  - `AuthViewModelTest`: resend cooldown 코루틴 종료까지 advance하여 `Dispatchers.Main` 누수성 실패 제거
+  - `GuestsViewModelTest`: 필터 개수 기대값을 실제 정책(전체/신랑측/신부측/공통)과 일치하도록 수정
+  - `ScheduleViewModelTest`: 다가오는 일정 정렬 정책(오늘 일정 우선) 반영
+- UI smoke 테스트 추가
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/androidInstrumentedTest/kotlin/kr/jm/weddingledger/ui/ScreenSmokeUiTest.kt`
+  - 주요 화면 액션 디스패치 검증 11건
+    - Auth, Home, Guests, Money, Schedule, Settings, NotificationCenter, ProfileSetup, PartnerConnect, ValuesSurvey, VenueComparison
+
 ---
 
 ## 3) Supabase 상태 (MCP 재확인, 2026-02-16)
@@ -173,13 +196,24 @@ cd /Users/jm/StudioProjects/WeddingLedger
 
 ## 4) 최근 검증 결과
 
-성공:
+성공(2026-02-19 기준):
 
 ```bash
-./gradlew :composeApp:compileDebugKotlinAndroid -x test
-./gradlew :composeApp:compileKotlinIosSimulatorArm64 -x test
-./gradlew :composeApp:allTests
-xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -configuration Debug build
+./gradlew :composeApp:testDebugUnitTest --rerun-tasks
+# 결과: 103 tests, 0 failures, 0 errors
+
+./gradlew :composeApp:compileTestKotlinIosSimulatorArm64 --rerun-tasks
+
+./gradlew :composeApp:compileDebugAndroidTestKotlinAndroid
+
+./gradlew :composeApp:assembleDebug
+```
+
+실행 제약:
+
+```bash
+./gradlew :composeApp:connectedDebugAndroidTest
+# 실패 원인: No connected devices
 ```
 
 ---
@@ -190,21 +224,23 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator 
 
 - Auth:
   - 실기기에서 이메일 인증 딥링크 진입(메일 앱 -> 앱 복귀) QA
+- Android UI 테스트 실기기/에뮬레이터 1회 실행 검증
+  - `./gradlew :composeApp:connectedDebugAndroidTest`
 
 ### P2
 
 - 실기기 QA(Android/iOS 알림 권한/로컬 리마인더 실제 수신 확인)
-- ViewModel 단위 테스트 추가 확장(특히 Schedule/Guests 화면 상태 계산 및 알림 동기화 경로)
+- iOS host 앱 빌드/실행 재확인(Xcode) 및 알림 권한 동작 점검
 
 ---
 
 ## 6) 참고 핵심 파일
 
 - 네비게이션:
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/navigation/AppNavHost.kt`
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/navigation/AppRoutes.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/navigation/AppNavHost.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/navigation/AppRoutes.kt`
 - 알림센터:
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/notifications/presentation/NotificationCenterRoute.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/notifications/presentation/NotificationCenterRoute.kt`
 - 설정:
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/SettingsRoute.kt`
-  - `/Users/jm/StudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/ProfileEditViewModel.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/SettingsRoute.kt`
+  - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/ProfileEditViewModel.kt`

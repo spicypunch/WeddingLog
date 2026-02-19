@@ -108,8 +108,12 @@ kotlin {
             implementation(libs.kotlinx.datetime)
         }
         
-        commonTest.dependencies {
-            implementation(libs.kotlin.test)
+        commonTest {
+            languageSettings.optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
+            dependencies {
+                implementation(libs.kotlin.test)
+                implementation(libs.kotlinx.coroutines.test)
+            }
         }
     }
 }
@@ -124,6 +128,7 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = appVersionCode
         versionName = appVersionName
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     packaging {
         resources {
@@ -141,8 +146,12 @@ android {
     }
 }
 
+@OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
 dependencies {
     debugImplementation(compose.uiTooling)
+    androidTestImplementation(compose.uiTestJUnit4)
+    androidTestImplementation(libs.androidx.testExt.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
     
     // Room KSP
     add("kspAndroid", libs.androidx.room.compiler)
