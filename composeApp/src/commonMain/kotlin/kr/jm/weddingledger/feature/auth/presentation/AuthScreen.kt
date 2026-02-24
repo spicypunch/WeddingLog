@@ -9,16 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -59,9 +57,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.KeyboardOptions
+import kr.jm.weddingledger.core.ui.keyboard.keyboardAwareBottomPadding
+import kr.jm.weddingledger.core.ui.keyboard.rememberImeVisible
 
 @Composable
 fun AuthScreen(
@@ -87,6 +86,8 @@ private fun SignInScreen(
     val border = if (isDark) Color(0xFF3A3A36) else Color(0xFFE5E5E5)
     val textMain = if (isDark) Color(0xFFF1F1F0) else Color(0xFF333333)
     val textMuted = if (isDark) Color(0xFFB4B0AA) else Color(0xFF999999)
+    val isImeVisible = rememberImeVisible()
+    val scrollState = rememberScrollState()
 
     Box(
         modifier = Modifier
@@ -98,10 +99,17 @@ private fun SignInScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
-                .padding(top = 28.dp, bottom = 28.dp),
+                .padding(
+                    top = if (isImeVisible) 20.dp else 28.dp,
+                    bottom = keyboardAwareBottomPadding(
+                        normalBottomPadding = 28.dp,
+                        imeVisibleBottomPadding = 16.dp,
+                    ),
+                ),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+            verticalArrangement = if (isImeVisible) Arrangement.Top else Arrangement.Center,
         ) {
             // Logo
             Box(
@@ -314,8 +322,7 @@ private fun SignUpScreen(
     val fieldBorder = if (isDark) Color.White.copy(alpha = 0.10f) else Color(0xFFE5E7EB)
     val textMain = if (isDark) Color(0xFFF2F2F2) else Color(0xFF111827)
     val textSub = if (isDark) Color(0xFFB5B5B5) else Color(0xFF6B7280)
-    val density = LocalDensity.current
-    val isImeVisible = WindowInsets.ime.getBottom(density) > 0
+    val isImeVisible = rememberImeVisible()
 
     Box(
         modifier = Modifier
@@ -354,7 +361,10 @@ private fun SignUpScreen(
                     .padding(horizontal = 32.dp)
                     .padding(
                         top = 12.dp,
-                        bottom = if (isImeVisible) 24.dp else 120.dp,
+                        bottom = keyboardAwareBottomPadding(
+                            normalBottomPadding = 120.dp,
+                            imeVisibleBottomPadding = 24.dp,
+                        ),
                     ),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {

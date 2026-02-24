@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -173,7 +174,11 @@ fun AddScheduleEventBottomSheet(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Column(modifier = Modifier.padding(16.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .imePadding()
+            ) {
                 Button(
                     onClick = { onAction(AddScheduleEventAction.OnClickSave) },
                     enabled = state.isSaveEnabled,

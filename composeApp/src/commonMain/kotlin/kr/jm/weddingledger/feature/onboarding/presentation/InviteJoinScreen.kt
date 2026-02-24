@@ -15,8 +15,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Favorite
@@ -40,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import kr.jm.weddingledger.core.ui.keyboard.keyboardAwareBottomPadding
+import kr.jm.weddingledger.core.ui.keyboard.rememberImeVisible
 
 @Composable
 fun InviteJoinScreen(
@@ -56,6 +60,8 @@ fun InviteJoinScreen(
     val border = if (isDark) Color.White.copy(alpha = 0.10f) else Color(0xFFE5E7EB)
     val textMain = if (isDark) Color(0xFFF6F6F7) else Color(0xFF111827)
     val textSub = if (isDark) Color(0xFFC7B7C0) else Color(0xFF6B7280)
+    val isImeVisible = rememberImeVisible()
+    val scrollState = rememberScrollState()
 
     Box(
         modifier = Modifier
@@ -80,10 +86,17 @@ fun InviteJoinScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(horizontal = 24.dp)
-                .padding(top = 28.dp, bottom = 24.dp),
+                .padding(
+                    top = 28.dp,
+                    bottom = keyboardAwareBottomPadding(
+                        normalBottomPadding = 24.dp,
+                        imeVisibleBottomPadding = 32.dp,
+                    ),
+                ),
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(if (isImeVisible) 4.dp else 8.dp))
 
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                 Box(

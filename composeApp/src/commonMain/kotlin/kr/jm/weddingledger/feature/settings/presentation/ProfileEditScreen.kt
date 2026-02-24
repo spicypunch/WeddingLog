@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kr.jm.weddingledger.core.ui.keyboard.keyboardAwareBottomPadding
 import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
 
 @Composable
@@ -67,7 +68,15 @@ fun ProfileEditScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp,
+                bottom = keyboardAwareBottomPadding(
+                    normalBottomPadding = 16.dp,
+                    imeVisibleBottomPadding = 24.dp,
+                ),
+            ),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             state.message?.let { message ->

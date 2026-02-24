@@ -34,6 +34,9 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
   - `공유받기` 경로: 닉네임 + 공유 코드 입력으로 파트너 연결
   - 공유 코드 화면에서 코드 입력 UI 제거(입력은 `공유받기` 화면으로 분리)
   - 회원가입/온보딩 프로필 화면에서 키보드 열림 시 고정 하단 CTA를 스크롤 영역 CTA로 전환(가림/과상승 완화)
+  - iOS 키보드 대응 통합:
+    - SwiftUI 키보드 safe-area 자동 회피 비활성화
+    - 전역 탭 dismiss는 키보드가 떠 있을 때만 동작
 - Guests: 추가/상세/수정/삭제 + 참석 상태 빠른 변경 + 메모 지원
   - 참석 예상 인원/참석 기준 축의금 예측 표시
   - 그룹별(신랑측/신부측/공통) 합계 카드 표시
@@ -203,6 +206,31 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
     - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/OnboardingRoute.kt`
     - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/OnboardingViewModel.kt`
     - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/data/repository/OnboardingRepositoryImpl.kt`
+
+### 2-10) 키보드 이슈 원인군 일괄 대응 (2026-02-24)
+
+- 공통 키보드 정책 유틸 추가:
+  - `rememberImeVisible()`, `keyboardAwareBottomPadding(...)`
+  - 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/ui/keyboard/KeyboardAware.kt`
+- 입력 화면 공통 적용:
+  - 로그인/회원가입/온보딩/프로필수정 화면에서 IME 열림 기준 패딩/정렬 정책 통일
+  - 적용 파일:
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthScreen.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/ProfileSetupScreen.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/InviteJoinScreen.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/settings/presentation/ProfileEditScreen.kt`
+- 입력 바텀시트 공통 적용:
+  - 하단 CTA 영역에 `imePadding()` 적용해 키보드 위로 버튼 노출 보장
+  - 적용 파일:
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/guests/presentation/AddGuestBottomSheet.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/money/presentation/AddBudgetItemBottomSheet.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/money/presentation/AddExpenseBottomSheet.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/schedule/presentation/AddChecklistBottomSheet.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/schedule/presentation/AddScheduleEventBottomSheet.kt`
+- iOS 호스트 보정:
+  - `ComposeView().ignoresSafeArea(.keyboard, edges: .bottom)` 적용
+  - 탭 dismiss 제스처를 `UIGestureRecognizerDelegate`로 제어해 첫 포커스 탭 간섭 제거
+  - 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/iosApp/iosApp/ContentView.swift`
 
 ---
 
