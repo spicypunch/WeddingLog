@@ -15,12 +15,13 @@ import kr.jm.weddingledger.feature.onboarding.domain.usecase.ConnectPartnerUseCa
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.GetOrCreateInviteCodeUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateMyProfileUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateNicknameUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
 
 class OnboardingViewModelTest {
 
     @Test
-    fun `initial load with incomplete profile enters profile setup step`() = runMainDispatcherTest {
+    fun `initial load with incomplete profile enters entry choice step`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForViewModel(
             profile = profile(
                 nickname = null,
@@ -34,11 +35,11 @@ class OnboardingViewModelTest {
         val viewModel = createViewModel(repository)
         advanceUntilIdle()
 
-        assertEquals(OnboardingStep.ProfileSetup, viewModel.state.value.step)
+        assertEquals(OnboardingStep.EntryChoice, viewModel.state.value.step)
     }
 
     @Test
-    fun `submitting profile moves to partner connect and loads invite code`() = runMainDispatcherTest {
+    fun `start path submitting profile moves to invite share and loads invite code`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForViewModel(
             profile = profile(
                 nickname = null,
@@ -52,6 +53,7 @@ class OnboardingViewModelTest {
         val viewModel = createViewModel(repository)
         advanceUntilIdle()
 
+        viewModel.onAction(OnboardingAction.OnClickStartOnboarding)
         viewModel.onAction(OnboardingAction.OnNicknameChange("신부"))
         viewModel.onAction(OnboardingAction.OnSelectRole(UserRole.Bride))
         viewModel.onAction(OnboardingAction.OnWeddingDateSelected(LocalDate.parse("2026-10-10")))
@@ -59,18 +61,18 @@ class OnboardingViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(OnboardingStep.PartnerConnect, state.step)
-        assertEquals("W-1234", state.partner.inviteCode)
+        assertEquals(OnboardingStep.InviteShare, state.step)
+        assertEquals("W-1234", state.inviteShare.inviteCode)
         assertEquals(1, repository.updateProfileCallCount)
     }
 
     @Test
-    fun `invalid partner invite code shows validation message`() = runMainDispatcherTest {
+    fun `invalid partner invite code shows validation message on join path`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForViewModel(
             profile = profile(
-                nickname = "신랑",
-                role = UserRole.Groom,
-                weddingDate = LocalDate.parse("2026-10-10"),
+                nickname = null,
+                role = null,
+                weddingDate = null,
                 isUndecided = false,
                 onboardingCompleted = false,
             )
@@ -79,6 +81,8 @@ class OnboardingViewModelTest {
         val viewModel = createViewModel(repository)
         advanceUntilIdle()
 
+        viewModel.onAction(OnboardingAction.OnClickJoinWithSharedCode)
+        viewModel.onAction(OnboardingAction.OnJoinNicknameChange("예비신랑"))
         viewModel.onAction(OnboardingAction.OnPartnerCodeInputChange("1234"))
         viewModel.onAction(OnboardingAction.OnClickConnectPartner)
 
@@ -86,12 +90,12 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `connect partner success completes onboarding`() = runMainDispatcherTest {
+    fun `join path connect partner success completes onboarding`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForViewModel(
             profile = profile(
-                nickname = "신랑",
-                role = UserRole.Groom,
-                weddingDate = LocalDate.parse("2026-10-10"),
+                nickname = null,
+                role = null,
+                weddingDate = null,
                 isUndecided = false,
                 onboardingCompleted = false,
             )
@@ -100,12 +104,16 @@ class OnboardingViewModelTest {
         val viewModel = createViewModel(repository)
         advanceUntilIdle()
 
+        viewModel.onAction(OnboardingAction.OnClickJoinWithSharedCode)
+        viewModel.onAction(OnboardingAction.OnJoinNicknameChange("신랑"))
         viewModel.onAction(OnboardingAction.OnPartnerCodeInputChange("w1234"))
         viewModel.onAction(OnboardingAction.OnClickConnectPartner)
         advanceUntilIdle()
 
         assertEquals(OnboardingStep.Done, viewModel.state.value.step)
         assertEquals("W-1234", repository.lastConnectedCode)
+        assertEquals("신랑", repository.lastUpdatedNickname)
+        assertEquals(1, repository.updateNicknameCallCount)
         assertTrue(repository.completeCalled)
     }
 }
@@ -113,6 +121,7 @@ class OnboardingViewModelTest {
 private fun createViewModel(repository: FakeOnboardingRepositoryForViewModel): OnboardingViewModel {
     return OnboardingViewModel(
         fetchMyProfileUseCase = FetchMyProfileUseCase(repository),
+        updateNicknameUseCase = UpdateNicknameUseCase(repository),
         updateMyProfileUseCase = UpdateMyProfileUseCase(repository),
         getOrCreateInviteCodeUseCase = GetOrCreateInviteCodeUseCase(repository),
         connectPartnerUseCase = ConnectPartnerUseCase(repository),
@@ -124,11 +133,20 @@ private class FakeOnboardingRepositoryForViewModel(
     private var profile: MyProfile,
 ) : OnboardingRepository {
     var updateProfileCallCount: Int = 0
+    var updateNicknameCallCount: Int = 0
+    var lastUpdatedNickname: String? = null
     var lastConnectedCode: String? = null
     var completeCalled: Boolean = false
 
     override suspend fun fetchMyProfile(): OnboardingResult<MyProfile> {
         return OnboardingResult.Success(profile)
+    }
+
+    override suspend fun updateNickname(nickname: String): OnboardingResult<Unit> {
+        updateNicknameCallCount += 1
+        lastUpdatedNickname = nickname
+        profile = profile.copy(nickname = nickname)
+        return OnboardingResult.Success(Unit)
     }
 
     override suspend fun updateMyProfile(

@@ -16,9 +16,11 @@ class OnboardingUseCaseAndFlowTest {
     fun `fetch and update usecases delegate to repository`() = runBlocking {
         val repository = InMemoryOnboardingRepository()
         val fetchUseCase = FetchMyProfileUseCase(repository)
+        val updateNicknameUseCase = UpdateNicknameUseCase(repository)
         val updateUseCase = UpdateMyProfileUseCase(repository)
 
         val fetchResult = fetchUseCase()
+        updateNicknameUseCase("웨딩로그2")
         updateUseCase(
             nickname = "민지",
             role = UserRole.Bride,
@@ -29,6 +31,7 @@ class OnboardingUseCaseAndFlowTest {
         val profile = assertIs<OnboardingResult.Success<MyProfile>>(fetchResult).data
         assertEquals("웨딩로그", profile.nickname)
         assertEquals(1, repository.fetchCallCount)
+        assertEquals(1, repository.updateNicknameCallCount)
         assertEquals(1, repository.updateCallCount)
     }
 
@@ -90,6 +93,7 @@ private class InMemoryOnboardingRepository : OnboardingRepository {
     )
 
     var fetchCallCount: Int = 0
+    var updateNicknameCallCount: Int = 0
     var updateCallCount: Int = 0
     var inviteCallCount: Int = 0
     var connectCallCount: Int = 0
@@ -98,6 +102,12 @@ private class InMemoryOnboardingRepository : OnboardingRepository {
     override suspend fun fetchMyProfile(): OnboardingResult<MyProfile> {
         fetchCallCount += 1
         return OnboardingResult.Success(profile)
+    }
+
+    override suspend fun updateNickname(nickname: String): OnboardingResult<Unit> {
+        updateNicknameCallCount += 1
+        profile = profile.copy(nickname = nickname)
+        return OnboardingResult.Success(Unit)
     }
 
     override suspend fun updateMyProfile(

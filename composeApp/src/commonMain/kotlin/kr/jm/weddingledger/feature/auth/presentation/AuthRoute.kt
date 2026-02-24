@@ -8,14 +8,14 @@ import androidx.compose.runtime.collectAsState
 
 @Composable
 fun AuthRoute(
-    initialMessage: String? = null,
+    initialMessage: AuthMessage? = null,
 ) {
     val viewModel: AuthViewModel = koinViewModel()
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(initialMessage) {
-        if (!initialMessage.isNullOrBlank()) {
-            viewModel.onAction(AuthAction.OnShowMessage(AuthMessage.Error(initialMessage)))
+        if (initialMessage != null) {
+            viewModel.onAction(AuthAction.OnShowMessage(initialMessage))
         }
     }
 
@@ -24,4 +24,3 @@ fun AuthRoute(
         onAction = viewModel::onAction,
     )
 }
-

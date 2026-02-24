@@ -6,6 +6,7 @@ import kr.jm.weddingledger.feature.onboarding.domain.usecase.CompleteOnboardingU
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.ConnectPartnerUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.GetOrCreateInviteCodeUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateNicknameUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateMyProfileUseCase
 import kr.jm.weddingledger.feature.onboarding.presentation.OnboardingViewModel
 import org.koin.core.module.dsl.viewModel
@@ -15,11 +16,11 @@ val onboardingModule = module {
     single<OnboardingRepository> { OnboardingRepositoryImpl(get()) }
 
     factory { FetchMyProfileUseCase(get()) }
+    factory { UpdateNicknameUseCase(get()) }
     factory { UpdateMyProfileUseCase(get()) }
     factory { GetOrCreateInviteCodeUseCase(get()) }
     factory { ConnectPartnerUseCase(get()) }
     factory { CompleteOnboardingUseCase(get()) }
 
-    viewModel { OnboardingViewModel(get(), get(), get(), get(), get()) }
+    viewModel { OnboardingViewModel(get(), get(), get(), get(), get(), get()) }
 }
-

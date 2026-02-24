@@ -38,6 +38,31 @@ class OnboardingRepositoryImpl(
         }
     }
 
+    override suspend fun updateNickname(
+        nickname: String,
+    ): OnboardingResult<Unit> {
+        return try {
+            val (userId, email) = currentUserIdAndEmail()
+            ensureProfileRow(userId = userId, email = email)
+
+            val payload = buildJsonObject {
+                put("name", JsonPrimitive(nickname.trim()))
+            }
+
+            supabaseClient
+                .from("profiles")
+                .update(payload) {
+                    filter { eq("id", userId) }
+                }
+
+            OnboardingResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            OnboardingResult.Error("닉네임 저장에 실패했습니다.")
+        }
+    }
+
     override suspend fun updateMyProfile(
         nickname: String,
         role: UserRole,

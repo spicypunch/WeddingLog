@@ -26,6 +26,7 @@ import kr.jm.weddingledger.feature.auth.domain.usecase.HandleAuthDeepLinkUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ObserveAuthStateUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.auth.presentation.AuthDeepLinkBridge
+import kr.jm.weddingledger.feature.auth.presentation.AuthMessage
 import kr.jm.weddingledger.feature.auth.presentation.AuthRoute
 import kr.jm.weddingledger.feature.onboarding.presentation.OnboardingGateRoute
 import kotlinx.coroutines.launch
@@ -37,7 +38,7 @@ import org.koin.compose.koinInject
 fun App() {
     val scope = rememberCoroutineScope()
     val themeStyle by ThemeStylePreferenceStorage.themeStyle.collectAsState(initial = WeddingLogThemeStyle.Minimal)
-    var authInitialMessage by remember { mutableStateOf<String?>(null) }
+    var authInitialMessage by remember { mutableStateOf<AuthMessage?>(null) }
 
     WeddingLogTheme(style = themeStyle) {
         val observeAuthStateUseCase: ObserveAuthStateUseCase = koinInject()
@@ -47,15 +48,19 @@ fun App() {
         LaunchedEffect(Unit) {
             AuthDeepLinkBridge.deepLinks.collect { url ->
                 when (val result = handleAuthDeepLinkUseCase(url)) {
-                    is AuthResult.Success -> authInitialMessage = null
-                    is AuthResult.Error -> authInitialMessage = result.message
+                    is AuthResult.Success -> {
+                        authInitialMessage = AuthMessage.Info(deepLinkSuccessMessage(url))
+                    }
+                    is AuthResult.Error -> {
+                        authInitialMessage = AuthMessage.Error(result.message)
+                    }
                 }
             }
         }
 
         LaunchedEffect(Unit) {
             AuthDeepLinkBridge.messages.collect { message ->
-                authInitialMessage = message
+                authInitialMessage = AuthMessage.Info(message)
             }
         }
 
@@ -69,7 +74,8 @@ fun App() {
             AuthState.Loading -> SplashScreen()
             is AuthState.Unauthenticated -> {
                 AuthRoute(
-                    initialMessage = authInitialMessage ?: (authState as AuthState.Unauthenticated).reason,
+                    initialMessage = authInitialMessage
+                        ?: (authState as AuthState.Unauthenticated).reason?.let(AuthMessage::Error),
                 )
             }
             is AuthState.Authenticated -> {
@@ -84,6 +90,21 @@ fun App() {
                 )
             }
         }
+    }
+}
+
+private fun deepLinkSuccessMessage(url: String): String {
+    return when {
+        url.contains("type=signup", ignoreCase = true) ||
+            url.contains("type=email", ignoreCase = true) -> {
+            "이메일 인증이 완료되었습니다. 로그인 후 계속 진행해주세요."
+        }
+
+        url.contains("type=recovery", ignoreCase = true) -> {
+            "비밀번호 재설정 링크를 확인했습니다. 새로운 비밀번호로 로그인해주세요."
+        }
+
+        else -> "인증 링크를 확인했습니다."
     }
 }
 

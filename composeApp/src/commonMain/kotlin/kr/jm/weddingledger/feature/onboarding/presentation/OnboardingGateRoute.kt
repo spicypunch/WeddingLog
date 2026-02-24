@@ -37,8 +37,10 @@ fun OnboardingGateRoute(
             onThemeStyleChange = onThemeStyleChange,
             onLogout = onLogout,
         )
+        OnboardingStep.EntryChoice,
         OnboardingStep.ProfileSetup,
-        OnboardingStep.PartnerConnect,
+        OnboardingStep.InviteShare,
+        OnboardingStep.InviteJoin,
         -> OnboardingRoute(viewModel = viewModel)
     }
 }
@@ -101,4 +103,3 @@ private fun GateLoadingScreen() {
         }
     }
 }
-

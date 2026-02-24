@@ -102,6 +102,8 @@ private class FakeOnboardingRepositoryForProfileEdit(
 
     override suspend fun fetchMyProfile(): OnboardingResult<MyProfile> = profileResult
 
+    override suspend fun updateNickname(nickname: String): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
+
     override suspend fun updateMyProfile(
         nickname: String,
         role: UserRole,

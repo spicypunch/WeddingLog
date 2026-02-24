@@ -1,6 +1,6 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
-작성일: 2026-02-19  
+작성일: 2026-02-24  
 워크스페이스: `/Users/mackim/AndroidStudioProjects/WeddingLedger`
 
 ---
@@ -27,7 +27,13 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 - 아키텍처: Feature-first + Clean Architecture + MVVM 유지
 - Auth/Onboarding: `join_wedding` RPC 포함 실데이터 동작
   - 이메일 인증 딥링크 E2E 연결 완료(Android `intent-filter` + iOS `onOpenURL` + KMP bridge)
+  - 딥링크 처리 성공/실패 시 로그인 화면 안내 배너 표시(`AuthMessage.Info/Error`)
   - 로그인 미인증 전용 안내 카드 + 재전송 60초 쿨다운 + 최대 5회 제한 추가
+  - 온보딩 엔트리 분기 도입(`시작하기` / `공유받기`)
+  - `시작하기` 경로: 프로필 입력(닉네임/역할/예식일) -> 초대 코드 공유
+  - `공유받기` 경로: 닉네임 + 공유 코드 입력으로 파트너 연결
+  - 공유 코드 화면에서 코드 입력 UI 제거(입력은 `공유받기` 화면으로 분리)
+  - 회원가입/온보딩 프로필 화면에서 키보드 열림 시 고정 하단 CTA를 스크롤 영역 CTA로 전환(가림/과상승 완화)
 - Guests: 추가/상세/수정/삭제 + 참석 상태 빠른 변경 + 메모 지원
   - 참석 예상 인원/참석 기준 축의금 예측 표시
   - 그룹별(신랑측/신부측/공통) 합계 카드 표시
@@ -162,7 +168,41 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 - UI smoke 테스트 추가
   - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/androidInstrumentedTest/kotlin/kr/jm/weddingledger/ui/ScreenSmokeUiTest.kt`
   - 주요 화면 액션 디스패치 검증 11건
-    - Auth, Home, Guests, Money, Schedule, Settings, NotificationCenter, ProfileSetup, PartnerConnect, ValuesSurvey, VenueComparison
+    - Auth, Home, Guests, Money, Schedule, Settings, NotificationCenter, ProfileSetup, InviteJoin, ValuesSurvey, VenueComparison
+
+### 2-8) 키보드 UX 보강 + 딥링크 안내 문구 (2026-02-24)
+
+- iOS 전역 키보드 dismiss:
+  - 빈 영역 탭 시 `endEditing(true)`로 키보드 닫힘
+  - 적용 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/iosApp/iosApp/ContentView.swift`
+- 키보드 열림 시 CTA 정책 통일(고정 CTA -> 스크롤 CTA):
+  - 회원가입: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/auth/presentation/AuthScreen.kt`
+  - 온보딩 프로필: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/ProfileSetupScreen.kt`
+- 딥링크 처리 결과 메시지 개선:
+  - 성공 시 안내 문구(`이메일 인증 완료`, `비밀번호 재설정 링크 확인`) 표시
+  - 실패 시 오류 배너 유지
+  - 적용 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/App.kt`
+
+### 2-9) 온보딩 화면 플로우 개편 (2026-02-24)
+
+- 신규 온보딩 단계 추가:
+  - `OnboardingStep.EntryChoice`
+  - `OnboardingStep.InviteJoin`
+  - 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/domain/model/OnboardingModels.kt`
+- 화면 구조 변경:
+  - `OnboardingEntryScreen` 신설(`시작하기`/`공유받기` 선택)
+  - `InviteShareScreen` 분리(공유 전용, 입력 UI 제거)
+  - `InviteJoinScreen` 신설(닉네임 + 공유 코드 입력)
+  - `PartnerConnectScreen` 제거
+- ViewModel 플로우 변경:
+  - 시작 경로/공유받기 경로 분기 액션 추가
+  - 공유받기 연결 시 닉네임 동기화(`UpdateNicknameUseCase`) 후 `join_wedding` RPC 호출
+  - 코드 정규화/검증(`W-1234`) 및 에러 메시지 정교화
+  - 관련 파일:
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/OnboardingContract.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/OnboardingRoute.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/OnboardingViewModel.kt`
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/data/repository/OnboardingRepositoryImpl.kt`
 
 ---
 

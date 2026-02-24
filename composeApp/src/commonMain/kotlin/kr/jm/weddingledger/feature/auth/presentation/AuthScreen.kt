@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -57,6 +59,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.KeyboardOptions
 
@@ -311,6 +314,8 @@ private fun SignUpScreen(
     val fieldBorder = if (isDark) Color.White.copy(alpha = 0.10f) else Color(0xFFE5E7EB)
     val textMain = if (isDark) Color(0xFFF2F2F2) else Color(0xFF111827)
     val textSub = if (isDark) Color(0xFFB5B5B5) else Color(0xFF6B7280)
+    val density = LocalDensity.current
+    val isImeVisible = WindowInsets.ime.getBottom(density) > 0
 
     Box(
         modifier = Modifier
@@ -347,7 +352,10 @@ private fun SignUpScreen(
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 32.dp)
-                    .padding(top = 12.dp, bottom = 120.dp),
+                    .padding(
+                        top = 12.dp,
+                        bottom = if (isImeVisible) 24.dp else 120.dp,
+                    ),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -498,14 +506,8 @@ private fun SignUpScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-            }
 
-            // Bottom action bar
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                HorizontalDivider(color = fieldBorder)
-                Box(modifier = Modifier.padding(24.dp)) {
+                if (isImeVisible) {
                     Button(
                         onClick = { onAction(AuthAction.OnClickSubmit) },
                         enabled = state.isSubmitEnabled,
@@ -533,6 +535,46 @@ private fun SignUpScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold,
                             )
+                        }
+                    }
+                }
+            }
+
+            // Bottom action bar
+            if (!isImeVisible) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    HorizontalDivider(color = fieldBorder)
+                    Box(modifier = Modifier.padding(24.dp)) {
+                        Button(
+                            onClick = { onAction(AuthAction.OnClickSubmit) },
+                            enabled = state.isSubmitEnabled,
+                            shape = RoundedCornerShape(16.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = primary,
+                                contentColor = Color.White,
+                                disabledContainerColor = primary.copy(alpha = 0.35f),
+                                disabledContentColor = Color.White.copy(alpha = 0.85f),
+                            ),
+                            contentPadding = PaddingValues(vertical = 16.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                        ) {
+                            if (state.isLoading) {
+                                CircularProgressIndicator(
+                                    color = Color.White,
+                                    strokeWidth = 2.dp,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            } else {
+                                Text(
+                                    text = "가입하기",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
                         }
                     }
                 }

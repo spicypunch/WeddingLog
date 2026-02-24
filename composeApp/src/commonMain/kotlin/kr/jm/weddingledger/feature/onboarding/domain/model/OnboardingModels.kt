@@ -21,8 +21,9 @@ data class MyProfile(
 
 enum class OnboardingStep {
     Loading,
+    EntryChoice,
     ProfileSetup,
-    PartnerConnect,
+    InviteShare,
+    InviteJoin,
     Done,
 }
-

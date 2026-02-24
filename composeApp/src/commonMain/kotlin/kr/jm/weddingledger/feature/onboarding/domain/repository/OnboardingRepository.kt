@@ -8,6 +8,10 @@ import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
 interface OnboardingRepository {
     suspend fun fetchMyProfile(): OnboardingResult<MyProfile>
 
+    suspend fun updateNickname(
+        nickname: String,
+    ): OnboardingResult<Unit>
+
     suspend fun updateMyProfile(
         nickname: String,
         role: UserRole,
@@ -21,4 +25,3 @@ interface OnboardingRepository {
 
     suspend fun completeOnboarding(): OnboardingResult<Unit>
 }
-

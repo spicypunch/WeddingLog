@@ -10,7 +10,8 @@ data class OnboardingUiState(
     val isLoading: Boolean,
     val message: String?,
     val profile: ProfileSetupUiState,
-    val partner: PartnerConnectUiState,
+    val inviteShare: InviteShareUiState,
+    val inviteJoin: InviteJoinUiState,
 ) {
     companion object {
         fun initial(): OnboardingUiState = OnboardingUiState(
@@ -18,7 +19,8 @@ data class OnboardingUiState(
             isLoading = true,
             message = null,
             profile = ProfileSetupUiState.initial(),
-            partner = PartnerConnectUiState.initial(),
+            inviteShare = InviteShareUiState.initial(),
+            inviteJoin = InviteJoinUiState.initial(),
         )
     }
 }
@@ -51,22 +53,36 @@ data class ProfileSetupUiState(
     }
 }
 
-data class PartnerConnectUiState(
+data class InviteShareUiState(
     val inviteCode: String,
+) {
+    companion object {
+        fun initial(): InviteShareUiState = InviteShareUiState(
+            inviteCode = "",
+        )
+    }
+}
+
+data class InviteJoinUiState(
+    val nickname: String,
     val partnerCodeInput: String,
 ) {
     val isConnectEnabled: Boolean
-        get() = partnerCodeInput.trim().isNotEmpty()
+        get() = nickname.trim().isNotEmpty() && partnerCodeInput.trim().isNotEmpty()
 
     companion object {
-        fun initial(): PartnerConnectUiState = PartnerConnectUiState(
-            inviteCode = "",
+        fun initial(): InviteJoinUiState = InviteJoinUiState(
+            nickname = "",
             partnerCodeInput = "",
         )
     }
 }
 
 sealed interface OnboardingAction {
+    data object OnClickStartOnboarding : OnboardingAction
+    data object OnClickJoinWithSharedCode : OnboardingAction
+    data object OnClickBackToEntry : OnboardingAction
+
     data class OnNicknameChange(val value: String) : OnboardingAction
     data class OnSelectRole(val role: UserRole) : OnboardingAction
     data object OnClickWeddingDate : OnboardingAction
@@ -74,6 +90,7 @@ sealed interface OnboardingAction {
     data class OnToggleDateUndecided(val checked: Boolean) : OnboardingAction
     data object OnClickProfileNext : OnboardingAction
 
+    data class OnJoinNicknameChange(val value: String) : OnboardingAction
     data class OnPartnerCodeInputChange(val value: String) : OnboardingAction
     data object OnClickInviteShare : OnboardingAction
     data object OnClickConnectPartner : OnboardingAction

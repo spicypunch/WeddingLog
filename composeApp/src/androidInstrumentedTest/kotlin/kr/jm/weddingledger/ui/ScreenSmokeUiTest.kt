@@ -32,9 +32,9 @@ import kr.jm.weddingledger.feature.notifications.presentation.NotificationCenter
 import kr.jm.weddingledger.feature.notifications.presentation.NotificationCenterUiState
 import kr.jm.weddingledger.feature.notifications.presentation.NotificationItemUi
 import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
+import kr.jm.weddingledger.feature.onboarding.presentation.InviteJoinScreen
+import kr.jm.weddingledger.feature.onboarding.presentation.InviteJoinUiState
 import kr.jm.weddingledger.feature.onboarding.presentation.OnboardingAction
-import kr.jm.weddingledger.feature.onboarding.presentation.PartnerConnectScreen
-import kr.jm.weddingledger.feature.onboarding.presentation.PartnerConnectUiState
 import kr.jm.weddingledger.feature.onboarding.presentation.ProfileSetupScreen
 import kr.jm.weddingledger.feature.onboarding.presentation.ProfileSetupUiState
 import kr.jm.weddingledger.feature.schedule.presentation.ScheduleAction
@@ -212,14 +212,14 @@ class ScreenSmokeUiTest {
     }
 
     @Test
-    fun partnerConnectScreen_clickConnect_dispatchesAction() {
+    fun inviteJoinScreen_clickConnect_dispatchesAction() {
         val actions = mutableListOf<OnboardingAction>()
 
         setScreen {
-            PartnerConnectScreen(
-                state = PartnerConnectUiState(
-                    inviteCode = "WDLG-1234",
-                    partnerCodeInput = "ABCD",
+            InviteJoinScreen(
+                state = InviteJoinUiState(
+                    nickname = "김민수",
+                    partnerCodeInput = "W-1234",
                 ),
                 isLoading = false,
                 message = null,

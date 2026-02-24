@@ -41,6 +41,14 @@ fun OnboardingRoute(
         OnboardingStep.Done,
         -> Unit // handled in Gate
 
+        OnboardingStep.EntryChoice -> {
+            OnboardingEntryScreen(
+                isLoading = state.isLoading,
+                message = state.message,
+                onAction = viewModel::onAction,
+            )
+        }
+
         OnboardingStep.ProfileSetup -> {
             ProfileSetupScreen(
                 state = state.profile,
@@ -93,22 +101,31 @@ fun OnboardingRoute(
             }
         }
 
-        OnboardingStep.PartnerConnect -> {
-            PartnerConnectScreen(
-                state = state.partner,
+        OnboardingStep.InviteShare -> {
+            InviteShareScreen(
+                state = state.inviteShare,
                 isLoading = state.isLoading,
                 message = state.message,
                 onAction = { action ->
                     when (action) {
                         OnboardingAction.OnClickInviteShare -> {
-                            if (state.partner.inviteCode.isNotBlank()) {
-                                shareText(state.partner.inviteCode)
+                            if (state.inviteShare.inviteCode.isNotBlank()) {
+                                shareText(state.inviteShare.inviteCode)
                             }
                             viewModel.onAction(action)
                         }
                         else -> viewModel.onAction(action)
                     }
                 },
+            )
+        }
+
+        OnboardingStep.InviteJoin -> {
+            InviteJoinScreen(
+                state = state.inviteJoin,
+                isLoading = state.isLoading,
+                message = state.message,
+                onAction = viewModel::onAction,
             )
         }
     }

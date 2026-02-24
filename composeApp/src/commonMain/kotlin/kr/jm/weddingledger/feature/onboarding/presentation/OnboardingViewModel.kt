@@ -14,9 +14,11 @@ import kr.jm.weddingledger.feature.onboarding.domain.usecase.ConnectPartnerUseCa
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.GetOrCreateInviteCodeUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateMyProfileUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateNicknameUseCase
 
 class OnboardingViewModel(
     private val fetchMyProfileUseCase: FetchMyProfileUseCase,
+    private val updateNicknameUseCase: UpdateNicknameUseCase,
     private val updateMyProfileUseCase: UpdateMyProfileUseCase,
     private val getOrCreateInviteCodeUseCase: GetOrCreateInviteCodeUseCase,
     private val connectPartnerUseCase: ConnectPartnerUseCase,
@@ -32,6 +34,10 @@ class OnboardingViewModel(
 
     fun onAction(action: OnboardingAction) {
         when (action) {
+            OnboardingAction.OnClickStartOnboarding -> startPath()
+            OnboardingAction.OnClickJoinWithSharedCode -> joinPath()
+            OnboardingAction.OnClickBackToEntry -> backToEntry()
+
             is OnboardingAction.OnNicknameChange -> _state.update {
                 it.copy(profile = it.profile.copy(nickname = action.value))
             }
@@ -52,13 +58,16 @@ class OnboardingViewModel(
             }
             OnboardingAction.OnClickProfileNext -> submitProfile()
 
+            is OnboardingAction.OnJoinNicknameChange -> _state.update {
+                it.copy(inviteJoin = it.inviteJoin.copy(nickname = action.value))
+            }
             is OnboardingAction.OnPartnerCodeInputChange -> _state.update {
-                it.copy(partner = it.partner.copy(partnerCodeInput = action.value))
+                it.copy(inviteJoin = it.inviteJoin.copy(partnerCodeInput = action.value))
             }
             OnboardingAction.OnClickInviteShare -> {
                 _state.update { it.copy(message = "초대 코드 공유 창을 열었습니다.") }
             }
-            OnboardingAction.OnClickConnectPartner -> connectPartner()
+            OnboardingAction.OnClickConnectPartner -> connectPartnerFromJoin()
             OnboardingAction.OnClickSkipPartner -> completeOnboarding()
 
             OnboardingAction.OnDismissMessage -> _state.update { it.copy(message = null) }
@@ -91,17 +100,18 @@ class OnboardingViewModel(
                                 weddingDate = p.weddingDate,
                                 isDateUndecided = p.isWeddingDateUndecided,
                             ),
+                            inviteJoin = it.inviteJoin.copy(nickname = p.nickname.orEmpty()),
                         )
                     }
 
-                    if (nextStep == OnboardingStep.PartnerConnect) {
+                    if (nextStep == OnboardingStep.InviteShare) {
                         loadInviteCode()
                     }
                 }
                 is OnboardingResult.Error -> {
                     _state.update {
                         it.copy(
-                            step = OnboardingStep.ProfileSetup,
+                            step = OnboardingStep.EntryChoice,
                             isLoading = false,
                             message = result.message,
                         )
@@ -121,7 +131,38 @@ class OnboardingViewModel(
         if (onboardingCompleted) return OnboardingStep.Done
 
         val isProfileDone = !nickname.isNullOrBlank() && role != null && (isUndecided || weddingDate != null)
-        return if (isProfileDone) OnboardingStep.PartnerConnect else OnboardingStep.ProfileSetup
+        return if (isProfileDone) OnboardingStep.InviteShare else OnboardingStep.EntryChoice
+    }
+
+    private fun startPath() {
+        _state.update {
+            val mergedNickname = it.profile.nickname.ifBlank { it.inviteJoin.nickname }
+            it.copy(
+                step = OnboardingStep.ProfileSetup,
+                message = null,
+                profile = it.profile.copy(nickname = mergedNickname),
+            )
+        }
+    }
+
+    private fun joinPath() {
+        _state.update {
+            val mergedNickname = it.inviteJoin.nickname.ifBlank { it.profile.nickname }
+            it.copy(
+                step = OnboardingStep.InviteJoin,
+                message = null,
+                inviteJoin = it.inviteJoin.copy(nickname = mergedNickname),
+            )
+        }
+    }
+
+    private fun backToEntry() {
+        _state.update {
+            it.copy(
+                step = OnboardingStep.EntryChoice,
+                message = null,
+            )
+        }
     }
 
     private fun submitProfile() {
@@ -139,7 +180,14 @@ class OnboardingViewModel(
         viewModelScope.launch {
             when (val result = updateMyProfileUseCase(nickname, role, date, undecided)) {
                 is OnboardingResult.Success -> {
-                    _state.update { it.copy(step = OnboardingStep.PartnerConnect, isLoading = false) }
+                    _state.update {
+                        it.copy(
+                            step = OnboardingStep.InviteShare,
+                            isLoading = false,
+                            profile = it.profile.copy(nickname = nickname),
+                            inviteJoin = it.inviteJoin.copy(nickname = nickname),
+                        )
+                    }
                     loadInviteCode()
                 }
                 is OnboardingResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
@@ -150,37 +198,67 @@ class OnboardingViewModel(
     private fun loadInviteCode() {
         viewModelScope.launch {
             when (val result = getOrCreateInviteCodeUseCase()) {
-                is OnboardingResult.Success -> _state.update { it.copy(partner = it.partner.copy(inviteCode = result.data)) }
+                is OnboardingResult.Success -> _state.update { it.copy(inviteShare = it.inviteShare.copy(inviteCode = result.data)) }
                 is OnboardingResult.Error -> _state.update { it.copy(message = result.message) }
             }
         }
     }
 
-    private fun connectPartner() {
-        val rawCode = _state.value.partner.partnerCodeInput
+    private fun connectPartnerFromJoin() {
+        val nickname = _state.value.inviteJoin.nickname.trim()
+        if (nickname.isBlank()) {
+            _state.update { it.copy(message = "닉네임을 입력해주세요.") }
+            return
+        }
+
+        val rawCode = _state.value.inviteJoin.partnerCodeInput
         val code = normalizeInviteCode(rawCode)
-        if (code.trim().isBlank()) return
+        if (code.trim().isBlank()) {
+            _state.update { it.copy(message = "초대 코드를 입력해주세요.") }
+            return
+        }
         if (!isValidInviteCode(code)) {
             _state.update { it.copy(message = "초대 코드는 W-1234 형식으로 입력해주세요.") }
             return
         }
 
         if (code != rawCode) {
-            _state.update { it.copy(partner = it.partner.copy(partnerCodeInput = code)) }
+            _state.update { it.copy(inviteJoin = it.inviteJoin.copy(partnerCodeInput = code)) }
         }
 
         _state.update { it.copy(isLoading = true, message = null) }
 
         viewModelScope.launch {
-            when (val result = connectPartnerUseCase(code)) {
-                is OnboardingResult.Success -> {
-                    when (val complete = completeOnboardingUseCase()) {
-                        is OnboardingResult.Success -> _state.update { it.copy(step = OnboardingStep.Done, isLoading = false) }
-                        is OnboardingResult.Error -> _state.update { it.copy(isLoading = false, message = complete.message) }
-                    }
+            when (val updateNickname = syncNicknameIfNeeded(nickname)) {
+                is OnboardingResult.Error -> {
+                    _state.update { it.copy(isLoading = false, message = updateNickname.message) }
+                    return@launch
                 }
+                is OnboardingResult.Success -> Unit
+            }
+
+            when (val result = connectPartnerUseCase(code)) {
+                is OnboardingResult.Success -> finishOnboarding()
                 is OnboardingResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
             }
+        }
+    }
+
+    private suspend fun syncNicknameIfNeeded(nickname: String): OnboardingResult<Unit> {
+        val currentNickname = _state.value.profile.nickname.trim()
+        if (currentNickname == nickname) return OnboardingResult.Success(Unit)
+
+        return when (val result = updateNicknameUseCase(nickname)) {
+            is OnboardingResult.Success -> {
+                _state.update {
+                    it.copy(
+                        profile = it.profile.copy(nickname = nickname),
+                        inviteJoin = it.inviteJoin.copy(nickname = nickname),
+                    )
+                }
+                OnboardingResult.Success(Unit)
+            }
+            is OnboardingResult.Error -> result
         }
     }
 
@@ -188,10 +266,14 @@ class OnboardingViewModel(
         _state.update { it.copy(isLoading = true, message = null) }
 
         viewModelScope.launch {
-            when (val complete = completeOnboardingUseCase()) {
-                is OnboardingResult.Success -> _state.update { it.copy(step = OnboardingStep.Done, isLoading = false) }
-                is OnboardingResult.Error -> _state.update { it.copy(isLoading = false, message = complete.message) }
-            }
+            finishOnboarding()
+        }
+    }
+
+    private suspend fun finishOnboarding() {
+        when (val complete = completeOnboardingUseCase()) {
+            is OnboardingResult.Success -> _state.update { it.copy(step = OnboardingStep.Done, isLoading = false) }
+            is OnboardingResult.Error -> _state.update { it.copy(isLoading = false, message = complete.message) }
         }
     }
 }
