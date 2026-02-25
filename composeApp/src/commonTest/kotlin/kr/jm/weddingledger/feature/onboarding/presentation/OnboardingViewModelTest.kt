@@ -13,7 +13,6 @@ import kr.jm.weddingledger.feature.onboarding.domain.repository.OnboardingReposi
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.CompleteOnboardingUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.ConnectPartnerUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
-import kr.jm.weddingledger.feature.onboarding.domain.usecase.GetOrCreateInviteCodeUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateMyProfileUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateNicknameUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
@@ -39,7 +38,25 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun `start path submitting profile moves to invite share and loads invite code`() = runMainDispatcherTest {
+    fun `initial load with completed profile still enters entry choice when onboarding not completed`() = runMainDispatcherTest {
+        val repository = FakeOnboardingRepositoryForViewModel(
+            profile = profile(
+                nickname = "예비신부",
+                role = UserRole.Bride,
+                weddingDate = LocalDate.parse("2026-10-10"),
+                isUndecided = false,
+                onboardingCompleted = false,
+            )
+        )
+
+        val viewModel = createViewModel(repository)
+        advanceUntilIdle()
+
+        assertEquals(OnboardingStep.EntryChoice, viewModel.state.value.step)
+    }
+
+    @Test
+    fun `start path submitting profile completes onboarding immediately`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForViewModel(
             profile = profile(
                 nickname = null,
@@ -61,9 +78,9 @@ class OnboardingViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(OnboardingStep.InviteShare, state.step)
-        assertEquals("W-1234", state.inviteShare.inviteCode)
+        assertEquals(OnboardingStep.Done, state.step)
         assertEquals(1, repository.updateProfileCallCount)
+        assertTrue(repository.completeCalled)
     }
 
     @Test
@@ -123,7 +140,6 @@ private fun createViewModel(repository: FakeOnboardingRepositoryForViewModel): O
         fetchMyProfileUseCase = FetchMyProfileUseCase(repository),
         updateNicknameUseCase = UpdateNicknameUseCase(repository),
         updateMyProfileUseCase = UpdateMyProfileUseCase(repository),
-        getOrCreateInviteCodeUseCase = GetOrCreateInviteCodeUseCase(repository),
         connectPartnerUseCase = ConnectPartnerUseCase(repository),
         completeOnboardingUseCase = CompleteOnboardingUseCase(repository),
     )

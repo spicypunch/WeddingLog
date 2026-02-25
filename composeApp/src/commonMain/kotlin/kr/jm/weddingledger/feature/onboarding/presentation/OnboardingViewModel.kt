@@ -12,7 +12,6 @@ import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingStep
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.CompleteOnboardingUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.ConnectPartnerUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
-import kr.jm.weddingledger.feature.onboarding.domain.usecase.GetOrCreateInviteCodeUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateMyProfileUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.UpdateNicknameUseCase
 
@@ -20,7 +19,6 @@ class OnboardingViewModel(
     private val fetchMyProfileUseCase: FetchMyProfileUseCase,
     private val updateNicknameUseCase: UpdateNicknameUseCase,
     private val updateMyProfileUseCase: UpdateMyProfileUseCase,
-    private val getOrCreateInviteCodeUseCase: GetOrCreateInviteCodeUseCase,
     private val connectPartnerUseCase: ConnectPartnerUseCase,
     private val completeOnboardingUseCase: CompleteOnboardingUseCase,
 ) : ViewModel() {
@@ -82,11 +80,11 @@ class OnboardingViewModel(
                 is OnboardingResult.Success -> {
                     val p = result.data
                     val nextStep = decideStep(
-                        onboardingCompleted = p.onboardingCompleted,
-                        nickname = p.nickname,
-                        role = p.role,
-                        weddingDate = p.weddingDate,
-                        isUndecided = p.isWeddingDateUndecided,
+                        p.onboardingCompleted,
+                        p.nickname,
+                        p.role,
+                        p.weddingDate,
+                        p.isWeddingDateUndecided,
                     )
 
                     _state.update {
@@ -102,10 +100,6 @@ class OnboardingViewModel(
                             ),
                             inviteJoin = it.inviteJoin.copy(nickname = p.nickname.orEmpty()),
                         )
-                    }
-
-                    if (nextStep == OnboardingStep.InviteShare) {
-                        loadInviteCode()
                     }
                 }
                 is OnboardingResult.Error -> {
@@ -123,15 +117,13 @@ class OnboardingViewModel(
 
     private fun decideStep(
         onboardingCompleted: Boolean,
-        nickname: String?,
-        role: kr.jm.weddingledger.feature.onboarding.domain.model.UserRole?,
-        weddingDate: kotlinx.datetime.LocalDate?,
-        isUndecided: Boolean,
+        _nickname: String?,
+        _role: kr.jm.weddingledger.feature.onboarding.domain.model.UserRole?,
+        _weddingDate: kotlinx.datetime.LocalDate?,
+        _isUndecided: Boolean,
     ): OnboardingStep {
         if (onboardingCompleted) return OnboardingStep.Done
-
-        val isProfileDone = !nickname.isNullOrBlank() && role != null && (isUndecided || weddingDate != null)
-        return if (isProfileDone) OnboardingStep.InviteShare else OnboardingStep.EntryChoice
+        return OnboardingStep.EntryChoice
     }
 
     private fun startPath() {
@@ -182,24 +174,13 @@ class OnboardingViewModel(
                 is OnboardingResult.Success -> {
                     _state.update {
                         it.copy(
-                            step = OnboardingStep.InviteShare,
-                            isLoading = false,
                             profile = it.profile.copy(nickname = nickname),
                             inviteJoin = it.inviteJoin.copy(nickname = nickname),
                         )
                     }
-                    loadInviteCode()
+                    finishOnboarding()
                 }
                 is OnboardingResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
-            }
-        }
-    }
-
-    private fun loadInviteCode() {
-        viewModelScope.launch {
-            when (val result = getOrCreateInviteCodeUseCase()) {
-                is OnboardingResult.Success -> _state.update { it.copy(inviteShare = it.inviteShare.copy(inviteCode = result.data)) }
-                is OnboardingResult.Error -> _state.update { it.copy(message = result.message) }
             }
         }
     }

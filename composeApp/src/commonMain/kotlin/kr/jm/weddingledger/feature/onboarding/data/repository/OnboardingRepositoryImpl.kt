@@ -216,7 +216,7 @@ class OnboardingRepositoryImpl(
     }
 
     private suspend fun callJoinWeddingRpc(inviteCode: String) {
-        val candidateParamNames = listOf("invite_code", "p_invite_code", "_invite_code")
+        val candidateParamNames = listOf("p_invite_code", "invite_code", "_invite_code")
         var lastParamError: RestException? = null
 
         for (paramName in candidateParamNames) {
@@ -318,8 +318,14 @@ private fun RestException.isJoinWeddingParamMismatch(): Boolean {
         .joinToString(separator = " ")
         .lowercase()
 
+    val postgrestFunctionNotFound =
+        normalized.contains("pgrst202") ||
+            normalized.contains("could not find the function") ||
+            normalized.contains("no matches were found in the schema cache")
+
     return normalized.contains("join_wedding") &&
         (
+            postgrestFunctionNotFound ||
             normalized.contains("does not exist") ||
                 normalized.contains("unexpected parameter")
             )

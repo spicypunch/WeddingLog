@@ -1,6 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
+마지막 갱신: 2026-02-25  
 워크스페이스: `/Users/mackim/AndroidStudioProjects/WeddingLedger`
 
 ---
@@ -29,10 +30,10 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
   - 이메일 인증 딥링크 E2E 연결 완료(Android `intent-filter` + iOS `onOpenURL` + KMP bridge)
   - 딥링크 처리 성공/실패 시 로그인 화면 안내 배너 표시(`AuthMessage.Info/Error`)
   - 로그인 미인증 전용 안내 카드 + 재전송 60초 쿨다운 + 최대 5회 제한 추가
-  - 온보딩 엔트리 분기 도입(`시작하기` / `공유받기`)
-  - `시작하기` 경로: 프로필 입력(닉네임/역할/예식일) -> 초대 코드 공유
-  - `공유받기` 경로: 닉네임 + 공유 코드 입력으로 파트너 연결
-  - 공유 코드 화면에서 코드 입력 UI 제거(입력은 `공유받기` 화면으로 분리)
+  - 온보딩 엔트리 분기 도입(`혼자 시작하기` / `공유 코드로 시작하기`)
+  - `혼자 시작하기` 경로: 프로필 입력(닉네임/역할/예식일) 후 즉시 온보딩 완료
+  - `공유 코드로 시작하기` 경로: 닉네임 + 공유 코드 입력으로 파트너 연결
+  - 초대 코드 공유는 온보딩 필수 단계에서 제거하고 설정 화면에서 선택적으로 제공
   - 회원가입/온보딩 프로필 화면에서 키보드 열림 시 고정 하단 CTA를 스크롤 영역 CTA로 전환(가림/과상승 완화)
   - iOS 키보드 대응 통합:
     - SwiftUI 키보드 safe-area 자동 회피 비활성화
@@ -186,20 +187,21 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
   - 실패 시 오류 배너 유지
   - 적용 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/App.kt`
 
-### 2-9) 온보딩 화면 플로우 개편 (2026-02-24)
+### 2-9) 온보딩 화면 플로우 단순화 (2026-02-25)
 
 - 신규 온보딩 단계 추가:
   - `OnboardingStep.EntryChoice`
   - `OnboardingStep.InviteJoin`
   - 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/domain/model/OnboardingModels.kt`
 - 화면 구조 변경:
-  - `OnboardingEntryScreen` 신설(`시작하기`/`공유받기` 선택)
-  - `InviteShareScreen` 분리(공유 전용, 입력 UI 제거)
-  - `InviteJoinScreen` 신설(닉네임 + 공유 코드 입력)
-  - `PartnerConnectScreen` 제거
+  - `OnboardingEntryScreen` 선택지를 `혼자 시작하기` / `공유 코드로 시작하기`로 명확화
+  - `InviteJoinScreen`에서 닉네임 + 공유 코드 입력으로 파트너 연결
+  - 온보딩 필수 단계에서 `InviteShareScreen` 제거(초대 코드 공유는 Settings에서 선택적으로 수행)
+  - `PartnerConnectScreen` 제거 유지
 - ViewModel 플로우 변경:
-  - 시작 경로/공유받기 경로 분기 액션 추가
-  - 공유받기 연결 시 닉네임 동기화(`UpdateNicknameUseCase`) 후 `join_wedding` RPC 호출
+  - `decideStep`을 `EntryChoice` 중심으로 단순화(`onboardingCompleted=true`만 `Done`)
+  - 시작 경로에서 프로필 저장 성공 시 `InviteShare`로 가지 않고 `finishOnboarding()`로 즉시 완료
+  - 공유 코드 경로 연결 시 닉네임 동기화(`UpdateNicknameUseCase`) 후 `join_wedding` RPC 호출
   - 코드 정규화/검증(`W-1234`) 및 에러 메시지 정교화
   - 관련 파일:
     - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/onboarding/presentation/OnboardingContract.kt`
@@ -263,6 +265,13 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 ---
 
 ## 4) 최근 검증 결과
+
+성공(2026-02-25 기준):
+
+```bash
+./gradlew :composeApp:testDebugUnitTest --tests '*OnboardingViewModelTest'
+./gradlew :composeApp:assembleDebug
+```
 
 성공(2026-02-19 기준):
 

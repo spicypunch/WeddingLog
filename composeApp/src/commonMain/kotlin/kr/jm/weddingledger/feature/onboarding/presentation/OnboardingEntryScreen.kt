@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.PersonAddAlt1
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -131,11 +130,11 @@ fun OnboardingEntryScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 EntryOptionCard(
-                    title = "시작하기",
-                    description = "닉네임, 역할, 예식일을 입력하고 초대 코드를 공유할게요.",
+                    title = "혼자 시작하기",
+                    description = "닉네임, 역할, 예식일을 입력하고 바로 시작할게요.",
                     iconTint = primary,
-                    icon = Icons.Rounded.IosShare,
-                    buttonText = "내 플래너 만들기",
+                    icon = Icons.Rounded.Favorite,
+                    buttonText = "혼자 시작",
                     onClick = { onAction(OnboardingAction.OnClickStartOnboarding) },
                     enabled = !isLoading,
                     cardColor = card,
@@ -146,11 +145,11 @@ fun OnboardingEntryScreen(
                 )
 
                 EntryOptionCard(
-                    title = "공유받기",
-                    description = "받은 초대 코드와 닉네임만 입력해서 빠르게 연결할게요.",
+                    title = "공유 코드로 시작하기",
+                    description = "파트너가 보낸 공유 코드와 닉네임으로 함께 시작할게요.",
                     iconTint = accent,
                     icon = Icons.Rounded.PersonAddAlt1,
-                    buttonText = "코드로 연결하기",
+                    buttonText = "공유 코드 입력",
                     onClick = { onAction(OnboardingAction.OnClickJoinWithSharedCode) },
                     enabled = !isLoading,
                     cardColor = card,

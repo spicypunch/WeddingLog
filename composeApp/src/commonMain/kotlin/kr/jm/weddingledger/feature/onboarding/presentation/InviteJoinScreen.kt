@@ -245,7 +245,7 @@ fun InviteJoinScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "처음부터 시작하기로 돌아가기",
+                text = "시작 방식 선택으로 돌아가기",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = textSub,
