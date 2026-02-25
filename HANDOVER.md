@@ -229,10 +229,34 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
     - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/money/presentation/AddExpenseBottomSheet.kt`
     - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/schedule/presentation/AddChecklistBottomSheet.kt`
     - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/schedule/presentation/AddScheduleEventBottomSheet.kt`
-- iOS 호스트 보정:
-  - `ComposeView().ignoresSafeArea(.keyboard, edges: .bottom)` 적용
-  - 탭 dismiss 제스처를 `UIGestureRecognizerDelegate`로 제어해 첫 포커스 탭 간섭 제거
-  - 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/iosApp/iosApp/ContentView.swift`
+  - iOS 호스트 보정:
+    - `ComposeView().ignoresSafeArea(.keyboard, edges: .bottom)` 적용
+    - 탭 dismiss 제스처를 `UIGestureRecognizerDelegate`로 제어해 첫 포커스 탭 간섭 제거
+    - 파일: `/Users/mackim/AndroidStudioProjects/WeddingLedger/iosApp/iosApp/ContentView.swift`
+
+### 2-11) 홈 권한 요청/리프레시/테마 분기 정리 (2026-02-25)
+
+- 로그인/회원가입/온보딩 화면 다크모드 분기 제거:
+  - 대상: `AuthScreen`, `OnboardingEntryScreen`, `ProfileSetupScreen`, `InviteJoinScreen`, `InviteShareScreen`
+  - 목적: 분기 없는 단일 UI 스타일로 일관성 확보
+- 탭 새로고침(Pull-to-refresh) 확장:
+  - `홈/일정/하객` 탭에 pull-to-refresh 적용
+  - `도구` 탭은 제외, `돈` 탭은 기존 동작 유지
+- 알림 권한 요청 시점 변경:
+  - 로그인 + 온보딩 완료 후 **첫 홈 진입 시 1회** 권한 요청
+  - 재요청 방지 플래그(DataStore) 추가
+  - 공용 저장소:
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/core/settings/data/NotificationPermissionPromptStorage.kt`
+  - Android actual:
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/androidMain/kotlin/kr/jm/weddingledger/core/settings/data/NotificationPermissionPromptStorage.android.kt`
+  - iOS actual:
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/iosMain/kotlin/kr/jm/weddingledger/core/settings/data/NotificationPermissionPromptStorage.ios.kt`
+  - 적용 라우트:
+    - `/Users/mackim/AndroidStudioProjects/WeddingLedger/composeApp/src/commonMain/kotlin/kr/jm/weddingledger/feature/home/presentation/HomeRoute.kt`
+- 파트너 연결 즉시 알림 현황:
+  - `join_wedding` 성공 시점에 즉시 알림(푸시/로컬) 트리거는 현재 없음
+  - 알림센터 피드는 일정/체크리스트/예산 초과 중심
+  - 향후 필요 시 서버 기반 푸시(FCM/APNs + 디바이스 토큰 + 조인 이벤트 발송) 설계 필요
 
 ---
 
