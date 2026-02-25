@@ -22,6 +22,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -41,20 +45,35 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun GuestsScreen(
     state: GuestsUiState,
     onAction: (GuestsAction) -> Unit,
 ) {
+    val pullToRefreshState = rememberPullRefreshState(
+        refreshing = state.isRefreshing,
+        onRefresh = { onAction(GuestsAction.OnRefresh) },
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .pullRefresh(pullToRefreshState)
     ) {
         GuestsList(
             state = state,
             onAction = onAction,
             modifier = Modifier.fillMaxSize()
+        )
+
+        PullRefreshIndicator(
+            refreshing = state.isRefreshing,
+            state = pullToRefreshState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            backgroundColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.primary,
         )
 
         FloatingActionButton(

@@ -4,7 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -59,14 +58,13 @@ fun ProfileSetupScreen(
     message: String?,
     onAction: (OnboardingAction) -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
     val primary = Color(0xFFE64C19)
-    val background = if (isDark) Color(0xFF211511) else Color(0xFFF8F6F6)
-    val surface = if (isDark) Color(0xFF2A1E1A) else Color.White
-    val fieldBg = if (isDark) Color.White.copy(alpha = 0.06f) else background
-    val border = if (isDark) Color.White.copy(alpha = 0.10f) else Color(0xFFE5E7EB)
-    val textMain = if (isDark) Color(0xFFF2F2F2) else Color(0xFF111827)
-    val textSub = if (isDark) Color(0xFFBDB6B0) else Color(0xFF6B7280)
+    val background = Color(0xFFF8F6F6)
+    val surface = Color.White
+    val fieldBg = background
+    val border = Color(0xFFE5E7EB)
+    val textMain = Color(0xFF111827)
+    val textSub = Color(0xFF6B7280)
     val isImeVisible = rememberImeVisible()
 
     Box(
@@ -100,7 +98,7 @@ fun ProfileSetupScreen(
                     Box(
                         modifier = Modifier
                             .size(80.dp)
-                            .background(primary.copy(alpha = if (isDark) 0.16f else 0.10f), CircleShape),
+                            .background(primary.copy(alpha = 0.10f), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(

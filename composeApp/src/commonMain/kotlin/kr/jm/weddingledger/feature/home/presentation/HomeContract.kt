@@ -21,6 +21,7 @@ data class HomeUiState(
     val progressFraction: Float,
     val categories: List<HomeCategorySummary>,
     val recentExpenses: List<HomeRecentExpense>,
+    val isRefreshing: Boolean = false,
 ) {
     companion object {
         fun empty(dDayTitle: String = "우리 결혼 준비 중"): HomeUiState = HomeUiState(
@@ -113,6 +114,7 @@ data class HomeRecentExpense(
 )
 
 sealed interface HomeAction {
+    data object OnRefresh : HomeAction
     data object OnClickNotifications : HomeAction
     data object OnClickAddExpense : HomeAction
     data object OnClickViewAllCategories : HomeAction

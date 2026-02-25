@@ -94,6 +94,7 @@ class ScheduleViewModel(
             is ScheduleAction.OnClickChecklistItemMore -> Unit // handled in Route (dialog)
             ScheduleAction.OnClickAdd -> Unit // handled in Route (bottom sheet)
 
+            ScheduleAction.OnRefresh -> refreshData(showLoading = false, isRefreshing = true)
             ScheduleAction.OnRefreshChecklist -> refreshData(showLoading = true)
             is ScheduleAction.OnCreateChecklist -> createChecklist(action)
             is ScheduleAction.OnUpdateChecklist -> updateChecklist(action)
@@ -200,9 +201,10 @@ class ScheduleViewModel(
         }
     }
 
-    private fun refreshData(showLoading: Boolean) {
+    private fun refreshData(showLoading: Boolean, isRefreshing: Boolean = false) {
         _state.update { current ->
             current.copy(
+                isRefreshing = isRefreshing,
                 checklist = current.checklist.copy(
                     isLoading = showLoading,
                     message = null,
@@ -228,6 +230,7 @@ class ScheduleViewModel(
             val checklistUi = checklistTasks.toChecklistUiState()
             _state.update {
                 it.copy(
+                    isRefreshing = false,
                     checklist = checklistUi.copy(
                         isLoading = false,
                         message = checklistMessage,
@@ -272,6 +275,7 @@ class ScheduleViewModel(
     private fun createChecklist(action: ScheduleAction.OnCreateChecklist) {
         _state.update { current ->
             current.copy(
+                isRefreshing = false,
                 checklist = current.checklist.copy(isLoading = true, message = null)
             )
         }
@@ -292,6 +296,7 @@ class ScheduleViewModel(
                 is ScheduleResult.Error -> {
                     _state.update { current ->
                         current.copy(
+                            isRefreshing = false,
                             checklist = current.checklist.copy(
                                 isLoading = false,
                                 message = result.message,
@@ -306,6 +311,7 @@ class ScheduleViewModel(
     private fun updateChecklist(action: ScheduleAction.OnUpdateChecklist) {
         _state.update { current ->
             current.copy(
+                isRefreshing = false,
                 checklist = current.checklist.copy(isLoading = true, message = null)
             )
         }
@@ -329,6 +335,7 @@ class ScheduleViewModel(
                 is ScheduleResult.Error -> {
                     _state.update { current ->
                         current.copy(
+                            isRefreshing = false,
                             checklist = current.checklist.copy(
                                 isLoading = false,
                                 message = result.message,
@@ -343,6 +350,7 @@ class ScheduleViewModel(
     private fun createScheduleEvent(action: ScheduleAction.OnCreateScheduleEvent) {
         _state.update { current ->
             current.copy(
+                isRefreshing = false,
                 calendar = current.calendar.copy(message = null)
             )
         }
@@ -362,6 +370,7 @@ class ScheduleViewModel(
                 is ScheduleResult.Error -> {
                     _state.update { current ->
                         current.copy(
+                            isRefreshing = false,
                             calendar = current.calendar.copy(message = result.message)
                         )
                     }
@@ -373,6 +382,7 @@ class ScheduleViewModel(
     private fun updateScheduleEvent(action: ScheduleAction.OnUpdateScheduleEvent) {
         _state.update { current ->
             current.copy(
+                isRefreshing = false,
                 calendar = current.calendar.copy(message = null)
             )
         }
@@ -395,6 +405,7 @@ class ScheduleViewModel(
                 is ScheduleResult.Error -> {
                     _state.update { current ->
                         current.copy(
+                            isRefreshing = false,
                             calendar = current.calendar.copy(message = result.message)
                         )
                     }
@@ -406,6 +417,7 @@ class ScheduleViewModel(
     private fun deleteScheduleEvent(id: String) {
         _state.update { current ->
             current.copy(
+                isRefreshing = false,
                 calendar = current.calendar.copy(message = null)
             )
         }
@@ -419,6 +431,7 @@ class ScheduleViewModel(
                 is ScheduleResult.Error -> {
                     _state.update { current ->
                         current.copy(
+                            isRefreshing = false,
                             calendar = current.calendar.copy(message = result.message)
                         )
                     }
@@ -475,6 +488,7 @@ class ScheduleViewModel(
                     // 서버 반영 실패 시 optimistic update를 원복합니다.
                     _state.update { current ->
                         current.copy(
+                            isRefreshing = false,
                             checklist = current.checklist.copy(
                                 message = result.message,
                                 groups = current.checklist.groups.map { group ->
@@ -503,6 +517,7 @@ class ScheduleViewModel(
     private fun deleteChecklist(id: String) {
         _state.update { current ->
             current.copy(
+                isRefreshing = false,
                 checklist = current.checklist.copy(isLoading = true, message = null)
             )
         }
@@ -516,6 +531,7 @@ class ScheduleViewModel(
                 is ScheduleResult.Error -> {
                     _state.update { current ->
                         current.copy(
+                            isRefreshing = false,
                             checklist = current.checklist.copy(
                                 isLoading = false,
                                 message = result.message,

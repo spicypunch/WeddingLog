@@ -12,6 +12,7 @@ data class GuestsUiState(
     val groupSummaries: List<GuestGroupSummary>,
     val sections: List<GuestsSection>,
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
     val message: String? = null,
 ) {
     companion object {

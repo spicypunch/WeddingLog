@@ -57,7 +57,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.KeyboardOptions
 import kr.jm.weddingledger.core.ui.keyboard.keyboardAwareBottomPadding
 import kr.jm.weddingledger.core.ui.keyboard.rememberImeVisible
@@ -78,14 +77,12 @@ private fun SignInScreen(
     state: AuthUiState,
     onAction: (AuthAction) -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
     val primary = Color(0xFF7D7463)
-    val primaryDark = Color(0xFF665D4F)
-    val background = if (isDark) Color(0xFF1A1918) else Color(0xFFF9F8F6)
-    val surface = if (isDark) Color(0xFF232220) else Color(0xFFFFFFFF)
-    val border = if (isDark) Color(0xFF3A3A36) else Color(0xFFE5E5E5)
-    val textMain = if (isDark) Color(0xFFF1F1F0) else Color(0xFF333333)
-    val textMuted = if (isDark) Color(0xFFB4B0AA) else Color(0xFF999999)
+    val background = Color(0xFFF9F8F6)
+    val surface = Color(0xFFFFFFFF)
+    val border = Color(0xFFE5E5E5)
+    val textMain = Color(0xFF333333)
+    val textMuted = Color(0xFF999999)
     val isImeVisible = rememberImeVisible()
     val scrollState = rememberScrollState()
 
@@ -115,9 +112,9 @@ private fun SignInScreen(
             Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .background(primary.copy(alpha = if (isDark) 0.20f else 0.10f), CircleShape)
+                    .background(primary.copy(alpha = 0.10f), CircleShape)
                     .border(
-                        BorderStroke(1.dp, primary.copy(alpha = if (isDark) 0.35f else 0.20f)),
+                        BorderStroke(1.dp, primary.copy(alpha = 0.20f)),
                         CircleShape
                     ),
                 contentAlignment = Alignment.Center,
@@ -167,7 +164,7 @@ private fun SignInScreen(
                     borderColor = border,
                     focusedBorderColor = primary,
                     textColor = textMain,
-                    labelColor = if (isDark) Color(0xFFD6D6D3) else Color(0xFF4B5563),
+                    labelColor = Color(0xFF4B5563),
                 )
 
                 LabeledOutlinedField(
@@ -186,7 +183,7 @@ private fun SignInScreen(
                     borderColor = border,
                     focusedBorderColor = primary,
                     textColor = textMain,
-                    labelColor = if (isDark) Color(0xFFD6D6D3) else Color(0xFF4B5563),
+                    labelColor = Color(0xFF4B5563),
                     visualTransformation = if (state.isPasswordVisible) {
                         VisualTransformation.None
                     } else {
@@ -273,7 +270,7 @@ private fun SignInScreen(
                         Text(
                             text = "회원가입",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (isDark) Color(0xFFBDB7B0) else Color(0xFF6B7280),
+                            color = Color(0xFF6B7280),
                         )
                     }
                     Box(
@@ -290,7 +287,7 @@ private fun SignInScreen(
                         Text(
                             text = "비밀번호 재설정",
                             style = MaterialTheme.typography.bodySmall,
-                            color = if (isDark) Color(0xFFBDB7B0) else Color(0xFF6B7280),
+                            color = Color(0xFF6B7280),
                         )
                     }
                 }
@@ -312,16 +309,15 @@ private fun SignUpScreen(
     state: AuthUiState,
     onAction: (AuthAction) -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
     val primary = Color(0xFFEF3948)
-    val surface = if (isDark) Color(0xFF2A1A1C) else Color(0xFFFFFFFF)
-    val background = if (isDark) Color(0xFF221012) else Color(0xFFF8F6F6)
+    val surface = Color(0xFFFFFFFF)
+    val background = Color(0xFFF8F6F6)
 
     // Field colors (filled look with subtle border)
-    val fieldContainer = if (isDark) Color.White.copy(alpha = 0.06f) else Color(0xFFF9FAFB)
-    val fieldBorder = if (isDark) Color.White.copy(alpha = 0.10f) else Color(0xFFE5E7EB)
-    val textMain = if (isDark) Color(0xFFF2F2F2) else Color(0xFF111827)
-    val textSub = if (isDark) Color(0xFFB5B5B5) else Color(0xFF6B7280)
+    val fieldContainer = Color(0xFFF9FAFB)
+    val fieldBorder = Color(0xFFE5E7EB)
+    val textMain = Color(0xFF111827)
+    val textSub = Color(0xFF6B7280)
     val isImeVisible = rememberImeVisible()
 
     Box(
@@ -398,7 +394,7 @@ private fun SignUpScreen(
                     borderColor = fieldBorder,
                     focusedBorderColor = primary,
                     textColor = textMain,
-                    labelColor = if (isDark) Color(0xFFD7D7D7) else Color(0xFF374151),
+                    labelColor = Color(0xFF374151),
                 )
 
                 LabeledOutlinedField(
@@ -417,7 +413,7 @@ private fun SignUpScreen(
                     borderColor = fieldBorder,
                     focusedBorderColor = primary,
                     textColor = textMain,
-                    labelColor = if (isDark) Color(0xFFD7D7D7) else Color(0xFF374151),
+                    labelColor = Color(0xFF374151),
                     visualTransformation = if (state.isPasswordVisible) {
                         VisualTransformation.None
                     } else {
@@ -457,7 +453,7 @@ private fun SignUpScreen(
                     borderColor = fieldBorder,
                     focusedBorderColor = primary,
                     textColor = textMain,
-                    labelColor = if (isDark) Color(0xFFD7D7D7) else Color(0xFF374151),
+                    labelColor = Color(0xFF374151),
                     visualTransformation = if (state.isPasswordVisible) {
                         VisualTransformation.None
                     } else {
@@ -595,9 +591,8 @@ private fun SignUpScreen(
 
 @Composable
 private fun BackgroundBlobs(primary: Color) {
-    val isDark = isSystemInDarkTheme()
-    val alpha = if (isDark) 0.08f else 0.05f
-    val blurRadius = if (isDark) 70.dp else 80.dp
+    val alpha = 0.05f
+    val blurRadius = 80.dp
 
     Box(modifier = Modifier.fillMaxSize()) {
         Box(

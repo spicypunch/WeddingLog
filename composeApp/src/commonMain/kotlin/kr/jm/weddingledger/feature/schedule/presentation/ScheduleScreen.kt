@@ -27,6 +27,10 @@ import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -53,11 +57,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ScheduleScreen(
     state: ScheduleUiState,
     onAction: (ScheduleAction) -> Unit,
 ) {
+    val pullToRefreshState = rememberPullRefreshState(
+        refreshing = state.isRefreshing,
+        onRefresh = { onAction(ScheduleAction.OnRefresh) },
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -87,7 +97,11 @@ fun ScheduleScreen(
             }
         }
 
-        Box(modifier = Modifier.weight(1f)) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .pullRefresh(pullToRefreshState)
+        ) {
             when (state.selectedTab) {
                 ScheduleTab.Schedule -> CalendarTab(
                     state = state.calendar,
@@ -100,6 +114,14 @@ fun ScheduleScreen(
                     modifier = Modifier.fillMaxSize()
                 )
             }
+
+            PullRefreshIndicator(
+                refreshing = state.isRefreshing,
+                state = pullToRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+            )
 
             FloatingActionButton(
                 onClick = { onAction(ScheduleAction.OnClickAdd) },

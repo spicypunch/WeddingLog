@@ -3,7 +3,6 @@ package kr.jm.weddingledger.feature.onboarding.presentation
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,13 +42,12 @@ fun InviteShareScreen(
     message: String?,
     onAction: (OnboardingAction) -> Unit,
 ) {
-    val isDark = isSystemInDarkTheme()
     val primary = Color(0xFFEE2B8C)
-    val background = if (isDark) Color(0xFF221019) else Color(0xFFF8F6F7)
-    val card = if (isDark) Color(0xFF2A1720) else Color.White
-    val border = if (isDark) Color.White.copy(alpha = 0.10f) else Color(0xFFE5E7EB)
-    val textMain = if (isDark) Color(0xFFF6F6F7) else Color(0xFF111827)
-    val textSub = if (isDark) Color(0xFFC7B7C0) else Color(0xFF6B7280)
+    val background = Color(0xFFF8F6F7)
+    val card = Color.White
+    val border = Color(0xFFE5E7EB)
+    val textMain = Color(0xFF111827)
+    val textSub = Color(0xFF6B7280)
 
     Box(
         modifier = Modifier

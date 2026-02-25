@@ -12,6 +12,7 @@ data class ScheduleUiState(
     val selectedTab: ScheduleTab,
     val calendar: CalendarUiState,
     val checklist: ChecklistUiState,
+    val isRefreshing: Boolean = false,
 ) {
     companion object {
         fun sample(): ScheduleUiState = ScheduleUiState(
@@ -388,6 +389,7 @@ sealed interface ScheduleAction {
     data class OnToggleChecklistItem(val itemId: String) : ScheduleAction
     data class OnClickChecklistItemMore(val itemId: String) : ScheduleAction
 
+    data object OnRefresh : ScheduleAction
     data object OnRefreshChecklist : ScheduleAction
     data class OnCreateChecklist(
         val title: String,

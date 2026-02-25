@@ -15,6 +15,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -42,18 +43,36 @@ class HomeViewModel(
         refresh()
     }
 
-    fun refresh() {
+    fun onAction(action: HomeAction) {
+        when (action) {
+            HomeAction.OnRefresh -> refresh(isRefreshing = true)
+            HomeAction.OnClickNotifications,
+            HomeAction.OnClickAddExpense,
+            HomeAction.OnClickViewAllCategories,
+            is HomeAction.OnClickCategory,
+            is HomeAction.OnClickRecentExpense,
+            -> Unit
+        }
+    }
+
+    private fun refresh(isRefreshing: Boolean = false) {
+        if (isRefreshing) {
+            _state.update { it.copy(isRefreshing = true) }
+        }
+
         viewModelScope.launch {
             val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
             val dDayTitle = resolveDdayTitle(today)
 
-            _state.value = when (val money = fetchMoneySnapshotUseCase()) {
+            val nextState = when (val money = fetchMoneySnapshotUseCase()) {
                 is kr.jm.weddingledger.feature.money.domain.model.MoneyResult.Success ->
                     money.data.toHomeUiState(dDayTitle)
 
                 is kr.jm.weddingledger.feature.money.domain.model.MoneyResult.Error ->
                     HomeUiState.empty(dDayTitle = dDayTitle)
             }
+
+            _state.value = nextState.copy(isRefreshing = false)
         }
     }
 

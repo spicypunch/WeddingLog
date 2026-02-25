@@ -62,7 +62,7 @@ class GuestsViewModel(
                 selectedFilterId = action.id
                 applyGuestsToState()
             }
-            GuestsAction.OnRefresh -> refresh(showLoading = true)
+            GuestsAction.OnRefresh -> refresh(showLoading = false, isRefreshing = true)
             is GuestsAction.OnCreateGuest -> createGuest(action)
             is GuestsAction.OnUpdateGuest -> updateGuest(action)
             is GuestsAction.OnDeleteGuest -> deleteGuest(action.id)
@@ -75,17 +75,23 @@ class GuestsViewModel(
         }
     }
 
-    private fun refresh(showLoading: Boolean) {
-        _state.update { it.copy(isLoading = showLoading, message = null) }
+    private fun refresh(showLoading: Boolean, isRefreshing: Boolean = false) {
+        _state.update {
+            it.copy(
+                isLoading = showLoading,
+                isRefreshing = isRefreshing,
+                message = null,
+            )
+        }
 
         viewModelScope.launch {
             when (val result = fetchGuestsUseCase()) {
                 is GuestsResult.Success -> {
                     allGuests = result.data
-                    applyGuestsToState(message = null, isLoading = false)
+                    applyGuestsToState(message = null, isLoading = false, isRefreshing = false)
                 }
                 is GuestsResult.Error -> {
-                    _state.update { it.copy(isLoading = false, message = result.message) }
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
                 }
             }
         }
@@ -98,7 +104,7 @@ class GuestsViewModel(
             return
         }
 
-        _state.update { it.copy(isLoading = true, message = null) }
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
 
         viewModelScope.launch {
             val guest = NewGuest(
@@ -112,7 +118,7 @@ class GuestsViewModel(
 
             when (val result = addGuestUseCase(guest)) {
                 is GuestsResult.Success -> refresh(showLoading = false)
-                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
+                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
             }
         }
     }
@@ -124,7 +130,7 @@ class GuestsViewModel(
             return
         }
 
-        _state.update { it.copy(isLoading = true, message = null) }
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
 
         viewModelScope.launch {
             val guest = NewGuest(
@@ -138,7 +144,7 @@ class GuestsViewModel(
 
             when (val result = updateGuestUseCase(action.id, guest)) {
                 is GuestsResult.Success -> refresh(showLoading = false)
-                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
+                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
             }
         }
     }
@@ -149,11 +155,11 @@ class GuestsViewModel(
             return
         }
 
-        _state.update { it.copy(isLoading = true, message = null) }
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
         viewModelScope.launch {
             when (val result = deleteGuestUseCase(id)) {
                 is GuestsResult.Success -> refresh(showLoading = false)
-                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
+                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
             }
         }
     }
@@ -172,6 +178,7 @@ class GuestsViewModel(
     private fun applyGuestsToState(
         message: String? = _state.value.message,
         isLoading: Boolean = _state.value.isLoading,
+        isRefreshing: Boolean = _state.value.isRefreshing,
     ) {
         val filteredBySide = when (selectedFilterId) {
             FILTER_GROOM -> allGuests.filter { it.side == GuestSideType.Groom }
@@ -230,6 +237,7 @@ class GuestsViewModel(
                 groupSummaries = buildGroupSummaries(allGuests),
                 sections = sections,
                 isLoading = isLoading,
+                isRefreshing = isRefreshing,
                 message = message,
             )
         }
