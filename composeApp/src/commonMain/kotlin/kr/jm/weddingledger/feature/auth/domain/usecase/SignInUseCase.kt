@@ -7,12 +7,6 @@ class SignInUseCase(
     private val authRepository: AuthRepository
 ) {
     suspend operator fun invoke(email: String, password: String): AuthResult<Unit> {
-        if (email.isBlank()) {
-            return AuthResult.Error("이메일을 입력해주세요")
-        }
-        if (password.isBlank()) {
-            return AuthResult.Error("비밀번호를 입력해주세요")
-        }
-        return authRepository.signIn(email, password)
+        return AuthResult.Error("비밀번호 로그인은 현재 비활성화되어 있습니다.")
     }
 }

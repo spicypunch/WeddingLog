@@ -2,30 +2,30 @@ package kr.jm.weddingledger.feature.auth.presentation
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 import kr.jm.weddingledger.feature.auth.domain.model.AuthUser
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResendSignUpVerificationEmailUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResetPasswordUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.SendEmailOtpUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithAppleUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithGoogleUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithKakaoUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInUseCase
-import kr.jm.weddingledger.feature.auth.domain.usecase.SignUpUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.VerifyEmailOtpUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
 
 class AuthViewModelTest {
 
     @Test
-    fun `sign in email verification error shows verification guide`() = runMainDispatcherTest {
-        val repository = FakeAuthRepositoryForViewModel().apply {
-            signInResult = AuthResult.Error("email confirm required")
-        }
+    fun `submit shows sign in disabled message`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel()
         val viewModel = createViewModel(repository)
 
         viewModel.onAction(AuthAction.OnEmailChange("user@weddinglog.app"))
@@ -34,65 +34,25 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertTrue(state.isEmailVerificationRequired)
-        assertIs<AuthMessage.Info>(state.message)
+        assertIs<AuthMessage.Error>(state.message)
+        assertEquals(
+            "비밀번호 로그인은 현재 비활성화되어 있습니다.",
+            (state.message as AuthMessage.Error).text,
+        )
     }
 
     @Test
-    fun `resend verification success starts cooldown and increments attempt`() = runMainDispatcherTest {
+    fun `toggle mode shows sign up disabled message`() = runMainDispatcherTest {
         val repository = FakeAuthRepositoryForViewModel().apply {
-            signInResult = AuthResult.Error("email confirm required")
-            resendResult = AuthResult.Success(Unit)
-        }
-        val viewModel = createViewModel(repository)
-
-        viewModel.onAction(AuthAction.OnEmailChange("user@weddinglog.app"))
-        viewModel.onAction(AuthAction.OnPasswordChange("password"))
-        viewModel.onAction(AuthAction.OnClickSubmit)
-        advanceUntilIdle()
-
-        viewModel.onAction(AuthAction.OnClickResendVerificationEmail)
-        runCurrent()
-
-        var state = viewModel.state.value
-        assertEquals(1, repository.resendCallCount)
-        assertEquals(1, state.resendAttemptCount)
-        assertEquals(60, state.resendCooldownSeconds)
-        assertIs<AuthMessage.Info>(state.message)
-
-        advanceTimeBy(1_000)
-        runCurrent()
-
-        state = viewModel.state.value
-        assertEquals(59, state.resendCooldownSeconds)
-
-        // ViewModel 내부 cooldown job이 테스트 종료 후에도 남지 않도록 소진합니다.
-        advanceTimeBy(59_000)
-        runCurrent()
-
-        state = viewModel.state.value
-        assertEquals(0, state.resendCooldownSeconds)
-    }
-
-    @Test
-    fun `sign up success switches to sign in mode with info message`() = runMainDispatcherTest {
-        val repository = FakeAuthRepositoryForViewModel().apply {
-            signUpResult = AuthResult.Success(Unit)
+            signInResult = AuthResult.Success(Unit)
         }
         val viewModel = createViewModel(repository)
 
         viewModel.onAction(AuthAction.OnClickToggleMode)
-        viewModel.onAction(AuthAction.OnEmailChange("new@weddinglog.app"))
-        viewModel.onAction(AuthAction.OnPasswordChange("123456"))
-        viewModel.onAction(AuthAction.OnPasswordConfirmChange("123456"))
-        viewModel.onAction(AuthAction.OnTermsAcceptedChange(true))
-        viewModel.onAction(AuthAction.OnClickSubmit)
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(1, repository.signUpCallCount)
         assertEquals(AuthMode.SignIn, state.mode)
-        assertEquals("", state.password)
         assertIs<AuthMessage.Info>(state.message)
     }
 
@@ -111,12 +71,69 @@ class AuthViewModelTest {
         assertEquals(1, repository.resetPasswordCallCount)
         assertIs<AuthMessage.Info>(state.message)
     }
+
+    @Test
+    fun `kakao sign in success calls repository and shows info`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel().apply {
+            signInWithKakaoResult = AuthResult.Success(Unit)
+        }
+        val viewModel = createViewModel(repository)
+
+        viewModel.onAction(AuthAction.OnClickSignInWithKakao)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(1, repository.signInWithKakaoCallCount)
+        assertIs<AuthMessage.Info>(state.message)
+    }
+
+    @Test
+    fun `google sign in success calls repository and shows info`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel().apply {
+            signInWithGoogleResult = AuthResult.Success(Unit)
+        }
+        val viewModel = createViewModel(repository)
+
+        viewModel.onAction(AuthAction.OnClickSignInWithGoogle)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(1, repository.signInWithGoogleCallCount)
+        assertIs<AuthMessage.Info>(state.message)
+    }
+
+    @Test
+    fun `send and verify otp delegates to repository`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel().apply {
+            sendOtpResult = AuthResult.Success(Unit)
+            verifyOtpResult = AuthResult.Success(Unit)
+        }
+        val viewModel = createViewModel(repository)
+
+        viewModel.onAction(AuthAction.OnEmailChange("otp@weddinglog.app"))
+        viewModel.onAction(AuthAction.OnClickSendOtp)
+        runCurrent()
+        assertEquals(1, repository.sendOtpCallCount)
+
+        viewModel.onAction(AuthAction.OnOtpCodeChange("123456"))
+        viewModel.onAction(AuthAction.OnClickVerifyOtp)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(1, repository.verifyOtpCallCount)
+        assertEquals("", state.otpCode)
+        assertIs<AuthMessage.Info>(state.message)
+    }
 }
 
-private fun createViewModel(repository: FakeAuthRepositoryForViewModel): AuthViewModel {
-    return AuthViewModel(
-        signInUseCase = SignInUseCase(repository),
-        signUpUseCase = SignUpUseCase(repository),
+    private fun createViewModel(repository: FakeAuthRepositoryForViewModel): AuthViewModel {
+        return AuthViewModel(
+            signInUseCase = SignInUseCase(repository),
+            signInWithKakaoUseCase = SignInWithKakaoUseCase(repository),
+            signInWithGoogleUseCase = SignInWithGoogleUseCase(repository),
+            signInWithAppleUseCase = SignInWithAppleUseCase(repository),
+            sendEmailOtpUseCase = SendEmailOtpUseCase(repository),
+        verifyEmailOtpUseCase = VerifyEmailOtpUseCase(repository),
         resetPasswordUseCase = ResetPasswordUseCase(repository),
         resendSignUpVerificationEmailUseCase = ResendSignUpVerificationEmailUseCase(repository),
     )
@@ -126,11 +143,19 @@ private class FakeAuthRepositoryForViewModel : AuthRepository {
     private val authStateFlow = MutableStateFlow<AuthState>(AuthState.Unauthenticated())
 
     var signInResult: AuthResult<Unit> = AuthResult.Success(Unit)
-    var signUpResult: AuthResult<Unit> = AuthResult.Success(Unit)
+    var signInWithKakaoResult: AuthResult<Unit> = AuthResult.Success(Unit)
+    var signInWithGoogleResult: AuthResult<Unit> = AuthResult.Success(Unit)
+    var signInWithAppleResult: AuthResult<Unit> = AuthResult.Success(Unit)
+    var sendOtpResult: AuthResult<Unit> = AuthResult.Success(Unit)
+    var verifyOtpResult: AuthResult<Unit> = AuthResult.Success(Unit)
     var resendResult: AuthResult<Unit> = AuthResult.Success(Unit)
     var resetPasswordResult: AuthResult<Unit> = AuthResult.Success(Unit)
 
-    var signUpCallCount: Int = 0
+    var signInWithKakaoCallCount: Int = 0
+    var signInWithGoogleCallCount: Int = 0
+    var signInWithAppleCallCount: Int = 0
+    var sendOtpCallCount: Int = 0
+    var verifyOtpCallCount: Int = 0
     var resendCallCount: Int = 0
     var resetPasswordCallCount: Int = 0
 
@@ -139,8 +164,32 @@ private class FakeAuthRepositoryForViewModel : AuthRepository {
     override suspend fun handleAuthDeepLink(url: String): AuthResult<Unit> = AuthResult.Success(Unit)
 
     override suspend fun signUp(email: String, password: String): AuthResult<Unit> {
-        signUpCallCount += 1
-        return signUpResult
+        return AuthResult.Error("비활성")
+    }
+
+    override suspend fun signInWithKakao(): AuthResult<Unit> {
+        signInWithKakaoCallCount += 1
+        return signInWithKakaoResult
+    }
+
+    override suspend fun signInWithGoogle(): AuthResult<Unit> {
+        signInWithGoogleCallCount += 1
+        return signInWithGoogleResult
+    }
+
+    override suspend fun signInWithApple(): AuthResult<Unit> {
+        signInWithAppleCallCount += 1
+        return signInWithAppleResult
+    }
+
+    override suspend fun sendEmailOtp(email: String): AuthResult<Unit> {
+        sendOtpCallCount += 1
+        return sendOtpResult
+    }
+
+    override suspend fun verifyEmailOtp(email: String, token: String): AuthResult<Unit> {
+        verifyOtpCallCount += 1
+        return verifyOtpResult
     }
 
     override suspend fun signIn(email: String, password: String): AuthResult<Unit> {

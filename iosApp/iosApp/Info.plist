@@ -14,6 +14,16 @@
 				<string>weddingledger</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>kr.jm.weddingledger.kakao</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>$(KAKAO_NATIVE_APP_KEY_SCHEME)</string>
+			</array>
+		</dict>
 	</array>
+	<key>KAKAO_NATIVE_APP_KEY</key>
+	<string>$(KAKAO_NATIVE_APP_KEY)</string>
 </dict>
 </plist>

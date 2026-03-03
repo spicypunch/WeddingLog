@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import kr.jm.weddingledger.core.platform.AndroidNotificationPermissionRequester
+import kr.jm.weddingledger.feature.auth.data.platform.AndroidAuthActivityHolder
 
 class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -20,6 +21,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        AndroidAuthActivityHolder.set(this)
         AndroidNotificationPermissionRequester.bindLauncher { permission ->
             notificationPermissionLauncher.launch(permission)
         }
@@ -37,6 +39,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        AndroidAuthActivityHolder.clear(this)
         AndroidNotificationPermissionRequester.unbindLauncher()
         super.onDestroy()
     }

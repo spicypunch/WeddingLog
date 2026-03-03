@@ -219,7 +219,7 @@ class ScreenSmokeUiTest {
             InviteJoinScreen(
                 state = InviteJoinUiState(
                     nickname = "김민수",
-                    partnerCodeInput = "W-1234",
+                    partnerCodeInput = "123456",
                 ),
                 isLoading = false,
                 message = null,

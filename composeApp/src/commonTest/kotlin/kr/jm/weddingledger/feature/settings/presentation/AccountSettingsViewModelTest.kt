@@ -75,6 +75,16 @@ private class FakeAuthRepositoryForAccountSettings : AuthRepository {
 
     override suspend fun handleAuthDeepLink(url: String): AuthResult<Unit> = AuthResult.Success(Unit)
 
+    override suspend fun signInWithKakao(): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun signInWithGoogle(): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun signInWithApple(): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun sendEmailOtp(email: String): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun verifyEmailOtp(email: String, token: String): AuthResult<Unit> = AuthResult.Success(Unit)
+
     override suspend fun signUp(email: String, password: String): AuthResult<Unit> = AuthResult.Success(Unit)
 
     override suspend fun signIn(email: String, password: String): AuthResult<Unit> = AuthResult.Success(Unit)

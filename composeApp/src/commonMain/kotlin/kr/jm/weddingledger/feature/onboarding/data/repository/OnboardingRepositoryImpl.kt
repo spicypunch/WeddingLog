@@ -27,14 +27,17 @@ class OnboardingRepositoryImpl(
     override suspend fun fetchMyProfile(): OnboardingResult<MyProfile> {
         return try {
             val (userId, email) = currentUserIdAndEmail()
-            ensureProfileRow(userId = userId, email = email)
+            when (val ensured = ensureProfileRow(userId = userId, email = email)) {
+                is OnboardingResult.Success -> Unit
+                is OnboardingResult.Error -> return ensured
+            }
 
             val profile = loadProfile(userId) ?: return OnboardingResult.Error("프로필 정보를 불러오지 못했습니다.")
             OnboardingResult.Success(profile.toDomain())
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            OnboardingResult.Error("프로필 정보를 불러오지 못했습니다.")
+            OnboardingResult.Error(t.toProfileFetchMessage())
         }
     }
 
@@ -43,7 +46,10 @@ class OnboardingRepositoryImpl(
     ): OnboardingResult<Unit> {
         return try {
             val (userId, email) = currentUserIdAndEmail()
-            ensureProfileRow(userId = userId, email = email)
+            when (val ensured = ensureProfileRow(userId = userId, email = email)) {
+                is OnboardingResult.Success -> Unit
+                is OnboardingResult.Error -> return ensured
+            }
 
             val payload = buildJsonObject {
                 put("name", JsonPrimitive(nickname.trim()))
@@ -71,7 +77,10 @@ class OnboardingRepositoryImpl(
     ): OnboardingResult<Unit> {
         return try {
             val (userId, email) = currentUserIdAndEmail()
-            ensureProfileRow(userId = userId, email = email)
+            when (val ensured = ensureProfileRow(userId = userId, email = email)) {
+                is OnboardingResult.Success -> Unit
+                is OnboardingResult.Error -> return ensured
+            }
 
             val payload = buildJsonObject {
                 put("name", JsonPrimitive(nickname.trim()))
@@ -102,7 +111,10 @@ class OnboardingRepositoryImpl(
     override suspend fun getOrCreateInviteCode(): OnboardingResult<String> {
         return try {
             val (userId, email) = currentUserIdAndEmail()
-            ensureProfileRow(userId = userId, email = email)
+            when (val ensured = ensureProfileRow(userId = userId, email = email)) {
+                is OnboardingResult.Success -> Unit
+                is OnboardingResult.Error -> return ensured
+            }
 
             val existing = loadProfile(userId)?.inviteCode?.trim()?.takeIf { it.isNotEmpty() }
             if (existing != null) return OnboardingResult.Success(existing)
@@ -121,11 +133,14 @@ class OnboardingRepositoryImpl(
     override suspend fun connectPartner(inviteCode: String): OnboardingResult<Unit> {
         val input = normalizeInviteCode(inviteCode)
         if (input.isBlank()) return OnboardingResult.Error("초대 코드를 입력해주세요.")
-        if (!isValidInviteCode(input)) return OnboardingResult.Error("초대 코드는 W-1234 형식으로 입력해주세요.")
+        if (!isValidInviteCode(input)) return OnboardingResult.Error("초대 코드는 6자리 숫자로 입력해주세요.")
 
         return try {
             val (userId, email) = currentUserIdAndEmail()
-            ensureProfileRow(userId = userId, email = email)
+            when (val ensured = ensureProfileRow(userId = userId, email = email)) {
+                is OnboardingResult.Success -> Unit
+                is OnboardingResult.Error -> return ensured
+            }
 
             callJoinWeddingRpc(input)
 
@@ -140,7 +155,10 @@ class OnboardingRepositoryImpl(
     override suspend fun completeOnboarding(): OnboardingResult<Unit> {
         return try {
             val (userId, email) = currentUserIdAndEmail()
-            ensureProfileRow(userId = userId, email = email)
+            when (val ensured = ensureProfileRow(userId = userId, email = email)) {
+                is OnboardingResult.Success -> Unit
+                is OnboardingResult.Error -> return ensured
+            }
 
             val payload = buildJsonObject { put("onboarding_completed", JsonPrimitive(true)) }
             supabaseClient
@@ -182,7 +200,7 @@ class OnboardingRepositoryImpl(
     }
 
     private fun generateInviteCode(): String {
-        return "W-" + Random.nextInt(from = 0, until = 10_000).toString().padStart(4, '0')
+        return Random.nextInt(from = 0, until = 1_000_000).toString().padStart(6, '0')
     }
 
     private suspend fun loadProfile(userId: String): ProfileRowDto? {
@@ -196,12 +214,12 @@ class OnboardingRepositoryImpl(
             .firstOrNull()
     }
 
-    private suspend fun ensureProfileRow(userId: String, email: String?) {
+    private suspend fun ensureProfileRow(userId: String, email: String?): OnboardingResult<Unit> {
         val existing = runCatching { loadProfile(userId) }.getOrNull()
-        if (existing != null) return
+        if (existing != null) return OnboardingResult.Success(Unit)
 
         val weddingId = userId
-        runCatching {
+        return try {
             supabaseClient
                 .from("profiles")
                 .insert(
@@ -212,6 +230,11 @@ class OnboardingRepositoryImpl(
                         weddingId = weddingId,
                     )
                 )
+            OnboardingResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            OnboardingResult.Error(t.toProfileFetchMessage())
         }
     }
 
@@ -248,15 +271,10 @@ class OnboardingRepositoryImpl(
     }
 }
 
-private val inviteCodeRegex = Regex("^W-\\d{4}$")
+private val inviteCodeRegex = Regex("^\\d{6}$")
 
 private fun normalizeInviteCode(value: String): String {
-    val compact = value.trim().uppercase().replace(" ", "")
-    val alnumAndDash = compact.filter { it.isLetterOrDigit() || it == '-' }
-    if (Regex("^W\\d{4}$").matches(alnumAndDash)) {
-        return "W-${alnumAndDash.drop(1)}"
-    }
-    return alnumAndDash
+    return value.trim().filter { it in '0'..'9' }
 }
 
 private fun isValidInviteCode(value: String): Boolean = inviteCodeRegex.matches(value)
@@ -310,6 +328,35 @@ private fun RestException.toPartnerConnectMessage(): String {
         statusCode == 404 || (normalized.contains("join_wedding") && normalized.contains("does not exist")) ->
             "서버 설정이 아직 반영되지 않았습니다. 잠시 후 다시 시도해주세요."
         else -> "파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+    }
+}
+
+private fun Throwable.toProfileFetchMessage(): String {
+    return when (this) {
+        is IllegalStateException -> "로그인이 필요합니다. 다시 로그인해주세요."
+        is RestException -> toProfileFetchMessage()
+        else -> "프로필 정보를 불러오지 못했습니다."
+    }
+}
+
+private fun RestException.toProfileFetchMessage(): String {
+    val normalized = listOfNotNull(error, description)
+        .joinToString(separator = " ")
+        .lowercase()
+
+    return when {
+        statusCode == 401 ||
+            (normalized.contains("jwt") && normalized.contains("expired")) -> {
+            "로그인이 만료되었습니다. 다시 로그인해주세요."
+        }
+        statusCode == 403 -> "로그인 권한을 확인할 수 없습니다. 다시 로그인해주세요."
+        normalized.contains("profiles_id_fkey") ||
+            (normalized.contains("violates foreign key constraint") &&
+                normalized.contains("profiles") &&
+                normalized.contains("auth.users")) -> {
+            "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요."
+        }
+        else -> "프로필 정보를 불러오지 못했습니다."
     }
 }
 

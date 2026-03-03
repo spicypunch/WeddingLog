@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
+import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingStep
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.CompleteOnboardingUseCase
@@ -21,6 +23,7 @@ class OnboardingViewModel(
     private val updateMyProfileUseCase: UpdateMyProfileUseCase,
     private val connectPartnerUseCase: ConnectPartnerUseCase,
     private val completeOnboardingUseCase: CompleteOnboardingUseCase,
+    private val signOutUseCase: SignOutUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(OnboardingUiState.initial())
@@ -103,6 +106,23 @@ class OnboardingViewModel(
                     }
                 }
                 is OnboardingResult.Error -> {
+                    if (result.message.requiresReauthentication()) {
+                        _state.update { it.copy(step = OnboardingStep.Loading, isLoading = true, message = null) }
+                        when (signOutUseCase()) {
+                            is AuthResult.Success -> Unit
+                            is AuthResult.Error -> {
+                                _state.update {
+                                    it.copy(
+                                        step = OnboardingStep.EntryChoice,
+                                        isLoading = false,
+                                        message = "로그인 상태를 정리하지 못했습니다. 앱을 다시 실행한 뒤 다시 로그인해주세요.",
+                                    )
+                                }
+                            }
+                        }
+                        return@launch
+                    }
+
                     _state.update {
                         it.copy(
                             step = OnboardingStep.EntryChoice,
@@ -199,7 +219,7 @@ class OnboardingViewModel(
             return
         }
         if (!isValidInviteCode(code)) {
-            _state.update { it.copy(message = "초대 코드는 W-1234 형식으로 입력해주세요.") }
+            _state.update { it.copy(message = "초대 코드는 6자리 숫자로 입력해주세요.") }
             return
         }
 
@@ -259,15 +279,18 @@ class OnboardingViewModel(
     }
 }
 
-private val inviteCodeRegex = Regex("^W-\\d{4}$")
+private val inviteCodeRegex = Regex("^\\d{6}$")
 
 private fun normalizeInviteCode(value: String): String {
-    val compact = value.trim().uppercase().replace(" ", "")
-    val alnumAndDash = compact.filter { it.isLetterOrDigit() || it == '-' }
-    if (Regex("^W\\d{4}$").matches(alnumAndDash)) {
-        return "W-${alnumAndDash.drop(1)}"
-    }
-    return alnumAndDash
+    return value.trim().filter { it in '0'..'9' }
 }
 
 private fun isValidInviteCode(value: String): Boolean = inviteCodeRegex.matches(value)
+
+private fun String.requiresReauthentication(): Boolean {
+    val normalized = lowercase()
+    return normalized.contains("로그인이 필요") ||
+        normalized.contains("로그인이 만료") ||
+        normalized.contains("다시 로그인") ||
+        normalized.contains("계정 정보를 찾을 수 없습니다")
+}

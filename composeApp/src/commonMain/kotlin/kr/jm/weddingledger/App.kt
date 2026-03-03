@@ -43,7 +43,8 @@ fun App() {
     WeddingLogTheme(style = themeStyle) {
         val observeAuthStateUseCase: ObserveAuthStateUseCase = koinInject()
         val handleAuthDeepLinkUseCase: HandleAuthDeepLinkUseCase = koinInject()
-        val authState by observeAuthStateUseCase().collectAsState(initial = AuthState.Loading)
+        val authStateFlow = remember(observeAuthStateUseCase) { observeAuthStateUseCase() }
+        val authState by authStateFlow.collectAsState(initial = AuthState.Loading)
 
         LaunchedEffect(Unit) {
             AuthDeepLinkBridge.deepLinks.collect { url ->

@@ -20,6 +20,23 @@ val localProperties = Properties().apply {
 
 val supabaseUrl: String = localProperties.getProperty("SUPABASE_URL") ?: ""
 val supabaseAnonKey: String = localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""
+val kakaoNativeAppKey: String = localProperties.getProperty("KAKAO_NATIVE_APP_KEY")?.trim().orEmpty()
+val kakaoNativeAppKeySchemeSuffix: String = kakaoNativeAppKey.ifBlank { "disabled" }
+val enableKakaoLogin: Boolean = localProperties.getProperty("ENABLE_KAKAO_LOGIN")
+    ?.trim()
+    ?.lowercase()
+    ?.toBooleanStrictOrNull()
+    ?: true
+val enableGoogleLogin: Boolean = localProperties.getProperty("ENABLE_GOOGLE_LOGIN")
+    ?.trim()
+    ?.lowercase()
+    ?.toBooleanStrictOrNull()
+    ?: true
+val enableAppleLogin: Boolean = localProperties.getProperty("ENABLE_APPLE_LOGIN")
+    ?.trim()
+    ?.lowercase()
+    ?.toBooleanStrictOrNull()
+    ?: false
 val appVersionCode: Int = 1
 val appVersionName: String = "1.0.0"
 
@@ -47,6 +64,7 @@ kotlin {
             implementation(libs.androidx.core.ktx)
             implementation(libs.koin.android)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.kakao.user)
         }
         
         iosMain.dependencies {
@@ -129,6 +147,7 @@ android {
         versionCode = appVersionCode
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["kakaoNativeAppKeySchemeSuffix"] = kakaoNativeAppKeySchemeSuffix
     }
     packaging {
         resources {
@@ -173,6 +192,10 @@ val generateBuildConfig by tasks.registering(Sync::class) {
         object BuildConfig {
             const val SUPABASE_URL = "$supabaseUrl"
             const val SUPABASE_ANON_KEY = "$supabaseAnonKey"
+            const val KAKAO_NATIVE_APP_KEY = "$kakaoNativeAppKey"
+            const val ENABLE_KAKAO_LOGIN = $enableKakaoLogin
+            const val ENABLE_GOOGLE_LOGIN = $enableGoogleLogin
+            const val ENABLE_APPLE_LOGIN = $enableAppleLogin
             const val APP_VERSION_NAME = "$appVersionName"
             const val APP_VERSION_CODE = $appVersionCode
         }

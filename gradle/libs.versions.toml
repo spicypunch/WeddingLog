@@ -24,6 +24,7 @@ datastore = "1.2.0"
 navigationCompose = "2.9.0"
 coroutines = "1.10.2"
 supabase = "3.3.0"
+kakao = "2.23.2"
 kotlinxDatetime = "0.6.2"
 
 [libraries]
@@ -78,6 +79,9 @@ supabase-bom = { module = "io.github.jan-tennert.supabase:bom", version.ref = "s
 supabase-postgrest = { module = "io.github.jan-tennert.supabase:postgrest-kt" }
 supabase-auth = { module = "io.github.jan-tennert.supabase:auth-kt" }
 supabase-realtime = { module = "io.github.jan-tennert.supabase:realtime-kt" }
+
+# Kakao
+kakao-user = { module = "com.kakao.sdk:v2-user", version.ref = "kakao" }
 
 # Kotlinx Datetime
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }

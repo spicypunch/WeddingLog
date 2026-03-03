@@ -1,10 +1,16 @@
 package kr.jm.weddingledger.feature.onboarding.presentation
 
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
+import kr.jm.weddingledger.feature.auth.domain.model.AuthState
+import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
+import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.model.MyProfile
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingStep
@@ -103,7 +109,7 @@ class OnboardingViewModelTest {
         viewModel.onAction(OnboardingAction.OnPartnerCodeInputChange("1234"))
         viewModel.onAction(OnboardingAction.OnClickConnectPartner)
 
-        assertEquals("초대 코드는 W-1234 형식으로 입력해주세요.", viewModel.state.value.message)
+        assertEquals("초대 코드는 6자리 숫자로 입력해주세요.", viewModel.state.value.message)
     }
 
     @Test
@@ -123,30 +129,56 @@ class OnboardingViewModelTest {
 
         viewModel.onAction(OnboardingAction.OnClickJoinWithSharedCode)
         viewModel.onAction(OnboardingAction.OnJoinNicknameChange("신랑"))
-        viewModel.onAction(OnboardingAction.OnPartnerCodeInputChange("w1234"))
+        viewModel.onAction(OnboardingAction.OnPartnerCodeInputChange("123-456"))
         viewModel.onAction(OnboardingAction.OnClickConnectPartner)
         advanceUntilIdle()
 
         assertEquals(OnboardingStep.Done, viewModel.state.value.step)
-        assertEquals("W-1234", repository.lastConnectedCode)
+        assertEquals("123456", repository.lastConnectedCode)
         assertEquals("신랑", repository.lastUpdatedNickname)
         assertEquals(1, repository.updateNicknameCallCount)
         assertTrue(repository.completeCalled)
     }
+
+    @Test
+    fun `initial load auth-related error signs out instead of showing entry choice`() = runMainDispatcherTest {
+        val repository = FakeOnboardingRepositoryForViewModel(
+            profile = profile(
+                nickname = null,
+                role = null,
+                weddingDate = null,
+                isUndecided = false,
+                onboardingCompleted = false,
+            ),
+            fetchProfileResult = OnboardingResult.Error("계정 정보를 찾을 수 없습니다. 다시 로그인해주세요."),
+        )
+        val authRepository = FakeAuthRepositoryForViewModel()
+
+        val viewModel = createViewModel(repository, authRepository)
+        advanceUntilIdle()
+
+        assertEquals(1, authRepository.signOutCallCount)
+        assertEquals(OnboardingStep.Loading, viewModel.state.value.step)
+    }
 }
 
-private fun createViewModel(repository: FakeOnboardingRepositoryForViewModel): OnboardingViewModel {
+private fun createViewModel(
+    repository: FakeOnboardingRepositoryForViewModel,
+    authRepository: FakeAuthRepositoryForViewModel = FakeAuthRepositoryForViewModel(),
+): OnboardingViewModel {
     return OnboardingViewModel(
         fetchMyProfileUseCase = FetchMyProfileUseCase(repository),
         updateNicknameUseCase = UpdateNicknameUseCase(repository),
         updateMyProfileUseCase = UpdateMyProfileUseCase(repository),
         connectPartnerUseCase = ConnectPartnerUseCase(repository),
         completeOnboardingUseCase = CompleteOnboardingUseCase(repository),
+        signOutUseCase = SignOutUseCase(authRepository),
     )
 }
 
 private class FakeOnboardingRepositoryForViewModel(
     private var profile: MyProfile,
+    private val fetchProfileResult: OnboardingResult<MyProfile>? = null,
 ) : OnboardingRepository {
     var updateProfileCallCount: Int = 0
     var updateNicknameCallCount: Int = 0
@@ -155,7 +187,7 @@ private class FakeOnboardingRepositoryForViewModel(
     var completeCalled: Boolean = false
 
     override suspend fun fetchMyProfile(): OnboardingResult<MyProfile> {
-        return OnboardingResult.Success(profile)
+        return fetchProfileResult ?: OnboardingResult.Success(profile)
     }
 
     override suspend fun updateNickname(nickname: String): OnboardingResult<Unit> {
@@ -182,7 +214,7 @@ private class FakeOnboardingRepositoryForViewModel(
     }
 
     override suspend fun getOrCreateInviteCode(): OnboardingResult<String> {
-        return OnboardingResult.Success("W-1234")
+        return OnboardingResult.Success("123456")
     }
 
     override suspend fun connectPartner(inviteCode: String): OnboardingResult<Unit> {
@@ -195,6 +227,40 @@ private class FakeOnboardingRepositoryForViewModel(
         profile = profile.copy(onboardingCompleted = true)
         return OnboardingResult.Success(Unit)
     }
+}
+
+private class FakeAuthRepositoryForViewModel : AuthRepository {
+    override val authState: Flow<AuthState> = MutableStateFlow(AuthState.Unauthenticated())
+
+    var signOutCallCount: Int = 0
+    var signOutResult: AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun handleAuthDeepLink(url: String): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun signInWithKakao(): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun signInWithGoogle(): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun signInWithApple(): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun sendEmailOtp(email: String): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun verifyEmailOtp(email: String, token: String): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun signUp(email: String, password: String): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun signIn(email: String, password: String): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun resendSignUpVerificationEmail(email: String): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun signOut(): AuthResult<Unit> {
+        signOutCallCount += 1
+        return signOutResult
+    }
+
+    override suspend fun resetPassword(email: String): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override fun isLoggedIn(): Boolean = true
 }
 
 private fun profile(

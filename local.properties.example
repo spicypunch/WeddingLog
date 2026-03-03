@@ -1,0 +1,8 @@
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
+KAKAO_NATIVE_APP_KEY=
+
+# Social provider visibility flags in app UI
+ENABLE_KAKAO_LOGIN=true
+ENABLE_GOOGLE_LOGIN=true
+ENABLE_APPLE_LOGIN=false

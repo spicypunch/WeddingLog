@@ -16,41 +16,26 @@ import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 class AuthUseCaseAndFlowTest {
 
     @Test
-    fun `sign in returns error when email is blank`() = runBlocking {
+    fun `sign in use case returns disabled message`() = runBlocking {
         val useCase = SignInUseCase(FakeAuthRepository())
-
-        val result = useCase(" ", "password")
-
-        val error = assertIs<AuthResult.Error>(result)
-        assertEquals("이메일을 입력해주세요", error.message)
-    }
-
-    @Test
-    fun `sign in delegates to repository when payload is valid`() = runBlocking {
-        val repository = FakeAuthRepository()
-        val useCase = SignInUseCase(repository)
 
         val result = useCase("user@weddinglog.app", "password")
 
-        assertIs<AuthResult.Success<Unit>>(result)
-        assertEquals(1, repository.signInCallCount)
-        assertEquals("user@weddinglog.app", repository.lastSignInEmail)
-        assertEquals("password", repository.lastSignInPassword)
+        val error = assertIs<AuthResult.Error>(result)
+        assertEquals("비밀번호 로그인은 현재 비활성화되어 있습니다.", error.message)
     }
 
     @Test
-    fun `sign up validates email and password length`() = runBlocking {
+    fun `sign up use case returns disabled message`() = runBlocking {
         val repository = FakeAuthRepository()
         val useCase = SignUpUseCase(repository)
 
-        val invalidEmail = useCase("invalid", "123456")
-        val shortPassword = useCase("user@weddinglog.app", "123")
-        val success = useCase("user@weddinglog.app", "123456")
+        val result = useCase("user@weddinglog.app", "123456")
 
-        assertEquals("올바른 이메일 형식이 아닙니다", assertIs<AuthResult.Error>(invalidEmail).message)
-        assertEquals("비밀번호는 6자 이상이어야 합니다", assertIs<AuthResult.Error>(shortPassword).message)
-        assertIs<AuthResult.Success<Unit>>(success)
-        assertEquals(1, repository.signUpCallCount)
+        assertEquals(
+            "비밀번호 회원가입은 현재 비활성화되어 있습니다.",
+            assertIs<AuthResult.Error>(result).message,
+        )
     }
 
     @Test
@@ -105,16 +90,12 @@ class AuthUseCaseAndFlowTest {
     }
 
     @Test
-    fun `integration flow sign in and sign out updates current user`() = runBlocking {
+    fun `integration flow sign in is blocked and keeps unauthenticated`() = runBlocking {
         val repository = FakeAuthRepository()
         val signInUseCase = SignInUseCase(repository)
-        val signOutUseCase = SignOutUseCase(repository)
         val currentUserUseCase = GetCurrentUserUseCase(repository)
 
         signInUseCase("bride@weddinglog.app", "password")
-        assertEquals("bride@weddinglog.app", currentUserUseCase().first()?.email)
-
-        signOutUseCase()
         assertNull(currentUserUseCase().first())
     }
 }
@@ -122,7 +103,6 @@ class AuthUseCaseAndFlowTest {
 private class FakeAuthRepository : AuthRepository {
     val authStateFlow = MutableStateFlow<AuthState>(AuthState.Unauthenticated())
 
-    var signUpCallCount: Int = 0
     var signInCallCount: Int = 0
     var signOutCallCount: Int = 0
     var resetPasswordCallCount: Int = 0
@@ -135,10 +115,17 @@ private class FakeAuthRepository : AuthRepository {
 
     override suspend fun handleAuthDeepLink(url: String): AuthResult<Unit> = AuthResult.Success(Unit)
 
-    override suspend fun signUp(email: String, password: String): AuthResult<Unit> {
-        signUpCallCount += 1
-        return AuthResult.Success(Unit)
-    }
+    override suspend fun signInWithKakao(): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun signInWithGoogle(): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun signInWithApple(): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun sendEmailOtp(email: String): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun verifyEmailOtp(email: String, token: String): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun signUp(email: String, password: String): AuthResult<Unit> = AuthResult.Error("비활성")
 
     override suspend fun signIn(email: String, password: String): AuthResult<Unit> {
         signInCallCount += 1

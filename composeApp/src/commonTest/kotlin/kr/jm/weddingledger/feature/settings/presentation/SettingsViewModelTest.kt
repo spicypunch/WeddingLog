@@ -17,15 +17,15 @@ class SettingsViewModelTest {
     @Test
     fun `loads invite code from profile when present`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForSettings(
-            profileResult = OnboardingResult.Success(profile(inviteCode = "W-7777")),
-            inviteCodeResult = OnboardingResult.Success("W-1234"),
+            profileResult = OnboardingResult.Success(profile(inviteCode = "777777")),
+            inviteCodeResult = OnboardingResult.Success("123456"),
         )
 
         val viewModel = createViewModel(repository)
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals("W-7777", state.inviteCode)
+        assertEquals("777777", state.inviteCode)
         assertEquals(0, repository.getInviteCodeCallCount)
     }
 
@@ -33,14 +33,14 @@ class SettingsViewModelTest {
     fun `loads invite code from usecase when profile invite code is empty`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForSettings(
             profileResult = OnboardingResult.Success(profile(inviteCode = " ")),
-            inviteCodeResult = OnboardingResult.Success("W-1234"),
+            inviteCodeResult = OnboardingResult.Success("123456"),
         )
 
         val viewModel = createViewModel(repository)
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals("W-1234", state.inviteCode)
+        assertEquals("123456", state.inviteCode)
         assertEquals(1, repository.getInviteCodeCallCount)
     }
 
@@ -48,7 +48,7 @@ class SettingsViewModelTest {
     fun `profile load error populates fallback state and message`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForSettings(
             profileResult = OnboardingResult.Error("프로필 로드 실패"),
-            inviteCodeResult = OnboardingResult.Success("W-1234"),
+            inviteCodeResult = OnboardingResult.Success("123456"),
         )
 
         val viewModel = createViewModel(repository)
@@ -62,8 +62,8 @@ class SettingsViewModelTest {
     @Test
     fun `theme style change updates selected theme`() = runMainDispatcherTest {
         val repository = FakeOnboardingRepositoryForSettings(
-            profileResult = OnboardingResult.Success(profile(inviteCode = "W-7777")),
-            inviteCodeResult = OnboardingResult.Success("W-1234"),
+            profileResult = OnboardingResult.Success(profile(inviteCode = "777777")),
+            inviteCodeResult = OnboardingResult.Success("123456"),
         )
 
         val viewModel = createViewModel(repository)

@@ -43,10 +43,10 @@ class OnboardingUseCaseAndFlowTest {
         val completeUseCase = CompleteOnboardingUseCase(repository)
 
         val invite = inviteUseCase()
-        val connect = connectUseCase("W-1234")
+        val connect = connectUseCase("123456")
         val complete = completeUseCase()
 
-        assertEquals("W-1234", assertIs<OnboardingResult.Success<String>>(invite).data)
+        assertEquals("123456", assertIs<OnboardingResult.Success<String>>(invite).data)
         assertIs<OnboardingResult.Success<Unit>>(connect)
         assertIs<OnboardingResult.Success<Unit>>(complete)
         assertEquals(1, repository.inviteCallCount)
@@ -68,7 +68,7 @@ class OnboardingUseCaseAndFlowTest {
             weddingDate = LocalDate.parse("2026-09-20"),
             isWeddingDateUndecided = false,
         )
-        connectUseCase("W-1234")
+        connectUseCase("123456")
         completeUseCase()
 
         val profile = assertIs<OnboardingResult.Success<MyProfile>>(fetchUseCase()).data
@@ -128,7 +128,7 @@ private class InMemoryOnboardingRepository : OnboardingRepository {
 
     override suspend fun getOrCreateInviteCode(): OnboardingResult<String> {
         inviteCallCount += 1
-        val inviteCode = profile.inviteCode ?: "W-1234"
+        val inviteCode = profile.inviteCode ?: "123456"
         profile = profile.copy(inviteCode = inviteCode)
         return OnboardingResult.Success(inviteCode)
     }

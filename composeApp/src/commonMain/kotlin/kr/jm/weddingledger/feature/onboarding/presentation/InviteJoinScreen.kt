@@ -17,10 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.VpnKey
 import androidx.compose.material3.Button
@@ -39,6 +41,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kr.jm.weddingledger.core.ui.keyboard.keyboardAwareBottomPadding
@@ -126,7 +129,17 @@ fun InviteJoinScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(22.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            InviteCodeGuideCard(
+                primary = primary,
+                textMain = textMain,
+                textSub = textSub,
+                border = border,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             if (!message.isNullOrBlank()) {
                 InviteJoinMessage(
@@ -182,10 +195,21 @@ fun InviteJoinScreen(
 
                     OutlinedTextField(
                         value = state.partnerCodeInput,
-                        onValueChange = { onAction(OnboardingAction.OnPartnerCodeInputChange(it.uppercase())) },
-                        placeholder = { Text(text = "초대 코드를 입력해주세요", color = textSub) },
+                        onValueChange = { input ->
+                            val digitsOnly = input.filter { it in '0'..'9' }.take(6)
+                            onAction(OnboardingAction.OnPartnerCodeInputChange(digitsOnly))
+                        },
+                        placeholder = { Text(text = "6자리 숫자 초대 코드를 입력해주세요", color = textSub) },
                         enabled = !isLoading,
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        supportingText = {
+                            Text(
+                                text = "예: 123456",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = textSub,
+                            )
+                        },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Rounded.VpnKey,
@@ -254,6 +278,54 @@ fun InviteJoinScreen(
                     .clickable(enabled = !isLoading) { onAction(OnboardingAction.OnClickBackToEntry) }
                     .padding(vertical = 12.dp),
             )
+        }
+    }
+}
+
+@Composable
+private fun InviteCodeGuideCard(
+    primary: Color,
+    textMain: Color,
+    textSub: Color,
+    border: Color,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        color = Color.White,
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, border),
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Info,
+                contentDescription = null,
+                tint = primary,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "코드가 아직 없나요?",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = textMain,
+                )
+                Text(
+                    text = "초대자에게 아래 경로에서 초대코드를 공유해달라고 요청해주세요.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = textSub,
+                )
+                Text(
+                    text = "설정 > 초대코드 > 복사/공유",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = primary,
+                )
+            }
         }
     }
 }

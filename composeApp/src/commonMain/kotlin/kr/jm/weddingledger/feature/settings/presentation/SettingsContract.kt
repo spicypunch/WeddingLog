@@ -16,7 +16,7 @@ data class SettingsUiState(
             title = "설정",
             coupleName = "신랑 김민수 & 신부 이나래",
             email = "sample@weddinglog.app",
-            inviteCode = "WDLG-1234",
+            inviteCode = "123456",
             selectedTheme = selectedTheme,
         )
     }

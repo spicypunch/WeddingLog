@@ -22,5 +22,5 @@ val onboardingModule = module {
     factory { ConnectPartnerUseCase(get()) }
     factory { CompleteOnboardingUseCase(get()) }
 
-    viewModel { OnboardingViewModel(get(), get(), get(), get(), get()) }
+    viewModel { OnboardingViewModel(get(), get(), get(), get(), get(), get()) }
 }

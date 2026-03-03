@@ -111,7 +111,7 @@ private class FakeOnboardingRepositoryForProfileEdit(
         isWeddingDateUndecided: Boolean,
     ): OnboardingResult<Unit> = updateResult
 
-    override suspend fun getOrCreateInviteCode(): OnboardingResult<String> = OnboardingResult.Success("W-1234")
+    override suspend fun getOrCreateInviteCode(): OnboardingResult<String> = OnboardingResult.Success("123456")
 
     override suspend fun connectPartner(inviteCode: String): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
 
@@ -132,7 +132,7 @@ private fun profile(
         weddingId = "wedding-1",
         weddingDate = weddingDate,
         isWeddingDateUndecided = isUndecided,
-        inviteCode = "W-1234",
+        inviteCode = "123456",
         onboardingCompleted = false,
     )
 }

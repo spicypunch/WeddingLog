@@ -139,7 +139,7 @@ fun InviteShareScreen(
                     )
                     Spacer(modifier = Modifier.height(10.dp))
                     Text(
-                        text = if (state.inviteCode.isBlank()) "W-0000" else state.inviteCode,
+                        text = if (state.inviteCode.isBlank()) "000000" else state.inviteCode,
                         style = MaterialTheme.typography.displaySmall,
                         fontWeight = FontWeight.Black,
                         color = primary,

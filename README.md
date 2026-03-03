@@ -28,7 +28,18 @@ Android/iOS 공용 코드로 일정, 예산, 하객, 온보딩/연결 코드, �
 ```properties
 SUPABASE_URL=...
 SUPABASE_ANON_KEY=...
+KAKAO_NATIVE_APP_KEY=...
+
+# 소셜 로그인 노출/활성 토글 (기본값: Kakao/Google=true, Apple=false)
+ENABLE_KAKAO_LOGIN=true
+ENABLE_GOOGLE_LOGIN=true
+ENABLE_APPLE_LOGIN=false
 ```
+
+- `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
+- Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
+- `ENABLE_APPLE_LOGIN=false`면 앱에서 Apple 로그인 버튼/동작이 비활성화됩니다.
+- Apple Developer 유료 계정 및 Supabase Apple Provider 설정이 끝나면 `true`로 바꿔 바로 활성화할 수 있습니다.
 
 ## 빌드/테스트
 
@@ -63,6 +74,7 @@ Supabase 대시보드 권장값:
   - 첫 진입 화면을 `혼자 시작하기 / 공유 코드로 시작하기` 분기형으로 변경
   - `혼자 시작하기` 경로: 프로필 입력(닉네임/역할/예식일) 후 즉시 온보딩 완료
   - `공유 코드로 시작하기` 경로: 닉네임 + 공유 코드 입력으로 파트너 연결
+  - 공유 코드는 `6자리 숫자` 형식으로 통일(`W-` 접두어 제거)
   - 온보딩의 초대 코드 공유 단계를 필수 경로에서 제거(코드 공유는 설정 화면에서 선택적으로 수행)
 - iOS 키보드 대응 보강:
   - SwiftUI 호스트의 키보드 자동 safe-area 회피를 비활성화해 이중 보정 제거

@@ -66,7 +66,7 @@ class HomeViewModelTest {
                     weddingId = "wedding-1",
                     weddingDate = weddingDate,
                     isWeddingDateUndecided = false,
-                    inviteCode = "W-1234",
+                    inviteCode = "123456",
                     onboardingCompleted = true,
                 )
             )
@@ -140,7 +140,7 @@ private class FakeOnboardingRepositoryForHome(
         isWeddingDateUndecided: Boolean,
     ): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
 
-    override suspend fun getOrCreateInviteCode(): OnboardingResult<String> = OnboardingResult.Success("W-1234")
+    override suspend fun getOrCreateInviteCode(): OnboardingResult<String> = OnboardingResult.Success("123456")
 
     override suspend fun connectPartner(inviteCode: String): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
 

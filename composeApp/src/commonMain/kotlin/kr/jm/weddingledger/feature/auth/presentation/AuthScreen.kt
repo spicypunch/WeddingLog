@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,12 +33,17 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -58,6 +62,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import kr.jm.weddingledger.getPlatform
 import kr.jm.weddingledger.core.ui.keyboard.keyboardAwareBottomPadding
 import kr.jm.weddingledger.core.ui.keyboard.rememberImeVisible
 
@@ -85,6 +90,14 @@ private fun SignInScreen(
     val textMuted = Color(0xFF999999)
     val isImeVisible = rememberImeVisible()
     val scrollState = rememberScrollState()
+    val isAndroid = getPlatform().name.startsWith("Android", ignoreCase = true)
+    var isEmailLoginExpanded by remember { mutableStateOf(false) }
+    val socialOrder = if (isAndroid) {
+        listOf(SocialProvider.Kakao, SocialProvider.Google, SocialProvider.Apple)
+    } else {
+        listOf(SocialProvider.Kakao, SocialProvider.Apple, SocialProvider.Google)
+    }
+    val orderedSocialProviders = socialOrder
 
     Box(
         modifier = Modifier
@@ -148,64 +161,229 @@ private fun SignInScreen(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                LabeledOutlinedField(
-                    label = "이메일",
-                    value = state.email,
-                    onValueChange = { onAction(AuthAction.OnEmailChange(it)) },
-                    placeholder = "이메일 주소를 입력해주세요",
-                    enabled = !state.isLoading,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next,
-                        capitalization = KeyboardCapitalization.None,
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    containerColor = surface,
-                    borderColor = border,
-                    focusedBorderColor = primary,
-                    textColor = textMain,
-                    labelColor = Color(0xFF4B5563),
-                )
-
-                LabeledOutlinedField(
-                    label = "비밀번호",
-                    value = state.password,
-                    onValueChange = { onAction(AuthAction.OnPasswordChange(it)) },
-                    placeholder = "비밀번호를 입력해주세요",
-                    enabled = !state.isLoading,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                        capitalization = KeyboardCapitalization.None,
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    containerColor = surface,
-                    borderColor = border,
-                    focusedBorderColor = primary,
-                    textColor = textMain,
-                    labelColor = Color(0xFF4B5563),
-                    visualTransformation = if (state.isPasswordVisible) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { onAction(AuthAction.OnClickTogglePasswordVisibility) },
-                            enabled = !state.isLoading,
-                        ) {
-                            Icon(
-                                imageVector = if (state.isPasswordVisible) {
-                                    Icons.Rounded.Visibility
-                                } else {
-                                    Icons.Rounded.VisibilityOff
-                                },
-                                contentDescription = null,
-                                tint = textMuted,
-                            )
+                orderedSocialProviders.forEach { provider ->
+                    when (provider) {
+                        SocialProvider.Kakao -> {
+                            Button(
+                                onClick = { onAction(AuthAction.OnClickSignInWithKakao) },
+                                enabled = state.isSocialSignInEnabled && state.isKakaoLoginAvailable,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFFFEE500),
+                                    contentColor = Color(0xFF181600),
+                                    disabledContainerColor = Color(0xFFFEE500).copy(alpha = 0.35f),
+                                    disabledContentColor = Color(0xFF181600).copy(alpha = 0.75f),
+                                ),
+                                contentPadding = PaddingValues(vertical = 14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                            ) {
+                                Text(
+                                    text = "Kakao로 계속하기",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
                         }
-                    },
-                )
+                        SocialProvider.Google -> {
+                            Button(
+                                onClick = { onAction(AuthAction.OnClickSignInWithGoogle) },
+                                enabled = state.isSocialSignInEnabled && state.isGoogleLoginAvailable,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF1F2937),
+                                    contentColor = Color.White,
+                                    disabledContainerColor = Color(0xFF1F2937).copy(alpha = 0.35f),
+                                    disabledContentColor = Color.White.copy(alpha = 0.85f),
+                                ),
+                                contentPadding = PaddingValues(vertical = 14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                            ) {
+                                Text(
+                                    text = "Google로 계속하기",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
+                        SocialProvider.Apple -> {
+                            OutlinedButton(
+                                onClick = { onAction(AuthAction.OnClickSignInWithApple) },
+                                enabled = state.isSocialSignInEnabled && state.isAppleLoginAvailable,
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, border),
+                                contentPadding = PaddingValues(vertical = 14.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(52.dp),
+                            ) {
+                                Text(
+                                    text = "Apple로 계속하기",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = textMain,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (!state.hasAnySocialLoginAvailable) {
+                    Text(
+                        text = "현재 사용 가능한 소셜 로그인 제공자가 없습니다.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textMuted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        color = border,
+                    )
+                    Text(
+                        text = "또는",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = textMuted,
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.weight(1f),
+                        color = border,
+                    )
+                }
+
+                TextButton(
+                    onClick = { isEmailLoginExpanded = !isEmailLoginExpanded },
+                    enabled = !state.isLoading && !state.isSendingOtp && !state.isVerifyingOtp,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) {
+                    Text(
+                        text = if (isEmailLoginExpanded) "이메일 로그인 닫기" else "이메일로 로그인 하기",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF6B7280),
+                    )
+                }
+
+                if (isEmailLoginExpanded) {
+                    LabeledOutlinedField(
+                        label = "이메일",
+                        value = state.email,
+                        onValueChange = { onAction(AuthAction.OnEmailChange(it)) },
+                        placeholder = "이메일 주소를 입력해주세요",
+                        enabled = !state.isLoading,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Email,
+                            imeAction = ImeAction.Next,
+                            capitalization = KeyboardCapitalization.None,
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        containerColor = surface,
+                        borderColor = border,
+                        focusedBorderColor = primary,
+                        textColor = textMain,
+                        labelColor = Color(0xFF4B5563),
+                    )
+
+                    Surface(
+                        color = primary.copy(alpha = 0.06f),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, primary.copy(alpha = 0.18f)),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Text(
+                                text = "이메일 OTP 로그인 (보조)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = primary,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+
+                            LabeledOutlinedField(
+                                label = "OTP 코드",
+                                value = state.otpCode,
+                                onValueChange = { onAction(AuthAction.OnOtpCodeChange(it)) },
+                                placeholder = "6자리 숫자를 입력해주세요",
+                                enabled = !state.isSendingOtp && !state.isVerifyingOtp && !state.isLoading,
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.NumberPassword,
+                                    imeAction = ImeAction.Done,
+                                    capitalization = KeyboardCapitalization.None,
+                                ),
+                                shape = RoundedCornerShape(10.dp),
+                                containerColor = surface,
+                                borderColor = border,
+                                focusedBorderColor = primary,
+                                textColor = textMain,
+                                labelColor = Color(0xFF4B5563),
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                OutlinedButton(
+                                    onClick = { onAction(AuthAction.OnClickSendOtp) },
+                                    enabled = state.isSendOtpEnabled,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    if (state.isSendingOtp) {
+                                        CircularProgressIndicator(
+                                            color = primary,
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                    } else {
+                                        Text(
+                                            text = state.otpSendButtonLabel,
+                                            style = MaterialTheme.typography.labelLarge,
+                                        )
+                                    }
+                                }
+
+                                Button(
+                                    onClick = { onAction(AuthAction.OnClickVerifyOtp) },
+                                    enabled = state.isVerifyOtpEnabled,
+                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = primary,
+                                        contentColor = Color.White,
+                                        disabledContainerColor = primary.copy(alpha = 0.35f),
+                                        disabledContentColor = Color.White.copy(alpha = 0.85f),
+                                    ),
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    if (state.isVerifyingOtp) {
+                                        CircularProgressIndicator(
+                                            color = Color.White,
+                                            strokeWidth = 2.dp,
+                                            modifier = Modifier.size(14.dp),
+                                        )
+                                    } else {
+                                        Text(
+                                            text = "OTP 확인",
+                                            style = MaterialTheme.typography.labelLarge,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
 
                 if (state.shouldShowVerificationGuide) {
                     EmailVerificationGuideCard(
@@ -227,70 +405,13 @@ private fun SignInScreen(
                     )
                 }
 
-                Button(
-                    onClick = { onAction(AuthAction.OnClickSubmit) },
-                    enabled = state.isSubmitEnabled,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = primary,
-                        contentColor = Color.White,
-                        disabledContainerColor = primary.copy(alpha = 0.40f),
-                        disabledContentColor = Color.White.copy(alpha = 0.85f),
-                    ),
-                    contentPadding = PaddingValues(vertical = 16.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                ) {
-                    if (state.isLoading) {
-                        CircularProgressIndicator(
-                            color = Color.White,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    } else {
-                        Text(
-                            text = "로그인",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    }
-                }
-
-                Row(
+                Text(
+                    text = "비밀번호 로그인/회원가입은 현재 비활성화되어 있습니다.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = textMuted,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    TextButton(
-                        onClick = { onAction(AuthAction.OnClickToggleMode) },
-                        enabled = !state.isLoading && !state.isResendingVerificationEmail,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    ) {
-                        Text(
-                            text = "회원가입",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF6B7280),
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .height(12.dp)
-                            .width(1.dp)
-                            .background(border)
-                    )
-                    TextButton(
-                        onClick = { onAction(AuthAction.OnClickResetPassword) },
-                        enabled = !state.isLoading && !state.isResendingVerificationEmail,
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    ) {
-                        Text(
-                            text = "비밀번호 재설정",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF6B7280),
-                        )
-                    }
-                }
+                    textAlign = TextAlign.Center,
+                )
             }
 
             Spacer(modifier = Modifier.height(28.dp))
@@ -302,6 +423,12 @@ private fun SignInScreen(
             )
         }
     }
+}
+
+private enum class SocialProvider {
+    Kakao,
+    Google,
+    Apple,
 }
 
 @Composable
