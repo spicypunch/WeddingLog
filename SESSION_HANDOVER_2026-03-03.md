@@ -1,5 +1,7 @@
 # Session Handover (2026-03-03) - Kakao Native Login + Auth Refactor
 
+업데이트: 2026-03-04
+
 ## 1) 이번 세션 핵심 요약
 
 - Kakao 로그인은 **네이티브 SDK 방식으로 구현 완료**됨.
@@ -12,34 +14,22 @@
 - 이메일 OTP 보조 로그인은 접힘/펼침 UI로 동작.
 - 비밀번호 회원가입/로그인은 비활성 처리.
 
-## 2) 현재 남은 이슈 (중요)
+## 2) 이슈 해결 결과 (2026-03-04)
 
-증상:
-- 사용자가 iOS에서 Kakao 로그인 시 `Kakao 로그인에 실패했습니다`가 표시되는 케이스가 남아 있음.
-
-진행 상황:
-- 초기에는 iOS Kakao SDK 오류가 `SdkError error 2`처럼 의미 없는 문자열로 보였음.
-- 이를 개선하여 iOS에서 `SdkError`를 직접 파싱해 실제 원인(`invalid_request`, `invalid_client`, `misconfigured` 등)을 사용자 메시지로 노출하도록 수정함.
-- 이후 `invalid_request: IOS bundleid validation failed` 확인됨.
-  - 이건 Kakao Developers iOS Bundle ID 불일치 문제.
-- 현재는 Supabase 단계에서도 generic fallback이 뜰 수 있어, Kakao 경로에서 `AuthRestException`뿐 아니라 `RestException`도 상세 메시지 노출하도록 추가 수정함.
+- iOS Kakao 로그인 성공 확인.
+  - 주요 원인: Kakao Developers iOS Bundle ID 불일치 및 Supabase Kakao provider 값 불일치.
+  - `invalid_request: IOS bundleid validation failed` 해결 후 정상 동작 확인.
+  - Supabase 단계에서 `Unacceptable audience in id_token`도 provider 설정 정합성 재확인 후 해소.
+- Android Kakao 로그인 성공 확인.
+  - 주요 원인: Android에서 에러가 generic 문구로 뭉개져 진단이 어려웠던 상태.
+  - Android Kakao 에러 파싱(`ClientError`, `AuthError`, `ApiError`) 및 Talk 실패 시 Account 로그인 폴백 추가 후 검증 성공.
+- 결과: **Kakao 로그인은 iOS/Android 모두 네이티브 SDK 경로로 동작 확인 완료**.
 
 ## 3) 다음 세션에서 바로 할 일 (우선순위)
 
-1. **실기기에서 Kakao 로그인 1회 재시도**
-   - 이제 실패 시 `(...error: description...)` 형태 상세 문구가 떠야 정상.
-   - 떠 있는 에러 원문을 그대로 확보.
-2. 에러가 `invalid_request: IOS bundleid validation failed`면
-   - Kakao Developers > 플랫폼 > iOS의 Bundle ID가 정확히 `kr.jm.weddingledger.WeddingLedger`인지 재확인.
-3. Supabase 연동 단계 에러면
-   - Supabase Dashboard > Auth > Providers > Kakao 설정 재검증:
-     - REST API Key
-     - Client Secret
-     - (Allow users without an email) 정책
-4. 그래도 실패하면
-   - 앱 로그에서 아래 라인 확인:
-     - `Supabase(Auth) error=... description=... status=...`
-     - `Supabase error=... description=... status=...`
+1. Apple Developer 유료 계정 준비 후 Apple 로그인 provider 설정 진행
+2. Supabase Apple provider + iOS capability 설정 후 실기기 로그인 검증
+3. Kakao/Google/Apple 로그인 회귀 QA 1회
 
 ## 4) 필수 설정 체크리스트
 
@@ -122,4 +112,3 @@ rm -rf "$DERIVED"/*.xcbuilddata
 3. iOS는 Xcode에서 package resolve 후 build 1회
 4. Kakao 로그인 테스트 1회
 5. 실패 문구/로그 원문 캡처 후 원인 확정
-

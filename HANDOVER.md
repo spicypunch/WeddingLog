@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-02-25  
+마지막 갱신: 2026-03-04  
 워크스페이스: `/Users/mackim/AndroidStudioProjects/WeddingLedger`
 
 ---
@@ -30,6 +30,8 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
   - 이메일 인증 딥링크 E2E 연결 완료(Android `intent-filter` + iOS `onOpenURL` + KMP bridge)
   - 딥링크 처리 성공/실패 시 로그인 화면 안내 배너 표시(`AuthMessage.Info/Error`)
   - 로그인 미인증 전용 안내 카드 + 재전송 60초 쿨다운 + 최대 5회 제한 추가
+  - 소셜 로그인 정책 전환: `Google + Kakao` 메인, `Email OTP` 보조, `Email/Password` 비활성
+  - Kakao 로그인 네이티브 SDK 경로(iOS/Android) 적용 및 양 플랫폼 성공 검증 완료(2026-03-04)
   - 온보딩 엔트리 분기 도입(`혼자 시작하기` / `공유 코드로 시작하기`)
   - `혼자 시작하기` 경로: 프로필 입력(닉네임/역할/예식일) 후 즉시 온보딩 완료
   - `공유 코드로 시작하기` 경로: 닉네임 + 공유 코드 입력으로 파트너 연결
@@ -267,6 +269,24 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
   - 버전: `20260228021452` (`invite_code_six_digit_numeric`)
   - 내용: legacy 코드 정규화, `profiles.invite_code` 포맷 제약(6자리 숫자), `join_wedding` RPC 숫자 코드 처리
 
+### 2-13) 소셜 로그인 정책 전환 + Kakao 네이티브 마무리 (2026-03-04)
+
+- 로그인 정책:
+  - `Email/Password` 회원가입/로그인 비활성
+  - `Google + Kakao` 우선, `Email OTP` 보조
+  - Apple은 계정 준비 전까지 UI 비활성 상태 유지
+- Kakao 구현:
+  - iOS: `KakaoSDKUser` 네이티브 로그인 + 에러 상세 파싱 + Supabase ID Token 연동
+  - Android: Kakao SDK 네이티브 로그인 + Talk 실패 시 Account 로그인 폴백 + 에러 상세 파싱(`ClientError/AuthError/ApiError`)
+  - 공통: `idToken + accessToken`을 Supabase `signInWith(IDToken, provider=Kakao)`로 교환
+- 이슈/해결:
+  - iOS `invalid_request: IOS bundleid validation failed` 해결 (Kakao iOS Bundle ID 정합성)
+  - iOS `Unacceptable audience in id_token` 해결 (Supabase Kakao Provider 설정과 토큰 `aud` 정합성)
+  - Android generic 에러 문구 문제 해결 (실제 원인 표시되도록 파서 확장)
+- 현재 상태:
+  - Kakao 로그인 iOS/Android 모두 성공 확인
+  - 다음 단계는 Apple provider 설정 및 검증
+
 ---
 
 ## 3) Supabase 상태 (MCP 재확인, 2026-02-16)
@@ -298,6 +318,18 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 ---
 
 ## 4) 최근 검증 결과
+
+성공(2026-03-04 기준):
+
+```bash
+./gradlew :composeApp:assembleDebug
+# iOS host
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+수동 QA(2026-03-04):
+- iOS Kakao 로그인 성공
+- Android Kakao 로그인 성공
 
 성공(2026-02-25 기준):
 
@@ -334,6 +366,8 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 
 - Auth:
   - 실기기에서 이메일 인증 딥링크 진입(메일 앱 -> 앱 복귀) QA
+- Apple 로그인:
+  - Apple Developer 계정 준비 후 Supabase Apple provider 설정 및 실기기 로그인 검증
 - Android UI 테스트 실기기/에뮬레이터 1회 실행 검증
   - `./gradlew :composeApp:connectedDebugAndroidTest`
 

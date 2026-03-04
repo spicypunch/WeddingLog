@@ -38,6 +38,7 @@ ENABLE_APPLE_LOGIN=false
 
 - `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
 - Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
+- iOS 카카오 로그인도 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - `ENABLE_APPLE_LOGIN=false`면 앱에서 Apple 로그인 버튼/동작이 비활성화됩니다.
 - Apple Developer 유료 계정 및 Supabase Apple Provider 설정이 끝나면 `true`로 바꿔 바로 활성화할 수 있습니다.
 
