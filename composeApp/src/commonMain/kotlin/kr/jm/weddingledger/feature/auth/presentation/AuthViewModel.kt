@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 import kr.jm.weddingledger.core.config.BuildConfig
+import kr.jm.weddingledger.feature.auth.domain.model.AuthErrorType
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.usecase.SendEmailOtpUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResendSignUpVerificationEmailUseCase
@@ -121,7 +122,7 @@ class AuthViewModel(
                     _state.update { it.copy(isLoading = false).clearVerificationGuide() }
                 }
                 is AuthResult.Error -> {
-                    if (result.message.isEmailVerificationRelated()) {
+                    if (result.type == AuthErrorType.EmailVerificationRequired) {
                         _state.update {
                             it.copy(
                                 isLoading = false,
@@ -456,12 +457,4 @@ private fun AuthUiState.clearOtpState(): AuthUiState {
         isOtpCodeSent = false,
         otpCooldownSeconds = 0,
     )
-}
-
-private fun String.isEmailVerificationRelated(): Boolean {
-    val normalized = trim()
-    return normalized.contains("이메일 인증") || (
-        normalized.contains("email", ignoreCase = true) &&
-            normalized.contains("confirm", ignoreCase = true)
-        )
 }

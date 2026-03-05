@@ -3,6 +3,7 @@ package kr.jm.weddingledger.feature.tools.data.repository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
+import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlin.coroutines.cancellation.CancellationException
@@ -314,18 +315,16 @@ private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
     }
 }
 
-private fun RestException.isMissingRelation(relationName: String): Boolean {
-    val normalized = listOfNotNull(error, description).joinToString(" ").lowercase()
-    return normalized.contains("relation") &&
-        normalized.contains(relationName.lowercase()) &&
-        normalized.contains("does not exist")
+private fun RestException.isMissingRelation(@Suppress("UNUSED_PARAMETER") relationName: String): Boolean {
+    return postgresCodeOrNull() == POSTGRES_UNDEFINED_TABLE
 }
 
 private fun RestException.isUniqueViolation(): Boolean {
-    val normalized = listOfNotNull(error, description).joinToString(" ").lowercase()
-    return normalized.contains("duplicate key") ||
-        normalized.contains("unique") ||
-        statusCode == 409
+    return postgresCodeOrNull() == POSTGRES_UNIQUE_VIOLATION || statusCode == 409
+}
+
+private fun RestException.postgresCodeOrNull(): String? {
+    return (this as? PostgrestRestException)?.code?.trim()?.uppercase()
 }
 
 private fun logSupabaseThrowable(t: Throwable) {
@@ -334,3 +333,6 @@ private fun logSupabaseThrowable(t: Throwable) {
         else -> println("Tools error=${t::class.simpleName}")
     }
 }
+
+private const val POSTGRES_UNDEFINED_TABLE: String = "42P01"
+private const val POSTGRES_UNIQUE_VIOLATION: String = "23505"

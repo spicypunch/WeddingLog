@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlin.coroutines.cancellation.CancellationException
 import kr.jm.weddingledger.feature.auth.data.platform.KakaoNativeSignInClient
 import kr.jm.weddingledger.feature.auth.data.platform.KakaoNativeSignInResult
+import kr.jm.weddingledger.feature.auth.domain.model.AuthErrorType
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 import kr.jm.weddingledger.feature.auth.domain.model.AuthUser
@@ -106,7 +107,7 @@ class AuthRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "인증 링크 처리에 실패했습니다."))
+            t.toAuthError(defaultMessage = "인증 링크 처리에 실패했습니다.")
         }
     }
 
@@ -121,7 +122,7 @@ class AuthRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "Google 로그인에 실패했습니다"))
+            t.toAuthError(defaultMessage = "Google 로그인에 실패했습니다")
         }
     }
 
@@ -162,7 +163,7 @@ class AuthRepositoryImpl(
             val message = when (t) {
                 is AuthRestException -> t.toKakaoSignInMessage()
                 is RestException -> t.toKakaoSignInMessage()
-                else -> t.toUserFriendlyMessage(defaultMessage = "Kakao 로그인에 실패했습니다")
+                else -> t.toAuthError(defaultMessage = "Kakao 로그인에 실패했습니다").message
             }
             AuthResult.Error(message)
         }
@@ -175,7 +176,7 @@ class AuthRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "Apple 로그인에 실패했습니다"))
+            t.toAuthError(defaultMessage = "Apple 로그인에 실패했습니다")
         }
     }
 
@@ -189,7 +190,7 @@ class AuthRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "OTP 전송에 실패했습니다"))
+            t.toAuthError(defaultMessage = "OTP 전송에 실패했습니다")
         }
     }
 
@@ -204,7 +205,7 @@ class AuthRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "OTP 인증에 실패했습니다"))
+            t.toAuthError(defaultMessage = "OTP 인증에 실패했습니다")
         }
     }
 
@@ -222,7 +223,7 @@ class AuthRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "인증 메일 재전송에 실패했습니다"))
+            t.toAuthError(defaultMessage = "인증 메일 재전송에 실패했습니다")
         }
     }
 
@@ -233,7 +234,7 @@ class AuthRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "로그아웃에 실패했습니다"))
+            t.toAuthError(defaultMessage = "로그아웃에 실패했습니다")
         }
     }
 
@@ -244,7 +245,7 @@ class AuthRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            AuthResult.Error(t.toUserFriendlyMessage(defaultMessage = "비밀번호 재설정 이메일 전송에 실패했습니다"))
+            t.toAuthError(defaultMessage = "비밀번호 재설정 이메일 전송에 실패했습니다")
         }
     }
 
@@ -294,32 +295,38 @@ private fun String?.toEmailOtpTypeOrNull(): OtpType.Email? {
     }
 }
 
-private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
+private fun Throwable.toAuthError(defaultMessage: String): AuthResult.Error {
     return when (this) {
         is AuthRestException -> when (this.errorCode) {
-            AuthErrorCode.InvalidCredentials -> "이메일 또는 비밀번호가 올바르지 않습니다."
-            AuthErrorCode.EmailNotConfirmed -> "이메일 인증이 필요합니다. 메일함에서 인증 후 다시 시도해주세요."
+            AuthErrorCode.InvalidCredentials -> AuthResult.Error("이메일 또는 비밀번호가 올바르지 않습니다.")
+            AuthErrorCode.EmailNotConfirmed -> AuthResult.Error(
+                message = "이메일 인증이 필요합니다. 메일함에서 인증 후 다시 시도해주세요.",
+                type = AuthErrorType.EmailVerificationRequired,
+            )
             AuthErrorCode.EmailExists,
-            AuthErrorCode.UserAlreadyExists -> "이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용해주세요."
-            AuthErrorCode.UserNotFound -> "가입되지 않은 이메일입니다."
-            AuthErrorCode.SignupDisabled -> "현재 회원가입이 비활성화되어 있습니다."
-            AuthErrorCode.EmailProviderDisabled -> "이메일 로그인이 비활성화되어 있습니다. Supabase 설정을 확인해주세요."
-            AuthErrorCode.OtpDisabled -> "이메일 OTP 로그인이 비활성화되어 있습니다. 설정을 확인해주세요."
-            AuthErrorCode.OtpExpired -> "인증 코드가 만료되었습니다. 새 코드를 요청해주세요."
-            AuthErrorCode.UserBanned -> "이 계정은 차단되어 있습니다."
-            AuthErrorCode.WeakPassword -> "비밀번호가 너무 약합니다. 더 강한 비밀번호로 다시 시도해주세요."
-            AuthErrorCode.OverRequestRateLimit -> "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
-            AuthErrorCode.OverEmailSendRateLimit -> "이메일 전송 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."
+            AuthErrorCode.UserAlreadyExists -> AuthResult.Error("이미 가입된 이메일입니다. 로그인하거나 비밀번호 찾기를 이용해주세요.")
+            AuthErrorCode.UserNotFound -> AuthResult.Error("가입되지 않은 이메일입니다.")
+            AuthErrorCode.SignupDisabled -> AuthResult.Error("현재 회원가입이 비활성화되어 있습니다.")
+            AuthErrorCode.EmailProviderDisabled -> AuthResult.Error("이메일 로그인이 비활성화되어 있습니다. Supabase 설정을 확인해주세요.")
+            AuthErrorCode.OtpDisabled -> AuthResult.Error("이메일 OTP 로그인이 비활성화되어 있습니다. 설정을 확인해주세요.")
+            AuthErrorCode.OtpExpired -> AuthResult.Error("인증 코드가 만료되었습니다. 새 코드를 요청해주세요.")
+            AuthErrorCode.UserBanned -> AuthResult.Error("이 계정은 차단되어 있습니다.")
+            AuthErrorCode.WeakPassword -> AuthResult.Error("비밀번호가 너무 약합니다. 더 강한 비밀번호로 다시 시도해주세요.")
+            AuthErrorCode.OverRequestRateLimit -> AuthResult.Error("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.")
+            AuthErrorCode.OverEmailSendRateLimit -> AuthResult.Error("이메일 전송 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.")
             AuthErrorCode.BadOauthCallback,
             AuthErrorCode.BadOauthState,
             AuthErrorCode.OauthProviderNotSupported,
-            AuthErrorCode.ProviderDisabled -> "소셜 로그인 설정을 확인해주세요."
-            AuthErrorCode.ProviderEmailNeedsVerification -> "이메일 인증이 필요합니다. 메일함에서 인증 후 다시 시도해주세요."
-            null -> defaultMessage
-            else -> defaultMessage
+            AuthErrorCode.ProviderDisabled -> AuthResult.Error("소셜 로그인 설정을 확인해주세요.")
+            AuthErrorCode.ProviderEmailNeedsVerification -> AuthResult.Error(
+                message = "이메일 인증이 필요합니다. 메일함에서 인증 후 다시 시도해주세요.",
+                type = AuthErrorType.EmailVerificationRequired,
+            )
+            null -> AuthResult.Error(defaultMessage)
+            else -> AuthResult.Error(defaultMessage)
         }
-        is RestException -> defaultMessage
-        else -> defaultMessage
+        is RestException -> AuthResult.Error(defaultMessage)
+        else -> AuthResult.Error(defaultMessage)
     }
 }
 
@@ -343,8 +350,8 @@ private fun AuthRestException.toKakaoSignInMessage(): String {
 }
 
 private fun RestException.toKakaoSignInMessage(): String {
-    val statusSuffix = statusCode?.let { " (status=$it)" } ?: ""
-    val errorValue = error?.trim().orEmpty()
+    val statusSuffix = " (status=$statusCode)"
+    val errorValue = error.trim()
     val descriptionValue = description?.trim().orEmpty()
     return when {
         errorValue.isNotEmpty() && descriptionValue.isNotEmpty() ->

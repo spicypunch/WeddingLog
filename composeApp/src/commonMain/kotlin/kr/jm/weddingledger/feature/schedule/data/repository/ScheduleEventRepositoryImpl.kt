@@ -3,6 +3,7 @@ package kr.jm.weddingledger.feature.schedule.data.repository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
+import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlin.coroutines.cancellation.CancellationException
@@ -309,18 +310,16 @@ private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
     }
 }
 
-private fun RestException.isMissingRelation(relationName: String): Boolean {
-    val normalized = listOfNotNull(error, description).joinToString(" ").lowercase()
-    return normalized.contains("relation") &&
-        normalized.contains(relationName.lowercase()) &&
-        normalized.contains("does not exist")
+private fun RestException.isMissingRelation(@Suppress("UNUSED_PARAMETER") relationName: String): Boolean {
+    return postgresCodeOrNull() == POSTGRES_UNDEFINED_TABLE
 }
 
-private fun RestException.isMissingColumn(columnName: String): Boolean {
-    val normalized = listOfNotNull(error, description).joinToString(" ").lowercase()
-    return normalized.contains("column") &&
-        normalized.contains(columnName.lowercase()) &&
-        normalized.contains("does not exist")
+private fun RestException.isMissingColumn(@Suppress("UNUSED_PARAMETER") columnName: String): Boolean {
+    return postgresCodeOrNull() == POSTGRES_UNDEFINED_COLUMN
+}
+
+private fun RestException.postgresCodeOrNull(): String? {
+    return (this as? PostgrestRestException)?.code?.trim()?.uppercase()
 }
 
 private fun logSupabaseThrowable(t: Throwable) {
@@ -332,3 +331,5 @@ private fun logSupabaseThrowable(t: Throwable) {
 
 private const val REPEAT_MARKER: String = "@repeat="
 private const val REPEAT_RULE_COLUMN: String = "repeat_rule"
+private const val POSTGRES_UNDEFINED_TABLE: String = "42P01"
+private const val POSTGRES_UNDEFINED_COLUMN: String = "42703"

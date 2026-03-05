@@ -3,6 +3,7 @@ package kr.jm.weddingledger.feature.guests.data.repository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
+import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlin.coroutines.cancellation.CancellationException
@@ -252,11 +253,11 @@ private fun GuestAttendance.toDbValue(): Boolean? {
 private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
     return when (this) {
         is RestException -> {
-            val normalized = listOfNotNull(error, description).joinToString(" ").lowercase()
+            val postgresCode = postgresCodeOrNull()
             when {
-                normalized.contains("relation") && normalized.contains("guests") && normalized.contains("does not exist") ->
+                postgresCode == POSTGRES_UNDEFINED_TABLE ->
                     "하객 테이블이 아직 준비되지 않았습니다."
-                normalized.contains("permission denied") || statusCode == 403 ->
+                statusCode == 403 || postgresCode == POSTGRES_INSUFFICIENT_PRIVILEGE ->
                     "권한 문제로 하객 정보를 불러오지 못했습니다."
                 statusCode == 401 -> "로그인이 필요합니다."
                 else -> defaultMessage
@@ -266,9 +267,16 @@ private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
     }
 }
 
+private fun RestException.postgresCodeOrNull(): String? {
+    return (this as? PostgrestRestException)?.code?.trim()?.uppercase()
+}
+
 private fun logSupabaseThrowable(t: Throwable) {
     when (t) {
         is RestException -> println("Supabase error=${t.error} description=${t.description} status=${t.statusCode}")
         else -> println("Guests error=${t::class.simpleName}")
     }
 }
+
+private const val POSTGRES_UNDEFINED_TABLE: String = "42P01"
+private const val POSTGRES_INSUFFICIENT_PRIVILEGE: String = "42501"
