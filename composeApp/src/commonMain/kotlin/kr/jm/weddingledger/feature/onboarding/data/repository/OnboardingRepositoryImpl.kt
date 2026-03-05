@@ -13,6 +13,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.onboarding.data.dto.ProfileInsertDto
 import kr.jm.weddingledger.feature.onboarding.data.dto.ProfileRowDto
 import kr.jm.weddingledger.feature.onboarding.domain.model.MyProfile
@@ -36,7 +37,7 @@ class OnboardingRepositoryImpl(
             OnboardingResult.Success(profile.toDomain())
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             OnboardingResult.Error(t.toProfileFetchMessage())
         }
     }
@@ -64,7 +65,7 @@ class OnboardingRepositoryImpl(
             OnboardingResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             OnboardingResult.Error("닉네임 저장에 실패했습니다.")
         }
     }
@@ -103,7 +104,7 @@ class OnboardingRepositoryImpl(
             OnboardingResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             OnboardingResult.Error("프로필 저장에 실패했습니다.")
         }
     }
@@ -125,7 +126,7 @@ class OnboardingRepositoryImpl(
             OnboardingResult.Success(code)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             OnboardingResult.Error("초대 코드를 생성하지 못했습니다.")
         }
     }
@@ -147,7 +148,7 @@ class OnboardingRepositoryImpl(
             OnboardingResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             OnboardingResult.Error(t.toPartnerConnectMessage())
         }
     }
@@ -170,7 +171,7 @@ class OnboardingRepositoryImpl(
             OnboardingResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             OnboardingResult.Error("설정을 완료하지 못했습니다.")
         }
     }
@@ -233,7 +234,7 @@ class OnboardingRepositoryImpl(
             OnboardingResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             OnboardingResult.Error(t.toProfileFetchMessage())
         }
     }
@@ -295,14 +296,6 @@ private fun String?.parseRoleOrNull(): UserRole? = when (this?.trim()?.uppercase
     "GROOM" -> UserRole.Groom
     "BRIDE" -> UserRole.Bride
     else -> null
-}
-
-private fun logSupabaseThrowable(t: Throwable) {
-    // Avoid printing t.message (RestException may include URL + request headers).
-    when (t) {
-        is RestException -> println("Supabase error=${t.error} description=${t.description} status=${t.statusCode}")
-        else -> println("Onboarding error=${t::class.simpleName}")
-    }
 }
 
 private fun Throwable.toPartnerConnectMessage(): String {
@@ -387,3 +380,5 @@ private fun Throwable.isInviteCodeConflict(): Boolean {
         normalized.contains("profiles_invite_code_key") ||
         normalized.contains("23505")
 }
+
+private const val FEATURE_NAME: String = "Onboarding"

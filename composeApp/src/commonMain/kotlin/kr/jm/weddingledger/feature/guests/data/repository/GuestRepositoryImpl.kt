@@ -1,7 +1,6 @@
 package kr.jm.weddingledger.feature.guests.data.repository
 
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.from
@@ -10,10 +9,10 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kr.jm.weddingledger.core.network.WeddingIdResolver
+import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.guests.data.dto.GuestInsertDto
 import kr.jm.weddingledger.feature.guests.data.dto.GuestRowDto
-import kr.jm.weddingledger.feature.guests.data.dto.ProfileInsertDto
-import kr.jm.weddingledger.feature.guests.data.dto.ProfileRowDto
 import kr.jm.weddingledger.feature.guests.domain.model.Guest
 import kr.jm.weddingledger.feature.guests.domain.model.GuestAttendance
 import kr.jm.weddingledger.feature.guests.domain.model.GuestSideType
@@ -25,12 +24,11 @@ class GuestRepositoryImpl(
     private val supabaseClient: SupabaseClient,
 ) : GuestRepository {
 
-    private var cachedUserId: String? = null
-    private var cachedWeddingId: String? = null
+    private val weddingIdResolver = WeddingIdResolver(supabaseClient)
 
     override suspend fun fetchGuests(): GuestsResult<List<Guest>> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val rows = supabaseClient
                 .from("guests")
                 .select {
@@ -43,14 +41,14 @@ class GuestRepositoryImpl(
             GuestsResult.Success(rows.map { it.toDomain() })
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             GuestsResult.Error(t.toUserFriendlyMessage(defaultMessage = "하객 목록을 불러오지 못했습니다."))
         }
     }
 
     override suspend fun addGuest(guest: NewGuest): GuestsResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("guests")
                 .insert(
@@ -67,14 +65,14 @@ class GuestRepositoryImpl(
             GuestsResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             GuestsResult.Error(t.toUserFriendlyMessage(defaultMessage = "하객 저장에 실패했습니다."))
         }
     }
 
     override suspend fun updateGuest(id: String, guest: NewGuest): GuestsResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val payload = buildJsonObject {
                 put("name", JsonPrimitive(guest.name.trim()))
                 put("group", JsonPrimitive(guest.side.toDbValue()))
@@ -111,14 +109,14 @@ class GuestRepositoryImpl(
             GuestsResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             GuestsResult.Error(t.toUserFriendlyMessage(defaultMessage = "하객 수정에 실패했습니다."))
         }
     }
 
     override suspend fun deleteGuest(id: String): GuestsResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("guests")
                 .delete {
@@ -128,14 +126,14 @@ class GuestRepositoryImpl(
             GuestsResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             GuestsResult.Error(t.toUserFriendlyMessage(defaultMessage = "하객 삭제에 실패했습니다."))
         }
     }
 
     override suspend fun setAttendance(id: String, attendance: GuestAttendance): GuestsResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val payload = buildJsonObject {
                 val isAttended = attendance.toDbValue()
                 if (isAttended == null) {
@@ -154,55 +152,9 @@ class GuestRepositoryImpl(
             GuestsResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             GuestsResult.Error(t.toUserFriendlyMessage(defaultMessage = "참석 상태 변경에 실패했습니다."))
         }
-    }
-
-    private suspend fun getWeddingId(): String {
-        val user = supabaseClient.auth.currentUserOrNull()
-            ?: throw IllegalStateException("로그인이 필요합니다.")
-
-        val userId = user.id
-        if (cachedUserId == userId) {
-            cachedWeddingId?.let { return it }
-        }
-
-        val profile = try {
-            supabaseClient
-                .from("profiles")
-                .select {
-                    filter { eq("id", userId) }
-                    limit(count = 1)
-                }
-                .decodeList<ProfileRowDto>()
-                .firstOrNull()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            null
-        }
-
-        val weddingId = profile?.weddingId ?: userId
-
-        if (profile == null) {
-            try {
-                supabaseClient
-                    .from("profiles")
-                    .insert(
-                        ProfileInsertDto(
-                            id = userId,
-                            email = user.email,
-                            weddingId = weddingId,
-                        )
-                    )
-            } catch (_: Throwable) {
-                // Ignore: RLS/trigger may already handle profile row creation.
-            }
-        }
-
-        cachedUserId = userId
-        cachedWeddingId = weddingId
-        return weddingId
     }
 }
 
@@ -271,12 +223,6 @@ private fun RestException.postgresCodeOrNull(): String? {
     return (this as? PostgrestRestException)?.code?.trim()?.uppercase()
 }
 
-private fun logSupabaseThrowable(t: Throwable) {
-    when (t) {
-        is RestException -> println("Supabase error=${t.error} description=${t.description} status=${t.statusCode}")
-        else -> println("Guests error=${t::class.simpleName}")
-    }
-}
-
 private const val POSTGRES_UNDEFINED_TABLE: String = "42P01"
 private const val POSTGRES_INSUFFICIENT_PRIVILEGE: String = "42501"
+private const val FEATURE_NAME: String = "Guests"

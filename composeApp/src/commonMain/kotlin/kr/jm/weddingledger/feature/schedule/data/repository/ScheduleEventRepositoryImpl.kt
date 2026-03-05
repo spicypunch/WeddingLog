@@ -1,7 +1,6 @@
 package kr.jm.weddingledger.feature.schedule.data.repository
 
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.from
@@ -12,8 +11,8 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import kr.jm.weddingledger.feature.schedule.data.dto.ProfileInsertDto
-import kr.jm.weddingledger.feature.schedule.data.dto.ProfileRowDto
+import kr.jm.weddingledger.core.network.WeddingIdResolver
+import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.schedule.data.dto.ScheduleEventRowDto
 import kr.jm.weddingledger.feature.schedule.domain.model.NewScheduleEvent
 import kr.jm.weddingledger.feature.schedule.domain.model.EventRepeatRule
@@ -25,12 +24,11 @@ class ScheduleEventRepositoryImpl(
     private val supabaseClient: SupabaseClient,
 ) : ScheduleEventRepository {
 
-    private var cachedUserId: String? = null
-    private var cachedWeddingId: String? = null
+    private val weddingIdResolver = WeddingIdResolver(supabaseClient)
 
     override suspend fun fetchEvents(): ScheduleResult<List<ScheduleEvent>> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val rows = supabaseClient
                 .from("schedule_events")
                 .select {
@@ -44,7 +42,7 @@ class ScheduleEventRepositoryImpl(
             ScheduleResult.Success(rows.mapNotNull { it.toDomainOrNull() })
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("schedule_events")) {
                 ScheduleResult.Error("일정 기능 초기 설정이 필요합니다. schedule_events 테이블 SQL을 먼저 실행해 주세요.")
             } else {
@@ -55,7 +53,7 @@ class ScheduleEventRepositoryImpl(
 
     override suspend fun createEvent(event: NewScheduleEvent): ScheduleResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             try {
                 supabaseClient
                     .from("schedule_events")
@@ -73,7 +71,7 @@ class ScheduleEventRepositoryImpl(
             ScheduleResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("schedule_events")) {
                 ScheduleResult.Error("일정 테이블이 아직 준비되지 않았습니다. SQL을 먼저 실행해 주세요.")
             } else {
@@ -84,7 +82,7 @@ class ScheduleEventRepositoryImpl(
 
     override suspend fun updateEvent(id: String, event: NewScheduleEvent): ScheduleResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             try {
                 supabaseClient
                     .from("schedule_events")
@@ -108,7 +106,7 @@ class ScheduleEventRepositoryImpl(
             ScheduleResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("schedule_events")) {
                 ScheduleResult.Error("일정 테이블이 아직 준비되지 않았습니다. SQL을 먼저 실행해 주세요.")
             } else {
@@ -119,7 +117,7 @@ class ScheduleEventRepositoryImpl(
 
     override suspend fun deleteEvent(id: String): ScheduleResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("schedule_events")
                 .delete {
@@ -129,58 +127,13 @@ class ScheduleEventRepositoryImpl(
             ScheduleResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("schedule_events")) {
                 ScheduleResult.Error("일정 테이블이 아직 준비되지 않았습니다. SQL을 먼저 실행해 주세요.")
             } else {
                 ScheduleResult.Error(t.toUserFriendlyMessage(defaultMessage = "일정 삭제에 실패했습니다."))
             }
         }
-    }
-
-    private suspend fun getWeddingId(): String {
-        val user = supabaseClient.auth.currentUserOrNull()
-            ?: throw IllegalStateException("로그인이 필요합니다.")
-
-        val userId = user.id
-        if (cachedUserId == userId) {
-            cachedWeddingId?.let { return it }
-        }
-        val profile = try {
-            supabaseClient
-                .from("profiles")
-                .select {
-                    filter { eq("id", userId) }
-                    limit(count = 1)
-                }
-                .decodeList<ProfileRowDto>()
-                .firstOrNull()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            null
-        }
-
-        val weddingId = profile?.weddingId ?: userId
-
-        if (profile == null) {
-            try {
-                supabaseClient
-                    .from("profiles")
-                    .insert(
-                        ProfileInsertDto(
-                            id = userId,
-                            email = user.email,
-                            weddingId = weddingId,
-                        )
-                    )
-            } catch (_: Throwable) {
-                // Ignore: profile may be managed by trigger/RLS policy.
-            }
-        }
-
-        cachedUserId = userId
-        cachedWeddingId = weddingId
-        return weddingId
     }
 }
 
@@ -322,14 +275,8 @@ private fun RestException.postgresCodeOrNull(): String? {
     return (this as? PostgrestRestException)?.code?.trim()?.uppercase()
 }
 
-private fun logSupabaseThrowable(t: Throwable) {
-    when (t) {
-        is RestException -> println("Supabase error=${t.error} description=${t.description} status=${t.statusCode}")
-        else -> println("ScheduleEvents error=${t::class.simpleName}")
-    }
-}
-
 private const val REPEAT_MARKER: String = "@repeat="
 private const val REPEAT_RULE_COLUMN: String = "repeat_rule"
 private const val POSTGRES_UNDEFINED_TABLE: String = "42P01"
 private const val POSTGRES_UNDEFINED_COLUMN: String = "42703"
+private const val FEATURE_NAME: String = "ScheduleEvents"

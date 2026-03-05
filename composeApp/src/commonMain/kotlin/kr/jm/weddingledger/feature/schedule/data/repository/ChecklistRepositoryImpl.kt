@@ -1,7 +1,6 @@
 package kr.jm.weddingledger.feature.schedule.data.repository
 
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
@@ -11,10 +10,10 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kr.jm.weddingledger.core.network.WeddingIdResolver
+import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.schedule.data.dto.ChecklistInsertDto
 import kr.jm.weddingledger.feature.schedule.data.dto.ChecklistRowDto
-import kr.jm.weddingledger.feature.schedule.data.dto.ProfileInsertDto
-import kr.jm.weddingledger.feature.schedule.data.dto.ProfileRowDto
 import kr.jm.weddingledger.feature.schedule.domain.model.ChecklistTask
 import kr.jm.weddingledger.feature.schedule.domain.model.NewChecklistTask
 import kr.jm.weddingledger.feature.schedule.domain.model.ScheduleResult
@@ -24,12 +23,11 @@ class ChecklistRepositoryImpl(
     private val supabaseClient: SupabaseClient,
 ) : ChecklistRepository {
 
-    private var cachedUserId: String? = null
-    private var cachedWeddingId: String? = null
+    private val weddingIdResolver = WeddingIdResolver(supabaseClient)
 
     override suspend fun fetchChecklist(): ScheduleResult<List<ChecklistTask>> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val result = supabaseClient
                 .from("checklists")
                 .select {
@@ -41,14 +39,14 @@ class ChecklistRepositoryImpl(
             ScheduleResult.Success(rows.map { it.toDomain() })
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             ScheduleResult.Error(t.toUserFriendlyMessage(defaultMessage = "체크리스트를 불러오지 못했습니다."))
         }
     }
 
     override suspend fun createChecklist(task: NewChecklistTask): ScheduleResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
 
             val dto = ChecklistInsertDto(
                 weddingId = weddingId,
@@ -67,14 +65,14 @@ class ChecklistRepositoryImpl(
             ScheduleResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             ScheduleResult.Error(t.toUserFriendlyMessage(defaultMessage = "체크리스트 저장에 실패했습니다."))
         }
     }
 
     override suspend fun updateChecklist(id: String, task: NewChecklistTask): ScheduleResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
 
             val payload = buildJsonObject {
                 put("title", JsonPrimitive(task.title.trim()))
@@ -102,14 +100,14 @@ class ChecklistRepositoryImpl(
             ScheduleResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             ScheduleResult.Error(t.toUserFriendlyMessage(defaultMessage = "체크리스트 수정에 실패했습니다."))
         }
     }
 
     override suspend fun setChecked(id: String, checked: Boolean): ScheduleResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val payload = buildJsonObject {
                 put("is_checked", JsonPrimitive(checked))
             }
@@ -124,14 +122,14 @@ class ChecklistRepositoryImpl(
             ScheduleResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             ScheduleResult.Error(t.toUserFriendlyMessage(defaultMessage = "체크 상태를 변경하지 못했습니다."))
         }
     }
 
     override suspend fun deleteChecklist(id: String): ScheduleResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("checklists")
                 .delete {
@@ -142,55 +140,9 @@ class ChecklistRepositoryImpl(
             ScheduleResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             ScheduleResult.Error(t.toUserFriendlyMessage(defaultMessage = "체크리스트 삭제에 실패했습니다."))
         }
-    }
-
-    private suspend fun getWeddingId(): String {
-        val user = supabaseClient.auth.currentUserOrNull()
-            ?: throw IllegalStateException("로그인이 필요합니다.")
-
-        val userId = user.id
-        if (cachedUserId == userId) {
-            cachedWeddingId?.let { return it }
-        }
-
-        val profile = try {
-            val result = supabaseClient
-                .from("profiles")
-                .select {
-                    filter { eq("id", userId) }
-                    limit(count = 1)
-                }
-            result.decodeList<ProfileRowDto>().firstOrNull()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            null
-        }
-
-        val weddingId = profile?.weddingId ?: userId
-
-        // Best-effort: profile row가 없는 경우 RLS 환경에서 checklist 접근이 막힐 수 있어, 존재하지 않으면 생성 시도합니다.
-        if (profile == null) {
-            try {
-                supabaseClient
-                    .from("profiles")
-                    .insert(
-                        ProfileInsertDto(
-                            id = userId,
-                            email = user.email,
-                            weddingId = weddingId,
-                        )
-                    )
-            } catch (_: Throwable) {
-                // Ignore - RLS/trigger가 이미 처리했거나 권한 문제일 수 있습니다.
-            }
-        }
-
-        cachedUserId = userId
-        cachedWeddingId = weddingId
-        return weddingId
     }
 }
 
@@ -214,10 +166,4 @@ private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
     }
 }
 
-private fun logSupabaseThrowable(t: Throwable) {
-    // Avoid printing t.message (RestException may include URL + request headers).
-    when (t) {
-        is RestException -> println("Supabase error=${t.error} description=${t.description} status=${t.statusCode}")
-        else -> println("Checklist error=${t::class.simpleName}")
-    }
-}
+private const val FEATURE_NAME: String = "Checklist"

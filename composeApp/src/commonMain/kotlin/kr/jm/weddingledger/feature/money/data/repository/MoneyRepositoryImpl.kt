@@ -1,7 +1,6 @@
 package kr.jm.weddingledger.feature.money.data.repository
 
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
@@ -11,6 +10,8 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kr.jm.weddingledger.core.network.WeddingIdResolver
+import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.money.data.dto.BudgetItemInsertDto
 import kr.jm.weddingledger.feature.money.data.dto.BudgetItemRowDto
 import kr.jm.weddingledger.feature.money.data.dto.CategoryInsertDto
@@ -27,19 +28,16 @@ import kr.jm.weddingledger.feature.money.domain.model.NewExpense
 import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 import kr.jm.weddingledger.feature.money.domain.repository.MoneyRepository
-import kr.jm.weddingledger.feature.schedule.data.dto.ProfileInsertDto
-import kr.jm.weddingledger.feature.schedule.data.dto.ProfileRowDto
 
 class MoneyRepositoryImpl(
     private val supabaseClient: SupabaseClient,
 ) : MoneyRepository {
 
-    private var cachedUserId: String? = null
-    private var cachedWeddingId: String? = null
+    private val weddingIdResolver = WeddingIdResolver(supabaseClient)
 
     override suspend fun fetchSnapshot(): MoneyResult<MoneySnapshot> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val categories = getOrSeedCategories(weddingId)
 
             val budgetItemRows = supabaseClient
@@ -68,14 +66,14 @@ class MoneyRepositoryImpl(
             )
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "돈 데이터를 불러오지 못했습니다."))
         }
     }
 
     override suspend fun addBudgetItem(item: NewBudgetItem): MoneyResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("budget_items")
                 .insert(
@@ -90,14 +88,14 @@ class MoneyRepositoryImpl(
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "예산 항목 저장에 실패했습니다."))
         }
     }
 
     override suspend fun addCategory(name: String): MoneyResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("categories")
                 .insert(
@@ -110,14 +108,14 @@ class MoneyRepositoryImpl(
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "카테고리 저장에 실패했습니다."))
         }
     }
 
     override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("expenses")
                 .insert(
@@ -135,14 +133,14 @@ class MoneyRepositoryImpl(
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "지출 저장에 실패했습니다."))
         }
     }
 
     override suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val payload = buildJsonObject {
                 put("category_id", JsonPrimitive(item.categoryId))
                 put("name", JsonPrimitive(item.name.trim()))
@@ -162,14 +160,14 @@ class MoneyRepositoryImpl(
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "예산 항목 수정에 실패했습니다."))
         }
     }
 
     override suspend fun updateCategory(id: String, name: String): MoneyResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val payload = buildJsonObject {
                 put("name", JsonPrimitive(name.trim()))
             }
@@ -184,14 +182,14 @@ class MoneyRepositoryImpl(
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "카테고리 수정에 실패했습니다."))
         }
     }
 
     override suspend fun updateExpense(id: String, expense: NewExpense): MoneyResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val payload = buildJsonObject {
                 put("budget_item_id", JsonPrimitive(expense.budgetItemId))
                 put("amount", JsonPrimitive(expense.amount))
@@ -216,14 +214,14 @@ class MoneyRepositoryImpl(
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "지출 수정에 실패했습니다."))
         }
     }
 
     override suspend fun deleteBudgetItem(id: String): MoneyResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("budget_items")
                 .delete {
@@ -234,14 +232,14 @@ class MoneyRepositoryImpl(
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "예산 항목 삭제에 실패했습니다."))
         }
     }
 
     override suspend fun deleteExpense(id: String): MoneyResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("expenses")
                 .delete {
@@ -252,7 +250,7 @@ class MoneyRepositoryImpl(
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "지출 삭제에 실패했습니다."))
         }
     }
@@ -301,50 +299,6 @@ class MoneyRepositoryImpl(
         "기타",
     )
 
-    private suspend fun getWeddingId(): String {
-        val user = supabaseClient.auth.currentUserOrNull()
-            ?: throw IllegalStateException("로그인이 필요합니다.")
-
-        val userId = user.id
-        if (cachedUserId == userId) {
-            cachedWeddingId?.let { return it }
-        }
-
-        val profile = try {
-            val result = supabaseClient
-                .from("profiles")
-                .select {
-                    filter { eq("id", userId) }
-                    limit(count = 1)
-                }
-            result.decodeList<ProfileRowDto>().firstOrNull()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            null
-        }
-
-        val weddingId = profile?.weddingId ?: userId
-
-        if (profile == null) {
-            try {
-                supabaseClient
-                    .from("profiles")
-                    .insert(
-                        ProfileInsertDto(
-                            id = userId,
-                            email = user.email,
-                            weddingId = weddingId,
-                        )
-                    )
-            } catch (_: Throwable) {
-                // ignore
-            }
-        }
-
-        cachedUserId = userId
-        cachedWeddingId = weddingId
-        return weddingId
-    }
 }
 
 private fun CategoryRowDto.toDomain(): MoneyCategory = MoneyCategory(
@@ -404,10 +358,4 @@ private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
     }
 }
 
-private fun logSupabaseThrowable(t: Throwable) {
-    // Avoid printing t.message (RestException may include URL + request headers).
-    when (t) {
-        is RestException -> println("Supabase error=${t.error} description=${t.description} status=${t.statusCode}")
-        else -> println("Money error=${t::class.simpleName}")
-    }
-}
+private const val FEATURE_NAME: String = "Money"

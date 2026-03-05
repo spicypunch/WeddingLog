@@ -1,14 +1,13 @@
 package kr.jm.weddingledger.feature.tools.data.repository
 
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlin.coroutines.cancellation.CancellationException
-import kr.jm.weddingledger.feature.tools.data.dto.ProfileInsertDto
-import kr.jm.weddingledger.feature.tools.data.dto.ProfileRowDto
+import kr.jm.weddingledger.core.network.WeddingIdResolver
+import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.tools.data.dto.ValuesSurveyAnswerInsertDto
 import kr.jm.weddingledger.feature.tools.data.dto.ValuesSurveyAnswerRowDto
 import kr.jm.weddingledger.feature.tools.data.dto.VenueFavoriteInsertDto
@@ -23,8 +22,7 @@ class ToolsRepositoryImpl(
     private val supabaseClient: SupabaseClient,
 ) : ToolsRepository {
 
-    private var cachedUserId: String? = null
-    private var cachedWeddingId: String? = null
+    private val weddingIdResolver = WeddingIdResolver(supabaseClient)
 
     override suspend fun fetchVenues(): ToolsResult<List<Venue>> {
         return try {
@@ -45,7 +43,7 @@ class ToolsRepositoryImpl(
             ToolsResult.Success(venues)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("venues")) {
                 ToolsResult.Error("도구 기능 초기 설정이 필요합니다. venues 테이블 SQL을 먼저 실행해 주세요.")
             } else {
@@ -56,7 +54,7 @@ class ToolsRepositoryImpl(
 
     override suspend fun fetchFavoriteVenueIds(): ToolsResult<Set<String>> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val rows = supabaseClient
                 .from("venue_favorites")
                 .select {
@@ -67,7 +65,7 @@ class ToolsRepositoryImpl(
             ToolsResult.Success(rows.map { it.venueId }.toSet())
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("venue_favorites")) {
                 ToolsResult.Error("도구 기능 초기 설정이 필요합니다. venue_favorites 테이블 SQL을 먼저 실행해 주세요.")
             } else {
@@ -78,7 +76,7 @@ class ToolsRepositoryImpl(
 
     override suspend fun setVenueFavorite(venueId: String, favorite: Boolean): ToolsResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             if (favorite) {
                 try {
                     supabaseClient
@@ -103,7 +101,7 @@ class ToolsRepositoryImpl(
             ToolsResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("venue_favorites")) {
                 ToolsResult.Error("도구 기능 초기 설정이 필요합니다. venue_favorites 테이블 SQL을 먼저 실행해 주세요.")
             } else {
@@ -114,7 +112,7 @@ class ToolsRepositoryImpl(
 
     override suspend fun fetchSurveyAnswers(): ToolsResult<List<ValuesSurveyAnswer>> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             val rows = supabaseClient
                 .from("values_survey_answers")
                 .select {
@@ -126,7 +124,7 @@ class ToolsRepositoryImpl(
             ToolsResult.Success(rows.map { it.toDomain() })
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("values_survey_answers")) {
                 ToolsResult.Error("도구 기능 초기 설정이 필요합니다. values_survey_answers 테이블 SQL을 먼저 실행해 주세요.")
             } else {
@@ -137,7 +135,7 @@ class ToolsRepositoryImpl(
 
     override suspend fun saveSurveyAnswers(answers: List<ValuesSurveyAnswer>): ToolsResult<Unit> {
         return try {
-            val weddingId = getWeddingId()
+            val weddingId = weddingIdResolver.resolve()
             supabaseClient
                 .from("values_survey_answers")
                 .delete {
@@ -162,58 +160,13 @@ class ToolsRepositoryImpl(
             ToolsResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
-            logSupabaseThrowable(t)
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
             if (t is RestException && t.isMissingRelation("values_survey_answers")) {
                 ToolsResult.Error("도구 기능 초기 설정이 필요합니다. values_survey_answers 테이블 SQL을 먼저 실행해 주세요.")
             } else {
                 ToolsResult.Error(t.toUserFriendlyMessage(defaultMessage = "설문 결과 저장에 실패했습니다."))
             }
         }
-    }
-
-    private suspend fun getWeddingId(): String {
-        val user = supabaseClient.auth.currentUserOrNull()
-            ?: throw IllegalStateException("로그인이 필요합니다.")
-
-        val userId = user.id
-        if (cachedUserId == userId) {
-            cachedWeddingId?.let { return it }
-        }
-        val profile = try {
-            supabaseClient
-                .from("profiles")
-                .select {
-                    filter { eq("id", userId) }
-                    limit(count = 1)
-                }
-                .decodeList<ProfileRowDto>()
-                .firstOrNull()
-        } catch (t: Throwable) {
-            if (t is CancellationException) throw t
-            null
-        }
-
-        val weddingId = profile?.weddingId ?: userId
-
-        if (profile == null) {
-            try {
-                supabaseClient
-                    .from("profiles")
-                    .insert(
-                        ProfileInsertDto(
-                            id = userId,
-                            email = user.email,
-                            weddingId = weddingId,
-                        )
-                    )
-            } catch (_: Throwable) {
-                // Ignore: profile row may already be managed elsewhere.
-            }
-        }
-
-        cachedUserId = userId
-        cachedWeddingId = weddingId
-        return weddingId
     }
 }
 
@@ -327,12 +280,6 @@ private fun RestException.postgresCodeOrNull(): String? {
     return (this as? PostgrestRestException)?.code?.trim()?.uppercase()
 }
 
-private fun logSupabaseThrowable(t: Throwable) {
-    when (t) {
-        is RestException -> println("Supabase error=${t.error} description=${t.description} status=${t.statusCode}")
-        else -> println("Tools error=${t::class.simpleName}")
-    }
-}
-
 private const val POSTGRES_UNDEFINED_TABLE: String = "42P01"
 private const val POSTGRES_UNIQUE_VIOLATION: String = "23505"
+private const val FEATURE_NAME: String = "Tools"
