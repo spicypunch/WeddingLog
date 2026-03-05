@@ -34,6 +34,7 @@ class MoneyRepositoryImpl(
     private val supabaseClient: SupabaseClient,
 ) : MoneyRepository {
 
+    private var cachedUserId: String? = null
     private var cachedWeddingId: String? = null
 
     override suspend fun fetchSnapshot(): MoneyResult<MoneySnapshot> {
@@ -94,6 +95,26 @@ class MoneyRepositoryImpl(
         }
     }
 
+    override suspend fun addCategory(name: String): MoneyResult<Unit> {
+        return try {
+            val weddingId = getWeddingId()
+            supabaseClient
+                .from("categories")
+                .insert(
+                    CategoryInsertDto(
+                        weddingId = weddingId,
+                        name = name.trim(),
+                        isDefault = false,
+                    )
+                )
+            MoneyResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "카테고리 저장에 실패했습니다."))
+        }
+    }
+
     override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> {
         return try {
             val weddingId = getWeddingId()
@@ -107,6 +128,7 @@ class MoneyRepositoryImpl(
                         date = expense.date.toString(),
                         paymentMethod = expense.paymentMethod.toDbValue(),
                         payer = expense.payer.toDbValue(),
+                        vendorName = expense.vendorName?.trim()?.takeIf { it.isNotEmpty() },
                         memo = expense.memo?.trim()?.takeIf { it.isNotEmpty() },
                     )
                 )
@@ -145,6 +167,28 @@ class MoneyRepositoryImpl(
         }
     }
 
+    override suspend fun updateCategory(id: String, name: String): MoneyResult<Unit> {
+        return try {
+            val weddingId = getWeddingId()
+            val payload = buildJsonObject {
+                put("name", JsonPrimitive(name.trim()))
+            }
+
+            supabaseClient
+                .from("categories")
+                .update(payload) {
+                    filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
+                }
+
+            MoneyResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "카테고리 수정에 실패했습니다."))
+        }
+    }
+
     override suspend fun updateExpense(id: String, expense: NewExpense): MoneyResult<Unit> {
         return try {
             val weddingId = getWeddingId()
@@ -154,6 +198,9 @@ class MoneyRepositoryImpl(
                 put("date", JsonPrimitive(expense.date.toString()))
                 put("payment_method", JsonPrimitive(expense.paymentMethod.toDbValue()))
                 put("payer", JsonPrimitive(expense.payer.toDbValue()))
+
+                val vendorName = expense.vendorName?.trim()?.takeIf { it.isNotEmpty() }
+                if (vendorName == null) put("vendor_name", JsonNull) else put("vendor_name", JsonPrimitive(vendorName))
 
                 val memo = expense.memo?.trim()?.takeIf { it.isNotEmpty() }
                 if (memo == null) put("memo", JsonNull) else put("memo", JsonPrimitive(memo))
@@ -255,12 +302,13 @@ class MoneyRepositoryImpl(
     )
 
     private suspend fun getWeddingId(): String {
-        cachedWeddingId?.let { return it }
-
         val user = supabaseClient.auth.currentUserOrNull()
             ?: throw IllegalStateException("로그인이 필요합니다.")
 
         val userId = user.id
+        if (cachedUserId == userId) {
+            cachedWeddingId?.let { return it }
+        }
 
         val profile = try {
             val result = supabaseClient
@@ -293,6 +341,7 @@ class MoneyRepositoryImpl(
             }
         }
 
+        cachedUserId = userId
         cachedWeddingId = weddingId
         return weddingId
     }
@@ -321,6 +370,7 @@ private fun ExpenseRowDto.toDomainOrNull(): Expense? {
         date = date,
         paymentMethod = paymentMethod.parsePaymentMethodOrNull() ?: return null,
         payer = payer.parsePayerOrNull() ?: return null,
+        vendorName = vendorName,
         memo = memo,
         imageUrl = imageUrl,
     )
@@ -329,16 +379,22 @@ private fun ExpenseRowDto.toDomainOrNull(): Expense? {
 private fun String.parsePaymentMethodOrNull(): PaymentMethod? = when (trim().lowercase()) {
     "card" -> PaymentMethod.Card
     "cash" -> PaymentMethod.Cash
+    "joint_account", "jointaccount", "shared_account", "sharedaccount" -> PaymentMethod.JointAccount
     else -> null
 }
 
 private fun String.parsePayerOrNull(): Payer? = when (trim().lowercase()) {
     "groom" -> Payer.Groom
     "bride" -> Payer.Bride
+    "joint", "shared" -> Payer.Joint
     else -> null
 }
 
-private fun PaymentMethod.toDbValue(): String = name.uppercase()
+private fun PaymentMethod.toDbValue(): String = when (this) {
+    PaymentMethod.Card -> "CARD"
+    PaymentMethod.Cash -> "CASH"
+    PaymentMethod.JointAccount -> "JOINT_ACCOUNT"
+}
 private fun Payer.toDbValue(): String = name.uppercase()
 
 private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {

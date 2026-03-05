@@ -13,6 +13,13 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun GuestsRoute() {
+    GuestsRoute(onOpenNotifications = {})
+}
+
+@Composable
+fun GuestsRoute(
+    onOpenNotifications: () -> Unit,
+) {
     val viewModel: GuestsViewModel = koinViewModel()
     val uiState by viewModel.state.collectAsState()
 
@@ -38,6 +45,7 @@ fun GuestsRoute() {
                         .firstOrNull { it.id == action.id }
                 }
 
+                GuestsAction.OnClickNotifications -> onOpenNotifications()
                 else -> viewModel.onAction(action)
             }
         }

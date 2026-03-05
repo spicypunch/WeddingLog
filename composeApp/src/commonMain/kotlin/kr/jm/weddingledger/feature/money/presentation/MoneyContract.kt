@@ -89,6 +89,7 @@ data class ExpensesUiState(
                             date = LocalDate.parse("2026-03-15"),
                             paymentMethod = PaymentMethod.Card,
                             payer = Payer.Bride,
+                            vendorName = "화이트드레스 스튜디오",
                             memo = null,
                             icon = Icons.Rounded.Checkroom,
                             accent = Color(0xFFEF3948),
@@ -104,6 +105,7 @@ data class ExpensesUiState(
                             date = LocalDate.parse("2026-03-10"),
                             paymentMethod = PaymentMethod.Card,
                             payer = Payer.Groom,
+                            vendorName = "라비앙 웨딩홀",
                             memo = null,
                             icon = Icons.Rounded.Gavel,
                             accent = Color(0xFFF97316),
@@ -119,6 +121,7 @@ data class ExpensesUiState(
                             date = LocalDate.parse("2026-03-05"),
                             paymentMethod = PaymentMethod.Cash,
                             payer = Payer.Bride,
+                            vendorName = "행복인쇄소",
                             memo = null,
                             icon = Icons.Rounded.Print,
                             accent = Color(0xFF3B82F6),
@@ -139,6 +142,7 @@ data class ExpensesUiState(
                             date = LocalDate.parse("2026-02-28"),
                             paymentMethod = PaymentMethod.Card,
                             payer = Payer.Bride,
+                            vendorName = "스냅포토",
                             memo = null,
                             icon = Icons.Rounded.CameraAlt,
                             accent = Color(0xFFA855F7),
@@ -204,6 +208,7 @@ data class ExpenseListItem(
     val date: LocalDate,
     val paymentMethod: PaymentMethod,
     val payer: Payer,
+    val vendorName: String?,
     val memo: String?,
     val icon: ImageVector,
     val accent: Color,
@@ -319,6 +324,7 @@ sealed interface MoneyAction {
     data object OnSaveExpenseFilterPreset : MoneyAction
     data class OnSelectExpenseFilterPreset(val id: String) : MoneyAction
     data object OnClickAdd : MoneyAction
+    data object OnClickManageCategories : MoneyAction
     data object OnClickNotifications : MoneyAction
     data object OnClickSettings : MoneyAction
     data object OnToggleBudgetFilter : MoneyAction
@@ -336,12 +342,17 @@ sealed interface MoneyAction {
         val memo: String?,
     ) : MoneyAction
 
+    data class OnCreateCategory(
+        val name: String,
+    ) : MoneyAction
+
     data class OnCreateExpense(
         val budgetItemId: String,
         val amount: Int,
         val date: LocalDate,
         val paymentMethod: PaymentMethod,
         val payer: Payer,
+        val vendorName: String?,
         val memo: String?,
     ) : MoneyAction
 
@@ -353,6 +364,11 @@ sealed interface MoneyAction {
         val memo: String?,
     ) : MoneyAction
 
+    data class OnUpdateCategory(
+        val id: String,
+        val name: String,
+    ) : MoneyAction
+
     data class OnUpdateExpense(
         val id: String,
         val budgetItemId: String,
@@ -360,6 +376,7 @@ sealed interface MoneyAction {
         val date: LocalDate,
         val paymentMethod: PaymentMethod,
         val payer: Payer,
+        val vendorName: String?,
         val memo: String?,
     ) : MoneyAction
 

@@ -22,6 +22,7 @@ class ToolsRepositoryImpl(
     private val supabaseClient: SupabaseClient,
 ) : ToolsRepository {
 
+    private var cachedUserId: String? = null
     private var cachedWeddingId: String? = null
 
     override suspend fun fetchVenues(): ToolsResult<List<Venue>> {
@@ -170,12 +171,13 @@ class ToolsRepositoryImpl(
     }
 
     private suspend fun getWeddingId(): String {
-        cachedWeddingId?.let { return it }
-
         val user = supabaseClient.auth.currentUserOrNull()
             ?: throw IllegalStateException("로그인이 필요합니다.")
 
         val userId = user.id
+        if (cachedUserId == userId) {
+            cachedWeddingId?.let { return it }
+        }
         val profile = try {
             supabaseClient
                 .from("profiles")
@@ -208,6 +210,7 @@ class ToolsRepositoryImpl(
             }
         }
 
+        cachedUserId = userId
         cachedWeddingId = weddingId
         return weddingId
     }

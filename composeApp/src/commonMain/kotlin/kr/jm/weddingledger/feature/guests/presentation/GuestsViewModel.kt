@@ -69,6 +69,7 @@ class GuestsViewModel(
             is GuestsAction.OnQuickSetAttendance -> quickSetAttendance(action.id, action.value)
             GuestsAction.OnDismissMessage -> _state.update { it.copy(message = null) }
 
+            GuestsAction.OnClickNotifications,
             GuestsAction.OnClickAdd,
             is GuestsAction.OnClickGuest,
             -> Unit

@@ -181,6 +181,7 @@ sealed interface GuestsAction {
     data class OnSearchQueryChange(val value: String) : GuestsAction
     data class OnSelectFilter(val id: String) : GuestsAction
     data object OnRefresh : GuestsAction
+    data object OnClickNotifications : GuestsAction
     data object OnClickAdd : GuestsAction
     data class OnClickGuest(val id: String) : GuestsAction
     data class OnCreateGuest(

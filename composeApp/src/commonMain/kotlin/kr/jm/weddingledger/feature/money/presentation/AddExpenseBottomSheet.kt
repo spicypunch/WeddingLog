@@ -107,18 +107,17 @@ fun AddExpenseBottomSheet(
                     onSelect = { onAction(AddExpenseAction.OnSelectBudgetItem(it)) }
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SegmentedTwoOption(
-                        label = "결제 수단",
-                        left = PaymentMethod.Card.label,
-                        right = PaymentMethod.Cash.label,
-                        leftSelected = state.paymentMethod == PaymentMethod.Card,
-                        rightSelected = state.paymentMethod == PaymentMethod.Cash,
-                        onSelectLeft = { onAction(AddExpenseAction.OnSelectPaymentMethod(PaymentMethod.Card)) },
-                        onSelectRight = { onAction(AddExpenseAction.OnSelectPaymentMethod(PaymentMethod.Cash)) },
-                        modifier = Modifier.weight(1f)
-                    )
+                VendorNameSection(
+                    vendorName = state.vendorName,
+                    onVendorNameChange = { onAction(AddExpenseAction.OnVendorNameChange(it)) }
+                )
 
+                PaymentMethodSection(
+                    selected = state.paymentMethod,
+                    onSelect = { onAction(AddExpenseAction.OnSelectPaymentMethod(it)) },
+                )
+
+                if (state.paymentMethod != PaymentMethod.JointAccount) {
                     SegmentedTwoOption(
                         label = "결제자",
                         left = Payer.Groom.label,
@@ -127,7 +126,6 @@ fun AddExpenseBottomSheet(
                         rightSelected = state.payer == Payer.Bride,
                         onSelectLeft = { onAction(AddExpenseAction.OnSelectPayer(Payer.Groom)) },
                         onSelectRight = { onAction(AddExpenseAction.OnSelectPayer(Payer.Bride)) },
-                        modifier = Modifier.weight(1f)
                     )
                 }
 
@@ -355,6 +353,36 @@ private fun CategorySelector(
 }
 
 @Composable
+private fun VendorNameSection(
+    vendorName: String,
+    onVendorNameChange: (String) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "업체명 (선택)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+        TextField(
+            value = vendorName,
+            onValueChange = onVendorNameChange,
+            placeholder = { Text(text = "예: 라비앙 웨딩홀") },
+            singleLine = true,
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+            ),
+            shape = MaterialTheme.shapes.large,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@Composable
 private fun SegmentedTwoOption(
     label: String,
     left: String,
@@ -392,6 +420,50 @@ private fun SegmentedTwoOption(
                     selected = rightSelected,
                     onClick = onSelectRight,
                     modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PaymentMethodSection(
+    selected: PaymentMethod,
+    onSelect: (PaymentMethod) -> Unit,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "결제 수단",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = MaterialTheme.shapes.small,
+        ) {
+            Row(modifier = Modifier.padding(4.dp)) {
+                SegmentButton(
+                    text = PaymentMethod.Card.label,
+                    selected = selected == PaymentMethod.Card,
+                    onClick = { onSelect(PaymentMethod.Card) },
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                SegmentButton(
+                    text = PaymentMethod.Cash.label,
+                    selected = selected == PaymentMethod.Cash,
+                    onClick = { onSelect(PaymentMethod.Cash) },
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                SegmentButton(
+                    text = PaymentMethod.JointAccount.label,
+                    selected = selected == PaymentMethod.JointAccount,
+                    onClick = { onSelect(PaymentMethod.JointAccount) },
+                    modifier = Modifier.weight(1f),
                 )
             }
         }

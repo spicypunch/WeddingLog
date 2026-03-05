@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-03-04  
+마지막 갱신: 2026-03-05  
 워크스페이스: `/Users/mackim/AndroidStudioProjects/WeddingLedger`
 
 ---
@@ -287,6 +287,23 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
   - Kakao 로그인 iOS/Android 모두 성공 확인
   - 다음 단계는 Apple provider 설정 및 검증
 
+### 2-14) Money/탑바 UX 개선 + 계정 전환 캐시 안정화 (2026-03-05)
+
+- Money 필수 UX/데이터 확장:
+  - 지출 입력에 `업체명(선택)` 필드 추가 및 목록 서브텍스트(`날짜 · 업체명`) 표시
+  - 결제 수단에 `공동계좌` 추가
+  - `공동계좌` 선택 시 결제자 입력 숨김 + 내부 결제자 `공동` 자동 세팅
+  - 카테고리 관리 바텀시트 추가(사용자 카테고리 추가/수정)
+- DB 반영:
+  - `public.expenses.vendor_name text` 컬럼 추가 적용
+- 상단 헤더 통일:
+  - 홈/돈/일정/하객 상단 액션을 `알림 아이콘 1개`로 통일
+  - 공용 컴포넌트 `WeddingLogTopBar` 신설 후 4개 탭 적용
+- 계정 전환 안정화:
+  - `cachedWeddingId` 단독 캐시를 `cachedUserId + cachedWeddingId` 방식으로 교체
+  - 적용 대상: Money/Guests/Schedule(Checklist/Event)/Tools Repository
+  - 효과: 로그아웃/계정 전환 시 이전 weddingId 재사용 방지
+
 ---
 
 ## 3) Supabase 상태 (MCP 재확인, 2026-02-16)
@@ -325,6 +342,12 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 ./gradlew :composeApp:assembleDebug
 # iOS host
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+```
+
+성공(2026-03-05 기준):
+
+```bash
+./gradlew :composeApp:assembleDebug
 ```
 
 수동 QA(2026-03-04):

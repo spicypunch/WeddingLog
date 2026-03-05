@@ -19,7 +19,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -40,6 +39,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kr.jm.weddingledger.core.ui.components.WeddingLogTopBar
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -57,10 +57,26 @@ fun HomeScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        HomeTopBar(
-            appName = state.appName,
-            title = state.dDayTitle,
-            onClickNotifications = { onAction(HomeAction.OnClickNotifications) }
+        WeddingLogTopBar(
+            onClickNotifications = { onAction(HomeAction.OnClickNotifications) },
+            horizontalPadding = 24.dp,
+            topPadding = 20.dp,
+            bottomPadding = 16.dp,
+            titleContent = {
+                Column {
+                    Text(
+                        text = state.appName,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = state.dDayTitle,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         )
 
         Box(
@@ -128,49 +144,6 @@ fun HomeScreen(
                     .padding(end = 24.dp, bottom = 24.dp)
             ) {
                 Icon(imageVector = Icons.Rounded.Add, contentDescription = "추가")
-            }
-        }
-    }
-}
-
-@Composable
-private fun HomeTopBar(
-    appName: String,
-    title: String,
-    onClickNotifications: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp)
-            .padding(top = 20.dp, bottom = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column {
-            Text(
-                text = appName,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Surface(
-            modifier = Modifier
-                .clip(CircleShape),
-            color = Color.Transparent,
-            onClick = onClickNotifications
-        ) {
-            Box(modifier = Modifier.padding(8.dp)) {
-                Icon(
-                    imageVector = Icons.Rounded.NotificationsNone,
-                    contentDescription = "알림"
-                )
             }
         }
     }

@@ -27,6 +27,7 @@ import kr.jm.weddingledger.feature.money.domain.model.MoneyResult
 import kr.jm.weddingledger.feature.money.domain.model.MoneySnapshot
 import kr.jm.weddingledger.feature.money.domain.model.NewBudgetItem
 import kr.jm.weddingledger.feature.money.domain.model.NewExpense
+import kr.jm.weddingledger.feature.money.domain.usecase.AddCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddExpenseUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.DeleteBudgetItemUseCase
@@ -35,14 +36,17 @@ import kr.jm.weddingledger.feature.money.domain.usecase.FetchExpenseFilterPrefer
 import kr.jm.weddingledger.feature.money.domain.usecase.FetchMoneySnapshotUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.SaveExpenseFilterPreferenceUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateBudgetItemUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.UpdateCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateExpenseUseCase
 
 class MoneyViewModel(
     private val fetchMoneySnapshotUseCase: FetchMoneySnapshotUseCase,
     private val fetchExpenseFilterPreferenceUseCase: FetchExpenseFilterPreferenceUseCase,
     private val saveExpenseFilterPreferenceUseCase: SaveExpenseFilterPreferenceUseCase,
+    private val addCategoryUseCase: AddCategoryUseCase,
     private val addBudgetItemUseCase: AddBudgetItemUseCase,
     private val addExpenseUseCase: AddExpenseUseCase,
+    private val updateCategoryUseCase: UpdateCategoryUseCase,
     private val updateBudgetItemUseCase: UpdateBudgetItemUseCase,
     private val updateExpenseUseCase: UpdateExpenseUseCase,
     private val deleteBudgetItemUseCase: DeleteBudgetItemUseCase,
@@ -89,14 +93,17 @@ class MoneyViewModel(
             is MoneyAction.OnToggleBudgetCategory -> toggleBudgetCategory(action.id)
             MoneyAction.OnRefresh -> refresh(showLoading = false, isRefreshing = true)
 
+            is MoneyAction.OnCreateCategory -> createCategory(action)
             is MoneyAction.OnCreateBudgetItem -> createBudgetItem(action)
             is MoneyAction.OnCreateExpense -> createExpense(action)
+            is MoneyAction.OnUpdateCategory -> updateCategory(action)
             is MoneyAction.OnUpdateBudgetItem -> updateBudgetItem(action)
             is MoneyAction.OnUpdateExpense -> updateExpense(action)
             is MoneyAction.OnDeleteBudgetItem -> deleteBudgetItem(action)
             is MoneyAction.OnDeleteExpense -> deleteExpense(action)
 
             MoneyAction.OnClickAdd -> Unit // handled in Route (bottom sheets)
+            MoneyAction.OnClickManageCategories -> Unit // handled in Route (bottom sheets)
             MoneyAction.OnClickNotifications -> Unit // handled in Route (navigation)
             MoneyAction.OnClickSettings -> Unit // handled in Route (navigation)
             is MoneyAction.OnClickBudgetAddItem -> Unit // handled in Route (bottom sheet)
@@ -328,6 +335,27 @@ class MoneyViewModel(
         }
     }
 
+    private fun createCategory(action: MoneyAction.OnCreateCategory) {
+        val categoryName = action.name.trim()
+        if (categoryName.isEmpty()) {
+            _state.update { it.copy(message = "카테고리 이름을 입력해주세요.") }
+            return
+        }
+
+        if (isDuplicateCategoryName(categoryName = categoryName)) {
+            _state.update { it.copy(message = "같은 이름의 카테고리가 이미 있습니다.") }
+            return
+        }
+
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
+        viewModelScope.launch {
+            when (val result = addCategoryUseCase(categoryName)) {
+                is MoneyResult.Success -> refresh(showLoading = false)
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+            }
+        }
+    }
+
     private fun createExpense(action: MoneyAction.OnCreateExpense) {
         _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
 
@@ -338,10 +366,41 @@ class MoneyViewModel(
                 date = action.date,
                 paymentMethod = action.paymentMethod,
                 payer = action.payer,
+                vendorName = action.vendorName,
                 memo = action.memo,
             )
 
             when (val result = addExpenseUseCase(expense)) {
+                is MoneyResult.Success -> refresh(showLoading = false)
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+            }
+        }
+    }
+
+    private fun updateCategory(action: MoneyAction.OnUpdateCategory) {
+        val categoryName = action.name.trim()
+        if (categoryName.isEmpty()) {
+            _state.update { it.copy(message = "카테고리 이름을 입력해주세요.") }
+            return
+        }
+
+        val currentCategory = latestSnapshot
+            ?.categories
+            ?.firstOrNull { it.id == action.id }
+
+        if (currentCategory != null && currentCategory.name.trim() == categoryName) {
+            _state.update { it.copy(message = "변경된 내용이 없습니다.") }
+            return
+        }
+
+        if (isDuplicateCategoryName(categoryName = categoryName, excludedCategoryId = action.id)) {
+            _state.update { it.copy(message = "같은 이름의 카테고리가 이미 있습니다.") }
+            return
+        }
+
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
+        viewModelScope.launch {
+            when (val result = updateCategoryUseCase(action.id, categoryName)) {
                 is MoneyResult.Success -> refresh(showLoading = false)
                 is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
             }
@@ -376,6 +435,7 @@ class MoneyViewModel(
                 date = action.date,
                 paymentMethod = action.paymentMethod,
                 payer = action.payer,
+                vendorName = action.vendorName,
                 memo = action.memo,
             )
 
@@ -384,6 +444,19 @@ class MoneyViewModel(
                 is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
             }
         }
+    }
+
+    private fun isDuplicateCategoryName(
+        categoryName: String,
+        excludedCategoryId: String? = null,
+    ): Boolean {
+        return latestSnapshot
+            ?.categories
+            ?.any { category ->
+                category.id != excludedCategoryId &&
+                    category.name.trim().equals(categoryName, ignoreCase = true)
+            }
+            ?: false
     }
 
     private fun deleteBudgetItem(action: MoneyAction.OnDeleteBudgetItem) {
@@ -596,6 +669,7 @@ private fun MoneySnapshot.toExpensesUiState(
                             date = exp.date,
                             paymentMethod = exp.paymentMethod,
                             payer = exp.payer,
+                            vendorName = exp.vendorName,
                             memo = exp.memo,
                             icon = visuals.icon,
                             accent = visuals.accent,

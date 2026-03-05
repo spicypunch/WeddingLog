@@ -67,6 +67,8 @@ data class ExpenseRowDto(
     @SerialName("payment_method")
     val paymentMethod: String,
     val payer: String,
+    @SerialName("vendor_name")
+    val vendorName: String? = null,
     val memo: String? = null,
     @SerialName("image_url")
     val imageUrl: String? = null,
@@ -87,6 +89,7 @@ data class ExpenseInsertDto(
     @SerialName("payment_method")
     val paymentMethod: String,
     val payer: String,
+    @SerialName("vendor_name")
+    val vendorName: String? = null,
     val memo: String? = null,
 )
-

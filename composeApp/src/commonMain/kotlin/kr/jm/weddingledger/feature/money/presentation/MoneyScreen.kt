@@ -21,8 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.NotificationsNone
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -46,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kr.jm.weddingledger.core.ui.components.WeddingLogTopBar
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -58,10 +57,16 @@ fun MoneyScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        MoneyHeader(
-            title = "나의 웨딩 관리",
+        WeddingLogTopBar(
             onClickNotifications = { onAction(MoneyAction.OnClickNotifications) },
-            onClickSettings = { onAction(MoneyAction.OnClickSettings) }
+            titleContent = {
+                Text(
+                    text = "나의 웨딩 관리",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         )
 
         PrimaryTabRow(
@@ -142,49 +147,6 @@ fun MoneyScreen(
                     .padding(end = 24.dp, bottom = 24.dp)
             ) {
                 Icon(imageVector = Icons.Rounded.Add, contentDescription = "추가")
-            }
-        }
-    }
-}
-
-@Composable
-private fun MoneyHeader(
-    title: String,
-    onClickNotifications: () -> Unit,
-    onClickSettings: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 16.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontWeight = FontWeight.SemiBold
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Surface(
-                onClick = onClickNotifications,
-                color = Color.Transparent,
-                shape = CircleShape
-            ) {
-                Box(modifier = Modifier.padding(8.dp)) {
-                    Icon(imageVector = Icons.Rounded.NotificationsNone, contentDescription = "알림")
-                }
-            }
-            Surface(
-                onClick = onClickSettings,
-                color = Color.Transparent,
-                shape = CircleShape
-            ) {
-                Box(modifier = Modifier.padding(8.dp)) {
-                    Icon(imageVector = Icons.Rounded.Settings, contentDescription = "설정")
-                }
             }
         }
     }
@@ -421,8 +383,13 @@ private fun ExpenseRow(
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold
                     )
+                    val subtitle = item.vendorName
+                        ?.trim()
+                        ?.takeIf { it.isNotEmpty() }
+                        ?.let { "${item.dateText} · $it" }
+                        ?: item.dateText
                     Text(
-                        text = item.dateText,
+                        text = subtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -464,8 +431,16 @@ private fun BudgetTab(
                     color = MaterialTheme.colorScheme.onBackground,
                     fontWeight = FontWeight.Bold
                 )
-                TextButton(onClick = { onAction(MoneyAction.OnToggleBudgetFilter) }) {
-                    Text(text = if (state.isOverBudgetOnly) "초과 예산만" else "전체")
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = { onAction(MoneyAction.OnClickManageCategories) }) {
+                        Text(text = "카테고리 관리")
+                    }
+                    TextButton(onClick = { onAction(MoneyAction.OnToggleBudgetFilter) }) {
+                        Text(text = if (state.isOverBudgetOnly) "초과 예산만" else "전체")
+                    }
                 }
             }
         }

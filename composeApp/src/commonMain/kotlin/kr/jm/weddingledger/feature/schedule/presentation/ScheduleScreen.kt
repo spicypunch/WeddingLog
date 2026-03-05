@@ -25,7 +25,6 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.NotificationsNone
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -56,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kr.jm.weddingledger.core.ui.components.WeddingLogTopBar
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -73,9 +73,15 @@ fun ScheduleScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        ScheduleHeader(
-            title = "WeddingLog",
+        WeddingLogTopBar(
             onClickNotifications = { onAction(ScheduleAction.OnClickNotifications) },
+            titleContent = {
+                Text(
+                    text = "웨딩로그",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+            }
         )
 
         PrimaryTabRow(
@@ -132,41 +138,6 @@ fun ScheduleScreen(
                     .padding(end = 24.dp, bottom = 24.dp)
             ) {
                 Icon(imageVector = Icons.Rounded.Add, contentDescription = "추가")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ScheduleHeader(
-    title: String,
-    onClickNotifications: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 16.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Surface(
-            onClick = onClickNotifications,
-            color = MaterialTheme.colorScheme.surface,
-            shape = CircleShape,
-            shadowElevation = 0.dp
-        ) {
-            Box(modifier = Modifier.padding(8.dp)) {
-                Icon(
-                    imageVector = Icons.Rounded.NotificationsNone,
-                    contentDescription = "알림",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

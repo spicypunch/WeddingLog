@@ -55,7 +55,9 @@ fun AppNavHost(
             )
         }
         composable(TopLevelDestination.Guests.route) {
-            GuestsRoute()
+            GuestsRoute(
+                onOpenNotifications = { navController.navigate(AppRoutes.NotificationCenter) },
+            )
         }
         composable(TopLevelDestination.Tools.route) {
             ToolsRoute(

@@ -19,11 +19,13 @@ data class BudgetItem(
 enum class PaymentMethod(val label: String) {
     Card("카드"),
     Cash("현금"),
+    JointAccount("공동계좌"),
 }
 
 enum class Payer(val label: String) {
     Groom("신랑"),
     Bride("신부"),
+    Joint("공동"),
 }
 
 data class Expense(
@@ -33,6 +35,7 @@ data class Expense(
     val date: LocalDate,
     val paymentMethod: PaymentMethod,
     val payer: Payer,
+    val vendorName: String?,
     val memo: String?,
     val imageUrl: String?,
 )
@@ -56,6 +59,6 @@ data class NewExpense(
     val date: LocalDate,
     val paymentMethod: PaymentMethod,
     val payer: Payer,
+    val vendorName: String?,
     val memo: String?,
 )
-

@@ -17,6 +17,7 @@ data class AddExpenseUiState(
     val selectedBudgetItemId: String?,
     val paymentMethod: PaymentMethod,
     val payer: Payer,
+    val vendorName: String,
     val memo: String,
 ) {
     val isSaveEnabled: Boolean
@@ -34,6 +35,7 @@ data class AddExpenseUiState(
             selectedBudgetItemId = null,
             paymentMethod = PaymentMethod.Card,
             payer = Payer.Bride,
+            vendorName = "",
             memo = "",
         )
     }
@@ -48,5 +50,6 @@ sealed interface AddExpenseAction {
     data class OnSelectBudgetItem(val id: String) : AddExpenseAction
     data class OnSelectPaymentMethod(val method: PaymentMethod) : AddExpenseAction
     data class OnSelectPayer(val payer: Payer) : AddExpenseAction
+    data class OnVendorNameChange(val value: String) : AddExpenseAction
     data class OnMemoChange(val value: String) : AddExpenseAction
 }

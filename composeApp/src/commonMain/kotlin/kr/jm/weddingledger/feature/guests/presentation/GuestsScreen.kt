@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
@@ -44,6 +43,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kr.jm.weddingledger.core.ui.components.WeddingLogTopBar
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
@@ -102,8 +102,19 @@ private fun GuestsList(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            GuestsHeader(
-                onClickMore = { onAction(GuestsAction.OnRefresh) },
+            WeddingLogTopBar(
+                onClickNotifications = { onAction(GuestsAction.OnClickNotifications) },
+                horizontalPadding = 0.dp,
+                topPadding = 0.dp,
+                bottomPadding = 4.dp,
+                titleContent = {
+                    Text(
+                        text = "하객 관리",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
             )
         }
 
@@ -194,38 +205,6 @@ private fun GuestsList(
                     },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun GuestsHeader(
-    onClickMore: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = "하객 관리",
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontWeight = FontWeight.Bold
-        )
-        Surface(
-            onClick = onClickMore,
-            color = Color.Transparent,
-            shape = CircleShape,
-        ) {
-            Icon(
-                imageVector = Icons.Rounded.MoreHoriz,
-                contentDescription = "더보기",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(8.dp)
-            )
         }
     }
 }

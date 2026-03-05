@@ -7,9 +7,11 @@ import kr.jm.weddingledger.feature.money.domain.model.NewExpense
 
 interface MoneyRepository {
     suspend fun fetchSnapshot(): MoneyResult<MoneySnapshot>
+    suspend fun addCategory(name: String): MoneyResult<Unit>
     suspend fun addBudgetItem(item: NewBudgetItem): MoneyResult<Unit>
     suspend fun addExpense(expense: NewExpense): MoneyResult<Unit>
 
+    suspend fun updateCategory(id: String, name: String): MoneyResult<Unit>
     suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit>
     suspend fun updateExpense(id: String, expense: NewExpense): MoneyResult<Unit>
 

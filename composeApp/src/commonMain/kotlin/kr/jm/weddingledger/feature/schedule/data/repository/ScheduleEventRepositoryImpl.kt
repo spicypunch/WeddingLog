@@ -24,6 +24,7 @@ class ScheduleEventRepositoryImpl(
     private val supabaseClient: SupabaseClient,
 ) : ScheduleEventRepository {
 
+    private var cachedUserId: String? = null
     private var cachedWeddingId: String? = null
 
     override suspend fun fetchEvents(): ScheduleResult<List<ScheduleEvent>> {
@@ -137,12 +138,13 @@ class ScheduleEventRepositoryImpl(
     }
 
     private suspend fun getWeddingId(): String {
-        cachedWeddingId?.let { return it }
-
         val user = supabaseClient.auth.currentUserOrNull()
             ?: throw IllegalStateException("로그인이 필요합니다.")
 
         val userId = user.id
+        if (cachedUserId == userId) {
+            cachedWeddingId?.let { return it }
+        }
         val profile = try {
             supabaseClient
                 .from("profiles")
@@ -175,6 +177,7 @@ class ScheduleEventRepositoryImpl(
             }
         }
 
+        cachedUserId = userId
         cachedWeddingId = weddingId
         return weddingId
     }
