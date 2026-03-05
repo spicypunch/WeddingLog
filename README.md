@@ -99,3 +99,4 @@ Supabase 대시보드 권장값:
 ## 인수인계
 
 상세 변경 이력/백로그/검증 결과는 [HANDOVER.md](./HANDOVER.md)에서 확인할 수 있습니다.
+날짜별 세션 인수인계 문서는 `docs/handover/`에서 확인할 수 있습니다.

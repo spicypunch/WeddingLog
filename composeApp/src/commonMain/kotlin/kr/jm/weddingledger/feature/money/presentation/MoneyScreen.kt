@@ -139,7 +139,7 @@ fun MoneyScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 24.dp, bottom = 96.dp)
+                    .padding(end = 24.dp, bottom = 24.dp)
             ) {
                 Icon(imageVector = Icons.Rounded.Add, contentDescription = "추가")
             }
