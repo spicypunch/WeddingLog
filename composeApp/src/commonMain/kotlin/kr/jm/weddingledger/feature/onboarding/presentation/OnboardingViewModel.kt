@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingErrorType
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingStep
 import kr.jm.weddingledger.feature.onboarding.domain.usecase.CompleteOnboardingUseCase
@@ -106,7 +107,7 @@ class OnboardingViewModel(
                     }
                 }
                 is OnboardingResult.Error -> {
-                    if (result.message.requiresReauthentication()) {
+                    if (result.type == OnboardingErrorType.ReauthenticationRequired) {
                         _state.update { it.copy(step = OnboardingStep.Loading, isLoading = true, message = null) }
                         when (signOutUseCase()) {
                             is AuthResult.Success -> Unit
@@ -286,11 +287,3 @@ private fun normalizeInviteCode(value: String): String {
 }
 
 private fun isValidInviteCode(value: String): Boolean = inviteCodeRegex.matches(value)
-
-private fun String.requiresReauthentication(): Boolean {
-    val normalized = lowercase()
-    return normalized.contains("로그인이 필요") ||
-        normalized.contains("로그인이 만료") ||
-        normalized.contains("다시 로그인") ||
-        normalized.contains("계정 정보를 찾을 수 없습니다")
-}

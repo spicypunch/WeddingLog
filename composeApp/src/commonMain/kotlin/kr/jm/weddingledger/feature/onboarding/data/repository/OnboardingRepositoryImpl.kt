@@ -3,6 +3,7 @@ package kr.jm.weddingledger.feature.onboarding.data.repository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
+import io.github.jan.supabase.postgrest.exception.PostgrestRestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -17,6 +18,7 @@ import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.onboarding.data.dto.ProfileInsertDto
 import kr.jm.weddingledger.feature.onboarding.data.dto.ProfileRowDto
 import kr.jm.weddingledger.feature.onboarding.domain.model.MyProfile
+import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingErrorType
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
 import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
 import kr.jm.weddingledger.feature.onboarding.domain.repository.OnboardingRepository
@@ -38,7 +40,7 @@ class OnboardingRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseRepositoryThrowable(FEATURE_NAME, t)
-            OnboardingResult.Error(t.toProfileFetchMessage())
+            t.toProfileFetchError()
         }
     }
 
@@ -149,7 +151,7 @@ class OnboardingRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseRepositoryThrowable(FEATURE_NAME, t)
-            OnboardingResult.Error(t.toPartnerConnectMessage())
+            t.toPartnerConnectError()
         }
     }
 
@@ -235,7 +237,7 @@ class OnboardingRepositoryImpl(
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseRepositoryThrowable(FEATURE_NAME, t)
-            OnboardingResult.Error(t.toProfileFetchMessage())
+            t.toProfileFetchError()
         }
     }
 
@@ -298,87 +300,119 @@ private fun String?.parseRoleOrNull(): UserRole? = when (this?.trim()?.uppercase
     else -> null
 }
 
-private fun Throwable.toPartnerConnectMessage(): String {
+private fun Throwable.toPartnerConnectError(): OnboardingResult.Error {
     return when (this) {
-        is RestException -> toPartnerConnectMessage()
-        is IllegalStateException -> "로그인이 필요합니다."
-        else -> "파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+        is RestException -> toPartnerConnectError()
+        is IllegalStateException -> OnboardingResult.Error(
+            message = "로그인이 필요합니다.",
+            type = OnboardingErrorType.ReauthenticationRequired,
+        )
+        else -> OnboardingResult.Error("파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요.")
     }
 }
 
-private fun RestException.toPartnerConnectMessage(): String {
-    val normalized = listOfNotNull(error, description)
-        .joinToString(separator = " ")
-        .lowercase()
-
+private fun RestException.toPartnerConnectError(): OnboardingResult.Error {
+    val primaryMessage = primaryMessageOrNull()
     return when {
-        normalized.contains("내 초대 코드는 사용할 수 없습니다") -> "내 초대 코드는 사용할 수 없습니다."
-        normalized.contains("초대 코드를 입력해 주세요") -> "초대 코드를 입력해주세요."
-        normalized.contains("초대 코드가 유효하지 않습니다") -> "초대 코드가 올바르지 않습니다."
-        normalized.contains("로그인 후 사용해 주세요") -> "로그인이 만료되었습니다. 다시 로그인 후 시도해주세요."
-        statusCode == 401 -> "로그인이 필요합니다."
-        statusCode == 403 || normalized.contains("permission denied") -> "권한 문제로 파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
-        statusCode == 404 || (normalized.contains("join_wedding") && normalized.contains("does not exist")) ->
-            "서버 설정이 아직 반영되지 않았습니다. 잠시 후 다시 시도해주세요."
-        else -> "파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요."
+        primaryMessage.matchesErrorMessage("내 초대 코드는 사용할 수 없습니다") ->
+            OnboardingResult.Error("내 초대 코드는 사용할 수 없습니다.")
+        primaryMessage.matchesErrorMessage("초대 코드를 입력해 주세요") ->
+            OnboardingResult.Error("초대 코드를 입력해주세요.")
+        primaryMessage.matchesErrorMessage("초대 코드가 유효하지 않습니다") ->
+            OnboardingResult.Error("초대 코드가 올바르지 않습니다.")
+        primaryMessage.matchesErrorMessage("로그인 후 사용해 주세요") ->
+            OnboardingResult.Error(
+                message = "로그인이 만료되었습니다. 다시 로그인 후 시도해주세요.",
+                type = OnboardingErrorType.ReauthenticationRequired,
+            )
+        statusCode == 401 ->
+            OnboardingResult.Error(
+                message = "로그인이 필요합니다.",
+                type = OnboardingErrorType.ReauthenticationRequired,
+            )
+        statusCode == 403 || errorCodeOrNull() == POSTGRES_INSUFFICIENT_PRIVILEGE ->
+            OnboardingResult.Error("권한 문제로 파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요.")
+        statusCode == 404 || isJoinWeddingFunctionMissing() ->
+            OnboardingResult.Error("서버 설정이 아직 반영되지 않았습니다. 잠시 후 다시 시도해주세요.")
+        else -> OnboardingResult.Error("파트너 연결에 실패했습니다. 잠시 후 다시 시도해주세요.")
     }
 }
 
-private fun Throwable.toProfileFetchMessage(): String {
+private fun Throwable.toProfileFetchError(): OnboardingResult.Error {
     return when (this) {
-        is IllegalStateException -> "로그인이 필요합니다. 다시 로그인해주세요."
-        is RestException -> toProfileFetchMessage()
-        else -> "프로필 정보를 불러오지 못했습니다."
+        is IllegalStateException -> OnboardingResult.Error(
+            message = "로그인이 필요합니다. 다시 로그인해주세요.",
+            type = OnboardingErrorType.ReauthenticationRequired,
+        )
+        is RestException -> toProfileFetchError()
+        else -> OnboardingResult.Error("프로필 정보를 불러오지 못했습니다.")
     }
 }
 
-private fun RestException.toProfileFetchMessage(): String {
-    val normalized = listOfNotNull(error, description)
-        .joinToString(separator = " ")
-        .lowercase()
-
+private fun RestException.toProfileFetchError(): OnboardingResult.Error {
+    val primaryMessage = primaryMessageOrNull()
     return when {
-        statusCode == 401 ||
-            (normalized.contains("jwt") && normalized.contains("expired")) -> {
-            "로그인이 만료되었습니다. 다시 로그인해주세요."
-        }
-        statusCode == 403 -> "로그인 권한을 확인할 수 없습니다. 다시 로그인해주세요."
-        normalized.contains("profiles_id_fkey") ||
-            (normalized.contains("violates foreign key constraint") &&
-                normalized.contains("profiles") &&
-                normalized.contains("auth.users")) -> {
-            "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요."
-        }
-        else -> "프로필 정보를 불러오지 못했습니다."
+        statusCode == 401 || primaryMessage.matchesErrorMessage("jwt expired") ->
+            OnboardingResult.Error(
+                message = "로그인이 만료되었습니다. 다시 로그인해주세요.",
+                type = OnboardingErrorType.ReauthenticationRequired,
+            )
+        statusCode == 403 || errorCodeOrNull() == POSTGRES_INSUFFICIENT_PRIVILEGE ->
+            OnboardingResult.Error(
+                message = "로그인 권한을 확인할 수 없습니다. 다시 로그인해주세요.",
+                type = OnboardingErrorType.ReauthenticationRequired,
+            )
+        errorCodeOrNull() == POSTGRES_FOREIGN_KEY_VIOLATION ->
+            OnboardingResult.Error(
+                message = "계정 정보를 찾을 수 없습니다. 다시 로그인해주세요.",
+                type = OnboardingErrorType.ReauthenticationRequired,
+            )
+        else -> OnboardingResult.Error("프로필 정보를 불러오지 못했습니다.")
     }
 }
 
 private fun RestException.isJoinWeddingParamMismatch(): Boolean {
-    val normalized = listOfNotNull(error, description)
-        .joinToString(separator = " ")
-        .lowercase()
-
-    val postgrestFunctionNotFound =
-        normalized.contains("pgrst202") ||
-            normalized.contains("could not find the function") ||
-            normalized.contains("no matches were found in the schema cache")
-
-    return normalized.contains("join_wedding") &&
-        (
-            postgrestFunctionNotFound ||
-            normalized.contains("does not exist") ||
-                normalized.contains("unexpected parameter")
-            )
+    return isJoinWeddingFunctionMissing()
 }
 
 private fun Throwable.isInviteCodeConflict(): Boolean {
-    if (this !is RestException) return false
-    val normalized = listOfNotNull(error, description)
-        .joinToString(separator = " ")
+    return this is RestException &&
+        (errorCodeOrNull() == POSTGRES_UNIQUE_VIOLATION || statusCode == 409)
+}
+
+private fun RestException.isJoinWeddingFunctionMissing(): Boolean {
+    return errorCodeOrNull() == POSTGREST_FUNCTION_NOT_FOUND ||
+        errorCodeOrNull() == POSTGRES_UNDEFINED_FUNCTION ||
+        statusCode == 404
+}
+
+private fun RestException.errorCodeOrNull(): String? {
+    return (this as? PostgrestRestException)?.code?.trim()?.uppercase()
+}
+
+private fun RestException.primaryMessageOrNull(): String? {
+    return error
+        .trim()
+        .ifBlank { description?.lineSequence()?.firstOrNull()?.trim().orEmpty() }
+        .ifBlank { null }
+}
+
+private fun String?.matchesErrorMessage(expected: String): Boolean {
+    return this?.normalizeErrorMessage() == expected.normalizeErrorMessage()
+}
+
+private fun String.normalizeErrorMessage(): String {
+    return trim()
         .lowercase()
-    return normalized.contains("duplicate key") ||
-        normalized.contains("profiles_invite_code_key") ||
-        normalized.contains("23505")
+        .replace(" ", "")
+        .removeSuffix(".")
+        .removeSuffix("!")
+        .removeSuffix("?")
 }
 
 private const val FEATURE_NAME: String = "Onboarding"
+private const val POSTGRES_FOREIGN_KEY_VIOLATION: String = "23503"
+private const val POSTGRES_INSUFFICIENT_PRIVILEGE: String = "42501"
+private const val POSTGRES_UNDEFINED_FUNCTION: String = "42883"
+private const val POSTGRES_UNIQUE_VIOLATION: String = "23505"
+private const val POSTGREST_FUNCTION_NOT_FOUND: String = "PGRST202"
