@@ -12,17 +12,14 @@ class WeddingIdResolver(
     private val supabaseClient: SupabaseClient,
 ) {
 
-    private var cachedUserId: String? = null
-    private var cachedWeddingId: String? = null
+    private val cache = WeddingIdCache()
 
     suspend fun resolve(): String {
         val user = supabaseClient.auth.currentUserOrNull()
             ?: throw IllegalStateException("로그인이 필요합니다.")
 
         val userId = user.id
-        if (cachedUserId == userId) {
-            cachedWeddingId?.let { return it }
-        }
+        cache.get(userId)?.let { return it }
 
         val profile = try {
             supabaseClient
@@ -56,9 +53,25 @@ class WeddingIdResolver(
             }
         }
 
+        cache.put(userId = userId, weddingId = weddingId)
+        return weddingId
+    }
+}
+
+internal class WeddingIdCache {
+    private var cachedUserId: String? = null
+    private var cachedWeddingId: String? = null
+
+    fun get(userId: String): String? {
+        return if (cachedUserId == userId) cachedWeddingId else null
+    }
+
+    fun put(
+        userId: String,
+        weddingId: String,
+    ) {
         cachedUserId = userId
         cachedWeddingId = weddingId
-        return weddingId
     }
 }
 

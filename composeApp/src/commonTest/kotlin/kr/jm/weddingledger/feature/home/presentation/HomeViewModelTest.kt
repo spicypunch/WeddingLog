@@ -49,6 +49,7 @@ class HomeViewModelTest {
                             date = today,
                             paymentMethod = PaymentMethod.Card,
                             payer = Payer.Groom,
+                            vendorName = null,
                             memo = null,
                             imageUrl = null,
                         )
@@ -111,11 +112,15 @@ class HomeViewModelTest {
 private class FakeMoneyRepositoryForHome(
     private val result: MoneyResult<MoneySnapshot>,
 ) : MoneyRepository {
+    override suspend fun addCategory(name: String): MoneyResult<Unit> = MoneyResult.Success(Unit)
+
     override suspend fun fetchSnapshot(): MoneyResult<MoneySnapshot> = result
 
     override suspend fun addBudgetItem(item: NewBudgetItem): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
     override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> = MoneyResult.Success(Unit)
+
+    override suspend fun updateCategory(id: String, name: String): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
     override suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit> = MoneyResult.Success(Unit)
 

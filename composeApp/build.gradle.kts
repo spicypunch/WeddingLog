@@ -3,7 +3,7 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidApplication)
+    alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinxSerialization)
@@ -41,9 +41,17 @@ val appVersionCode: Int = 1
 val appVersionName: String = "1.0.0"
 
 kotlin {
-    androidTarget {
+    androidLibrary {
+        namespace = "kr.jm.weddingledger.composeapp"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
+        }
+
+        androidResources {
+            enable = true
         }
     }
     
@@ -59,10 +67,6 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
-            implementation(compose.preview)
-            implementation(libs.androidx.activity.compose)
-            implementation(libs.androidx.core.ktx)
-            implementation(libs.koin.android)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kakao.user)
         }
@@ -136,42 +140,8 @@ kotlin {
     }
 }
 
-android {
-    namespace = "kr.jm.weddingledger"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    defaultConfig {
-        applicationId = "kr.jm.weddingledger"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = appVersionCode
-        versionName = appVersionName
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders["kakaoNativeAppKeySchemeSuffix"] = kakaoNativeAppKeySchemeSuffix
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
-        }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-}
-
 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
 dependencies {
-    debugImplementation(compose.uiTooling)
-    androidTestImplementation(compose.uiTestJUnit4)
-    androidTestImplementation(libs.androidx.testExt.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    
     // Room KSP
     add("kspAndroid", libs.androidx.room.compiler)
     add("kspIosSimulatorArm64", libs.androidx.room.compiler)

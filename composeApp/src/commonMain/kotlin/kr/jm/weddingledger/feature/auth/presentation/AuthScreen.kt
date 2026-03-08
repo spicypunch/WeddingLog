@@ -91,7 +91,6 @@ private fun SignInScreen(
     val isImeVisible = rememberImeVisible()
     val scrollState = rememberScrollState()
     val isAndroid = getPlatform().name.startsWith("Android", ignoreCase = true)
-    var isEmailLoginExpanded by remember { mutableStateOf(false) }
     val socialOrder = if (isAndroid) {
         listOf(SocialProvider.Kakao, SocialProvider.Google, SocialProvider.Apple)
     } else {
@@ -241,6 +240,11 @@ private fun SignInScreen(
                     )
                 }
 
+                /*
+                 * Email/OTP login UI is intentionally hidden for now.
+                 * The underlying ViewModel/use case/repository flow is still kept alive so
+                 * this block can be restored quickly by uncommenting it.
+                 *
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -260,6 +264,8 @@ private fun SignInScreen(
                         color = border,
                     )
                 }
+
+                var isEmailLoginExpanded by remember { mutableStateOf(false) }
 
                 TextButton(
                     onClick = { isEmailLoginExpanded = !isEmailLoginExpanded },
@@ -384,6 +390,7 @@ private fun SignInScreen(
                         }
                     }
                 }
+                */
 
                 if (state.shouldShowVerificationGuide) {
                     EmailVerificationGuideCard(
@@ -405,13 +412,6 @@ private fun SignInScreen(
                     )
                 }
 
-                Text(
-                    text = "비밀번호 로그인/회원가입은 현재 비활성화되어 있습니다.",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = textMuted,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                )
             }
 
             Spacer(modifier = Modifier.height(28.dp))

@@ -18,6 +18,7 @@ import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 import kr.jm.weddingledger.feature.money.domain.repository.MoneyFilterPreferenceRepository
 import kr.jm.weddingledger.feature.money.domain.repository.MoneyRepository
+import kr.jm.weddingledger.feature.money.domain.usecase.AddCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddExpenseUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.DeleteBudgetItemUseCase
@@ -26,6 +27,7 @@ import kr.jm.weddingledger.feature.money.domain.usecase.FetchExpenseFilterPrefer
 import kr.jm.weddingledger.feature.money.domain.usecase.FetchMoneySnapshotUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.SaveExpenseFilterPreferenceUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateBudgetItemUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.UpdateCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateExpenseUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
 
@@ -108,8 +110,10 @@ private fun createViewModel(
         fetchMoneySnapshotUseCase = FetchMoneySnapshotUseCase(repository),
         fetchExpenseFilterPreferenceUseCase = FetchExpenseFilterPreferenceUseCase(preferenceRepository),
         saveExpenseFilterPreferenceUseCase = SaveExpenseFilterPreferenceUseCase(preferenceRepository),
+        addCategoryUseCase = AddCategoryUseCase(repository),
         addBudgetItemUseCase = AddBudgetItemUseCase(repository),
         addExpenseUseCase = AddExpenseUseCase(repository),
+        updateCategoryUseCase = UpdateCategoryUseCase(repository),
         updateBudgetItemUseCase = UpdateBudgetItemUseCase(repository),
         updateExpenseUseCase = UpdateExpenseUseCase(repository),
         deleteBudgetItemUseCase = DeleteBudgetItemUseCase(repository),
@@ -123,9 +127,13 @@ private class FakeMoneyRepositoryForViewModel(
 
     override suspend fun fetchSnapshot(): MoneyResult<MoneySnapshot> = MoneyResult.Success(snapshot)
 
+    override suspend fun addCategory(name: String): MoneyResult<Unit> = MoneyResult.Success(Unit)
+
     override suspend fun addBudgetItem(item: NewBudgetItem): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
     override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> = MoneyResult.Success(Unit)
+
+    override suspend fun updateCategory(id: String, name: String): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
     override suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
@@ -169,6 +177,7 @@ private fun sampleSnapshot(): MoneySnapshot {
             date = LocalDate.parse("2026-03-10"),
             paymentMethod = PaymentMethod.Card,
             payer = Payer.Groom,
+            vendorName = null,
             memo = "추가 옵션 포함",
             imageUrl = null,
         ),
@@ -179,6 +188,7 @@ private fun sampleSnapshot(): MoneySnapshot {
             date = LocalDate.parse("2026-03-11"),
             paymentMethod = PaymentMethod.Cash,
             payer = Payer.Bride,
+            vendorName = null,
             memo = null,
             imageUrl = null,
         ),

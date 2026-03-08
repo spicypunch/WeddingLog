@@ -12,6 +12,7 @@ import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.model.MyProfile
+import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingErrorType
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingStep
 import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
@@ -150,7 +151,10 @@ class OnboardingViewModelTest {
                 isUndecided = false,
                 onboardingCompleted = false,
             ),
-            fetchProfileResult = OnboardingResult.Error("계정 정보를 찾을 수 없습니다. 다시 로그인해주세요."),
+            fetchProfileResult = OnboardingResult.Error(
+                message = "임의 문구",
+                type = OnboardingErrorType.ReauthenticationRequired,
+            ),
         )
         val authRepository = FakeAuthRepositoryForViewModel()
 
@@ -159,6 +163,28 @@ class OnboardingViewModelTest {
 
         assertEquals(1, authRepository.signOutCallCount)
         assertEquals(OnboardingStep.Loading, viewModel.state.value.step)
+    }
+
+    @Test
+    fun `initial load generic error shows entry choice without sign out`() = runMainDispatcherTest {
+        val repository = FakeOnboardingRepositoryForViewModel(
+            profile = profile(
+                nickname = null,
+                role = null,
+                weddingDate = null,
+                isUndecided = false,
+                onboardingCompleted = false,
+            ),
+            fetchProfileResult = OnboardingResult.Error("프로필 정보를 불러오지 못했습니다."),
+        )
+        val authRepository = FakeAuthRepositoryForViewModel()
+
+        val viewModel = createViewModel(repository, authRepository)
+        advanceUntilIdle()
+
+        assertEquals(0, authRepository.signOutCallCount)
+        assertEquals(OnboardingStep.EntryChoice, viewModel.state.value.step)
+        assertEquals("프로필 정보를 불러오지 못했습니다.", viewModel.state.value.message)
     }
 }
 

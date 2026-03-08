@@ -3,26 +3,24 @@ package kr.jm.weddingledger
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.tooling.preview.Preview
-import kr.jm.weddingledger.core.platform.AndroidNotificationPermissionRequester
+import androidx.activity.result.contract.ActivityResultContracts
+import kr.jm.weddingledger.core.platform.AndroidNotificationPermissionBridge
 import kr.jm.weddingledger.feature.auth.data.platform.AndroidAuthActivityHolder
 
 class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        AndroidNotificationPermissionRequester.onPermissionResult(granted)
+        AndroidNotificationPermissionBridge.onPermissionResult(granted)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         AndroidAuthActivityHolder.set(this)
-        AndroidNotificationPermissionRequester.bindLauncher { permission ->
+        AndroidNotificationPermissionBridge.bindLauncher { permission ->
             notificationPermissionLauncher.launch(permission)
         }
         emitIncomingDeepLink(intent)
@@ -40,7 +38,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         AndroidAuthActivityHolder.clear(this)
-        AndroidNotificationPermissionRequester.unbindLauncher()
+        AndroidNotificationPermissionBridge.unbindLauncher()
         super.onDestroy()
     }
 
@@ -48,10 +46,4 @@ class MainActivity : ComponentActivity() {
         val url = intent?.dataString ?: return
         pushIncomingDeepLink(url)
     }
-}
-
-@Preview
-@Composable
-fun AppAndroidPreview() {
-    App()
 }

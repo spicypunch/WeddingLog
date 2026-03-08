@@ -125,7 +125,7 @@ class MoneyUseCaseAndFlowTest {
 }
 
 private class InMemoryMoneyRepository : MoneyRepository {
-    private val categories = listOf(
+    private val categories = mutableListOf(
         MoneyCategory(id = "wedding_hall", name = "웨딩홀", isDefault = true),
         MoneyCategory(id = "studio", name = "스튜디오", isDefault = true),
     )
@@ -155,6 +155,15 @@ private class InMemoryMoneyRepository : MoneyRepository {
         )
     }
 
+    override suspend fun addCategory(name: String): MoneyResult<Unit> {
+        categories += MoneyCategory(
+            id = "category-${categories.size + 1}",
+            name = name,
+            isDefault = false,
+        )
+        return MoneyResult.Success(Unit)
+    }
+
     override suspend fun addBudgetItem(item: NewBudgetItem): MoneyResult<Unit> {
         addBudgetItemCallCount += 1
         val id = "budget-${budgetSeed++}"
@@ -178,9 +187,17 @@ private class InMemoryMoneyRepository : MoneyRepository {
             date = expense.date,
             paymentMethod = expense.paymentMethod,
             payer = expense.payer,
+            vendorName = expense.vendorName,
             memo = expense.memo,
             imageUrl = null,
         )
+        return MoneyResult.Success(Unit)
+    }
+
+    override suspend fun updateCategory(id: String, name: String): MoneyResult<Unit> {
+        val index = categories.indexOfFirst { it.id == id }
+        if (index < 0) return MoneyResult.Error("카테고리를 찾지 못했습니다.")
+        categories[index] = categories[index].copy(name = name)
         return MoneyResult.Success(Unit)
     }
 
@@ -205,6 +222,7 @@ private class InMemoryMoneyRepository : MoneyRepository {
             date = expense.date,
             paymentMethod = expense.paymentMethod,
             payer = expense.payer,
+            vendorName = expense.vendorName,
             memo = expense.memo,
         )
         return MoneyResult.Success(Unit)
@@ -267,6 +285,7 @@ private fun newExpense(
         date = LocalDate.parse("2026-03-15"),
         paymentMethod = PaymentMethod.Card,
         payer = Payer.Groom,
+        vendorName = null,
         memo = null,
     )
 }

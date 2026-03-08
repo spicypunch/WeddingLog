@@ -14,6 +14,7 @@ Android/iOS 공용 코드로 일정, 예산, 하객, 온보딩/연결 코드, �
 
 ## 프로젝트 구조
 
+- Android 앱 셸: `androidApp/`
 - 공용 코드: `composeApp/src/commonMain/kotlin`
 - Android 전용: `composeApp/src/androidMain/kotlin`
 - iOS 전용: `composeApp/src/iosMain/kotlin`
@@ -48,13 +49,13 @@ ENABLE_APPLE_LOGIN=false
 cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 
 # Android debug 빌드
-./gradlew :composeApp:assembleDebug
+./gradlew :androidApp:assembleDebug
 
 # Android unit test
 ./gradlew :composeApp:testDebugUnitTest
 
-# iOS 공용 코드 컴파일 확인
-./gradlew :composeApp:compileTestKotlinIosSimulatorArm64
+# iOS 공용 framework 링크 확인
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 ```
 
 ## 인증 딥링크
@@ -109,6 +110,20 @@ Supabase 대시보드 권장값:
   - 공용 컴포넌트 `WeddingLogTopBar`로 분리
 - 데이터 안정성:
   - 계정 전환 시 `wedding_id` 캐시 오염 방지를 위해 repository 캐시를 사용자 단위(`cachedUserId + cachedWeddingId`)로 개선
+
+## 최근 기술 반영 (2026-03-08)
+
+- Android 프로젝트 구조 정리:
+  - `composeApp`를 Android-KMP shared library로 전환
+  - `androidApp` 모듈을 추가해 `MainActivity`, `Application`, Android `Manifest`, launcher 리소스를 분리
+- Auth/Onboarding 안정성 보강:
+  - Auth/Onboarding 에러 분기를 문자열 기반에서 타입 기반으로 정리
+  - 공통 Supabase repository 지원 로직(`wedding_id` 조회/로그) 추출
+- 테스트 보강:
+  - `AuthResult`, `OnboardingViewModel`, `WeddingIdResolver` 중심 회귀 테스트 추가
+- 인증 화면 정책:
+  - 이메일/OTP 로그인 UI는 주석 처리로 숨김
+  - 내부 use case / repository 구현은 유지되어 필요 시 UI만 복구 가능
 
 ## 인수인계
 

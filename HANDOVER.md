@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-03-05  
+마지막 갱신: 2026-03-08  
 워크스페이스: `/Users/mackim/AndroidStudioProjects/WeddingLedger`
 
 ---
@@ -14,11 +14,11 @@
 
 ```bash
 cd /Users/mackim/AndroidStudioProjects/WeddingLedger
-./gradlew :composeApp:assembleDebug
+./gradlew :androidApp:assembleDebug
 ./gradlew :composeApp:testDebugUnitTest
-./gradlew :composeApp:compileTestKotlinIosSimulatorArm64
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 # UI(instrumented) 테스트는 에뮬레이터/디바이스 연결 후 실행
-./gradlew :composeApp:connectedDebugAndroidTest
+./gradlew :androidApp:connectedDebugAndroidTest
 ```
 
 ---
@@ -26,11 +26,15 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 ## 1) 현재 상태 요약
 
 - 아키텍처: Feature-first + Clean Architecture + MVVM 유지
+- Android 구조:
+  - `composeApp`는 Android-KMP shared library
+  - `androidApp`는 Android 앱 셸(`MainActivity`, `Application`, `AndroidManifest`, launcher 리소스`) 담당
 - Auth/Onboarding: `join_wedding` RPC 포함 실데이터 동작
   - 이메일 인증 딥링크 E2E 연결 완료(Android `intent-filter` + iOS `onOpenURL` + KMP bridge)
   - 딥링크 처리 성공/실패 시 로그인 화면 안내 배너 표시(`AuthMessage.Info/Error`)
   - 로그인 미인증 전용 안내 카드 + 재전송 60초 쿨다운 + 최대 5회 제한 추가
   - 소셜 로그인 정책 전환: `Google + Kakao` 메인, `Email OTP` 보조, `Email/Password` 비활성
+  - 이메일/OTP 로그인 UI는 현재 주석 처리로 숨김(구현은 유지)
   - Kakao 로그인 네이티브 SDK 경로(iOS/Android) 적용 및 양 플랫폼 성공 검증 완료(2026-03-04)
   - 온보딩 엔트리 분기 도입(`혼자 시작하기` / `공유 코드로 시작하기`)
   - `혼자 시작하기` 경로: 프로필 입력(닉네임/역할/예식일) 후 즉시 온보딩 완료
@@ -78,6 +82,28 @@ cd /Users/mackim/AndroidStudioProjects/WeddingLedger
 - 테스트:
   - `commonTest` 대폭 확장 (도메인/usecase/flow + ViewModel 레이어) 및 Android 단위 테스트 103건 통과
   - `androidInstrumentedTest` UI smoke 테스트 11건 추가(Auth/Home/Guests/Money/Schedule/Settings/Notifications/Onboarding/Tools)
+
+---
+
+## 1-1) 최근 추가 변경 (2026-03-08)
+
+- Android AGP 9 대응 구조 선반영
+  - `:androidApp` 모듈 신설
+  - `composeApp`를 `com.android.kotlin.multiplatform.library` 기반 shared module로 전환
+  - Android launcher/icon/string 리소스를 `androidApp/src/main/res`로 이동
+- Auth/Onboarding 안정성
+  - Auth 에러 분기를 문자열 매칭에서 `AuthErrorType` 기반으로 전환
+  - Onboarding 에러 분기를 `OnboardingErrorType` 기반으로 전환
+- 공통 Supabase 지원 로직 추출
+  - `WeddingIdResolver`, repository 공통 Supabase 오류 로그 함수 추가
+  - `money / guests / schedule / checklist / tools / onboarding` repository에 적용
+- 테스트 보강
+  - `SupabaseRepositorySupportTest`, `AuthResultTest` 추가
+  - `AuthViewModelTest`, `OnboardingViewModelTest`, `MoneyViewModelTest`, `MoneyUseCaseAndFlowTest`, `HomeViewModelTest` 갱신
+- Android Kakao 설정 주의
+  - Android/shared 쪽 Kakao native key는 루트 `local.properties`의 `KAKAO_NATIVE_APP_KEY`를 읽음
+  - iOS `Config.xcconfig`만 채워져 있으면 Android Kakao SDK는 초기화되지 않음
+  - 다른 PC에서 작업 시 `local.properties` 누락 여부를 먼저 확인할 것
 
 ---
 

@@ -124,6 +124,7 @@ class AuthViewModelTest {
         assertEquals("", state.otpCode)
         assertIs<AuthMessage.Info>(state.message)
     }
+
 }
 
     private fun createViewModel(repository: FakeAuthRepositoryForViewModel): AuthViewModel {
