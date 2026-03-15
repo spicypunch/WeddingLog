@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kr.jm.weddingledger.feature.guests.domain.model.Guest
 import kr.jm.weddingledger.feature.guests.domain.model.GuestAttendance
+import kr.jm.weddingledger.feature.guests.domain.model.GuestSettings
 import kr.jm.weddingledger.feature.guests.domain.model.GuestSideType
 import kr.jm.weddingledger.feature.guests.domain.model.GuestsResult
 import kr.jm.weddingledger.feature.guests.domain.model.NewGuest
@@ -65,6 +66,10 @@ private class FakeGuestRepository : GuestRepository {
 
     override suspend fun fetchGuests(): GuestsResult<List<Guest>> = GuestsResult.Success(emptyList())
 
+    override suspend fun fetchGuestSettings(): GuestsResult<GuestSettings> = GuestsResult.Success(GuestSettings(0))
+
+    override suspend fun updateGuestSettings(settings: GuestSettings): GuestsResult<Unit> = GuestsResult.Success(Unit)
+
     override suspend fun addGuest(guest: NewGuest): GuestsResult<Unit> = GuestsResult.Success(Unit)
 
     override suspend fun updateGuest(id: String, guest: NewGuest): GuestsResult<Unit> {
@@ -83,8 +88,10 @@ private class FakeGuestRepository : GuestRepository {
 private fun sampleGuest(name: String): NewGuest = NewGuest(
     name = name,
     side = GuestSideType.Bride,
-    relationshipScore = 3,
-    expectedGiftMoney = 100_000L,
+    relationshipScore = 2,
     attendance = GuestAttendance.Attending,
+    companionCount = 1,
+    actualAttended = true,
+    actualGiftMoney = 100_000L,
     note = "친구",
 )

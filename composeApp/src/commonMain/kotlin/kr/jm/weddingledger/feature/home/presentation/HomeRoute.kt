@@ -11,6 +11,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun HomeRoute(
     onOpenMoney: () -> Unit,
+    onOpenSchedule: () -> Unit,
     onOpenNotifications: () -> Unit,
 ) {
     val viewModel: HomeViewModel = koinViewModel()
@@ -26,11 +27,14 @@ fun HomeRoute(
         state = state,
         onAction = { action ->
             when (action) {
-                HomeAction.OnClickAddExpense,
-                HomeAction.OnClickViewAllCategories,
+                HomeAction.OnClickOpenMoney,
                 is HomeAction.OnClickCategory,
                 is HomeAction.OnClickRecentExpense,
                 -> onOpenMoney()
+
+                HomeAction.OnClickOpenSchedule,
+                is HomeAction.OnClickUpcoming,
+                -> onOpenSchedule()
 
                 HomeAction.OnClickNotifications -> onOpenNotifications()
                 HomeAction.OnRefresh -> viewModel.onAction(action)

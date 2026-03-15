@@ -6,6 +6,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kr.jm.weddingledger.feature.money.domain.model.BudgetItem
+import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.Expense
 import kr.jm.weddingledger.feature.money.domain.model.ExpenseFilterPreferenceState
 import kr.jm.weddingledger.feature.money.domain.model.ExpenseFilterPresetPreference
@@ -172,6 +173,8 @@ private class InMemoryMoneyRepository : MoneyRepository {
             categoryId = item.categoryId,
             name = item.name,
             targetAmount = item.targetAmount,
+            stage = item.stage,
+            dueDate = item.dueDate,
             memo = item.memo,
         )
         return MoneyResult.Success(Unit)
@@ -208,6 +211,8 @@ private class InMemoryMoneyRepository : MoneyRepository {
             categoryId = item.categoryId,
             name = item.name,
             targetAmount = item.targetAmount,
+            stage = item.stage,
+            dueDate = item.dueDate,
             memo = item.memo,
         )
         return MoneyResult.Success(Unit)
@@ -266,11 +271,13 @@ private fun newBudgetItem(
     categoryId: String = "wedding_hall",
     name: String,
     targetAmount: Int,
+    stage: BudgetStageType = BudgetStageType.General,
 ): NewBudgetItem {
     return NewBudgetItem(
         categoryId = categoryId,
         name = name,
         targetAmount = targetAmount,
+        stage = stage,
         memo = null,
     )
 }

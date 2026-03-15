@@ -40,6 +40,15 @@ fun AppNavHost(
                         }
                     }
                 },
+                onOpenSchedule = {
+                    navController.navigate(TopLevelDestination.Schedule.route) {
+                        launchSingleTop = true
+                        restoreState = true
+                        popUpTo(navController.graph.startDestinationId) {
+                            saveState = true
+                        }
+                    }
+                },
                 onOpenNotifications = { navController.navigate(AppRoutes.NotificationCenter) },
             )
         }

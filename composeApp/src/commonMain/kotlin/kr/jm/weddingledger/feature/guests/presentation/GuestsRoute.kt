@@ -24,8 +24,8 @@ fun GuestsRoute(
     val uiState by viewModel.state.collectAsState()
 
     var activeSheet by remember { mutableStateOf<GuestsSheet?>(null) }
-    var addGuestState by remember { mutableStateOf(AddGuestUiState.sample()) }
-    var selectedGuestDetail by remember { mutableStateOf<GuestListItem?>(null) }
+    var guestEditorState by remember { mutableStateOf(AddGuestUiState.expectedSample()) }
+    var guaranteedGuestCountInput by remember { mutableStateOf("") }
     var pendingDeleteGuestId by remember { mutableStateOf<String?>(null) }
 
     GuestsScreen(
@@ -33,19 +33,46 @@ fun GuestsRoute(
         onAction = { action ->
             when (action) {
                 GuestsAction.OnClickAdd -> {
-                    activeSheet = GuestsSheet.AddGuestCreate
-                    addGuestState = AddGuestUiState.sample()
-                    selectedGuestDetail = null
-                }
-
-                is GuestsAction.OnClickGuest -> {
-                    selectedGuestDetail = uiState.sections
-                        .asSequence()
-                        .flatMap { it.items.asSequence() }
-                        .firstOrNull { it.id == action.id }
+                    when (uiState.selectedTab) {
+                        GuestsTab.Expected -> {
+                            guestEditorState = AddGuestUiState.expectedSample()
+                            activeSheet = GuestsSheet.CreateExpected
+                        }
+                        GuestsTab.GiftLedger -> {
+                            guestEditorState = AddGuestUiState.giftSample()
+                            activeSheet = GuestsSheet.CreateGiftLedger
+                        }
+                    }
                 }
 
                 GuestsAction.OnClickNotifications -> onOpenNotifications()
+                GuestsAction.OnClickEditGuaranteedCount -> {
+                    guaranteedGuestCountInput = uiState.expected.guaranteedGuestCountText.filter(Char::isDigit)
+                    activeSheet = GuestsSheet.EditGuaranteedCount
+                }
+
+                is GuestsAction.OnClickExpectedGuest -> {
+                    uiState.expected.sections
+                        .asSequence()
+                        .flatMap { it.items.asSequence() }
+                        .firstOrNull { it.id == action.id }
+                        ?.let { item ->
+                            guestEditorState = item.editorSnapshot.toEditorState(GuestEditorMode.Expected)
+                            activeSheet = GuestsSheet.EditExpected(action.id)
+                        }
+                }
+
+                is GuestsAction.OnClickGiftGuest -> {
+                    uiState.giftLedger.sections
+                        .asSequence()
+                        .flatMap { it.items.asSequence() }
+                        .firstOrNull { it.id == action.id }
+                        ?.let { item ->
+                            guestEditorState = item.editorSnapshot.toEditorState(GuestEditorMode.GiftLedger)
+                            activeSheet = GuestsSheet.EditGiftLedger(action.id)
+                        }
+                }
+
                 else -> viewModel.onAction(action)
             }
         }
@@ -53,113 +80,105 @@ fun GuestsRoute(
 
     when (val sheet = activeSheet) {
         null -> Unit
-        GuestsSheet.AddGuestCreate -> {
+        GuestsSheet.CreateExpected,
+        GuestsSheet.CreateGiftLedger,
+        is GuestsSheet.EditExpected,
+        is GuestsSheet.EditGiftLedger,
+        -> {
             AddGuestBottomSheet(
-                state = addGuestState,
+                state = guestEditorState,
                 onDismiss = { activeSheet = null },
-                sheetTitle = "하객 추가",
-                saveButtonText = "저장하기",
+                onClickDelete = when (sheet) {
+                    is GuestsSheet.EditExpected -> { { pendingDeleteGuestId = sheet.guestId } }
+                    is GuestsSheet.EditGiftLedger -> { { pendingDeleteGuestId = sheet.guestId } }
+                    else -> null
+                },
                 onAction = { act ->
                     when (act) {
                         AddGuestAction.OnClickClose -> activeSheet = null
                         AddGuestAction.OnClickSave -> {
-                            viewModel.onAction(
-                                GuestsAction.OnCreateGuest(
-                                    name = addGuestState.name,
-                                    side = addGuestState.side,
-                                    relationship = addGuestState.relationship,
-                                    expectedGiftAmount = parseDigitsToLongOrNull(addGuestState.expectedGiftAmount),
-                                    attendance = addGuestState.attendance,
-                                    note = addGuestState.note,
-                                )
-                            )
+                            when (sheet) {
+                                GuestsSheet.CreateExpected,
+                                GuestsSheet.CreateGiftLedger,
+                                -> {
+                                    viewModel.onAction(
+                                        GuestsAction.OnCreateGuest(
+                                            name = guestEditorState.name,
+                                            side = guestEditorState.side,
+                                            relationship = guestEditorState.relationship,
+                                            expectedStatus = guestEditorState.expectedStatus,
+                                            companionCount = guestEditorState.companionCount.toIntOrNull() ?: 0,
+                                            actualAttended = guestEditorState.actualAttendance,
+                                            actualGiftAmount = parseAmountOrNull(guestEditorState.actualGiftAmount),
+                                            note = guestEditorState.note.ifBlank { null },
+                                        )
+                                    )
+                                }
+                                is GuestsSheet.EditExpected -> {
+                                    viewModel.onAction(
+                                        GuestsAction.OnUpdateGuest(
+                                            id = sheet.guestId,
+                                            name = guestEditorState.name,
+                                            side = guestEditorState.side,
+                                            relationship = guestEditorState.relationship,
+                                            expectedStatus = guestEditorState.expectedStatus,
+                                            companionCount = guestEditorState.companionCount.toIntOrNull() ?: 0,
+                                            actualAttended = guestEditorState.actualAttendance,
+                                            actualGiftAmount = parseAmountOrNull(guestEditorState.actualGiftAmount),
+                                            note = guestEditorState.note.ifBlank { null },
+                                        )
+                                    )
+                                }
+                                is GuestsSheet.EditGiftLedger -> {
+                                    viewModel.onAction(
+                                        GuestsAction.OnUpdateGuest(
+                                            id = sheet.guestId,
+                                            name = guestEditorState.name,
+                                            side = guestEditorState.side,
+                                            relationship = guestEditorState.relationship,
+                                            expectedStatus = guestEditorState.expectedStatus,
+                                            companionCount = guestEditorState.companionCount.toIntOrNull() ?: 0,
+                                            actualAttended = guestEditorState.actualAttendance,
+                                            actualGiftAmount = parseAmountOrNull(guestEditorState.actualGiftAmount),
+                                            note = guestEditorState.note.ifBlank { null },
+                                        )
+                                    )
+                                }
+                            }
                             activeSheet = null
-                            addGuestState = AddGuestUiState.sample()
                         }
 
-                        is AddGuestAction.OnNameChange -> addGuestState = addGuestState.copy(name = act.value)
-                        is AddGuestAction.OnSelectSide -> addGuestState = addGuestState.copy(side = act.side)
-                        is AddGuestAction.OnSelectRelationship -> addGuestState = addGuestState.copy(relationship = act.level)
-                        is AddGuestAction.OnExpectedGiftAmountChange -> addGuestState = addGuestState.copy(expectedGiftAmount = act.value)
-                        is AddGuestAction.OnQuickAddExpectedGift -> {
-                            val current = parseDigitsToLong(addGuestState.expectedGiftAmount)
-                            val add = parseDigitsToLong(act.value)
-                            addGuestState = addGuestState.copy(expectedGiftAmount = formatWithComma(current + add))
-                        }
-
-                        is AddGuestAction.OnSelectAttendance -> addGuestState = addGuestState.copy(attendance = act.value)
-                        is AddGuestAction.OnNoteChange -> addGuestState = addGuestState.copy(note = act.value)
+                        is AddGuestAction.OnNameChange -> guestEditorState = guestEditorState.copy(name = act.value)
+                        is AddGuestAction.OnSelectSide -> guestEditorState = guestEditorState.copy(side = act.side)
+                        is AddGuestAction.OnSelectRelationship -> guestEditorState = guestEditorState.copy(relationship = act.level)
+                        is AddGuestAction.OnSelectExpectedStatus -> guestEditorState = guestEditorState.copy(expectedStatus = act.value)
+                        is AddGuestAction.OnCompanionCountChange -> guestEditorState = guestEditorState.copy(companionCount = act.value)
+                        is AddGuestAction.OnSelectActualAttendance -> guestEditorState = guestEditorState.copy(actualAttendance = act.value)
+                        is AddGuestAction.OnActualGiftAmountChange -> guestEditorState = guestEditorState.copy(actualGiftAmount = act.value)
+                        is AddGuestAction.OnNoteChange -> guestEditorState = guestEditorState.copy(note = act.value)
                     }
                 }
             )
         }
 
-        is GuestsSheet.EditGuest -> {
-            val editingId = sheet.guestId
-            AddGuestBottomSheet(
-                state = addGuestState,
+        GuestsSheet.EditGuaranteedCount -> {
+            GuestSettingsBottomSheet(
+                guaranteedGuestCount = guaranteedGuestCountInput,
                 onDismiss = { activeSheet = null },
-                sheetTitle = "하객 수정",
-                saveButtonText = "수정 저장",
-                onClickDelete = { pendingDeleteGuestId = editingId },
-                onAction = { act ->
-                    when (act) {
-                        AddGuestAction.OnClickClose -> activeSheet = null
-                        AddGuestAction.OnClickSave -> {
-                            viewModel.onAction(
-                                GuestsAction.OnUpdateGuest(
-                                    id = editingId,
-                                    name = addGuestState.name,
-                                    side = addGuestState.side,
-                                    relationship = addGuestState.relationship,
-                                    expectedGiftAmount = parseDigitsToLongOrNull(addGuestState.expectedGiftAmount),
-                                    attendance = addGuestState.attendance,
-                                    note = addGuestState.note,
-                                )
-                            )
-                            activeSheet = null
-                            addGuestState = AddGuestUiState.sample()
-                        }
-
-                        is AddGuestAction.OnNameChange -> addGuestState = addGuestState.copy(name = act.value)
-                        is AddGuestAction.OnSelectSide -> addGuestState = addGuestState.copy(side = act.side)
-                        is AddGuestAction.OnSelectRelationship -> addGuestState = addGuestState.copy(relationship = act.level)
-                        is AddGuestAction.OnExpectedGiftAmountChange -> addGuestState = addGuestState.copy(expectedGiftAmount = act.value)
-                        is AddGuestAction.OnQuickAddExpectedGift -> {
-                            val current = parseDigitsToLong(addGuestState.expectedGiftAmount)
-                            val add = parseDigitsToLong(act.value)
-                            addGuestState = addGuestState.copy(expectedGiftAmount = formatWithComma(current + add))
-                        }
-
-                        is AddGuestAction.OnSelectAttendance -> addGuestState = addGuestState.copy(attendance = act.value)
-                        is AddGuestAction.OnNoteChange -> addGuestState = addGuestState.copy(note = act.value)
-                    }
-                }
+                onGuaranteedGuestCountChange = { guaranteedGuestCountInput = it },
+                onSave = {
+                    viewModel.onAction(
+                        GuestsAction.OnUpdateGuaranteedCount(
+                            guaranteedGuestCountInput.toIntOrNull() ?: 0,
+                        )
+                    )
+                    activeSheet = null
+                },
             )
         }
     }
 
-    selectedGuestDetail?.let { item ->
-        GuestDetailBottomSheet(
-            item = item,
-            onDismiss = { selectedGuestDetail = null },
-            onEdit = {
-                addGuestState = item.toEditState()
-                selectedGuestDetail = null
-                activeSheet = GuestsSheet.EditGuest(item.id)
-            },
-            onDelete = {
-                pendingDeleteGuestId = item.id
-                selectedGuestDetail = null
-            },
-            onQuickSetAttendance = { status ->
-                viewModel.onAction(GuestsAction.OnQuickSetAttendance(item.id, status))
-                selectedGuestDetail = null
-            }
-        )
-    }
-
-    pendingDeleteGuestId?.let { id ->
+    pendingDeleteGuestId?.let { guestId ->
         AlertDialog(
             onDismissRequest = { pendingDeleteGuestId = null },
             title = { Text(text = "하객을 삭제할까요?") },
@@ -167,7 +186,7 @@ fun GuestsRoute(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        viewModel.onAction(GuestsAction.OnDeleteGuest(id))
+                        viewModel.onAction(GuestsAction.OnDeleteGuest(guestId))
                         pendingDeleteGuestId = null
                         activeSheet = null
                     }
@@ -185,39 +204,40 @@ fun GuestsRoute(
 }
 
 private sealed interface GuestsSheet {
-    data object AddGuestCreate : GuestsSheet
-    data class EditGuest(val guestId: String) : GuestsSheet
+    data object CreateExpected : GuestsSheet
+    data object CreateGiftLedger : GuestsSheet
+    data class EditExpected(val guestId: String) : GuestsSheet
+    data class EditGiftLedger(val guestId: String) : GuestsSheet
+    data object EditGuaranteedCount : GuestsSheet
 }
 
-private fun parseDigitsToLong(text: String): Long {
-    val digits = text.filter { it.isDigit() }
-    return digits.toLongOrNull() ?: 0L
+private fun GuestEditorSnapshot.toEditorState(mode: GuestEditorMode): AddGuestUiState {
+    return AddGuestUiState(
+        mode = mode,
+        name = name,
+        side = side,
+        relationship = relationship,
+        expectedStatus = expectedStatus,
+        companionCount = companionCount.toString(),
+        actualAttendance = actualAttendance,
+        actualGiftAmount = actualGiftAmount?.let(::formatAmount) ?: "",
+        note = note.orEmpty(),
+    )
 }
 
-private fun parseDigitsToLongOrNull(text: String): Long? {
-    val digits = text.filter { it.isDigit() }
-    return digits.toLongOrNull()
+private fun parseAmountOrNull(text: String): Long? {
+    val digits = text.filter(Char::isDigit)
+    return digits.toLongOrNull()?.takeIf { it > 0L }
 }
 
-private fun formatWithComma(value: Long): String {
+private fun formatAmount(value: Long): String {
     val s = value.toString()
     val sb = StringBuilder(s.length + (s.length / 3))
     var count = 0
     for (i in s.length - 1 downTo 0) {
         sb.append(s[i])
-        count++
+        count += 1
         if (count % 3 == 0 && i != 0) sb.append(',')
     }
     return sb.reverse().toString()
-}
-
-private fun GuestListItem.toEditState(): AddGuestUiState {
-    return AddGuestUiState.sample().copy(
-        name = name,
-        side = side,
-        relationship = relationship,
-        expectedGiftAmount = expectedGiftAmount?.let(::formatWithComma).orEmpty(),
-        note = note.orEmpty(),
-        attendance = status,
-    )
 }

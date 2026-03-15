@@ -1,38 +1,59 @@
 package kr.jm.weddingledger.feature.guests.presentation
 
 enum class GuestSide(val label: String) {
-    Groom("신랑"),
-    Bride("신부"),
+    Groom("신랑측"),
+    Bride("신부측"),
     Both("공통"),
 }
 
 enum class GuestRelationshipLevel(val label: String) {
-    Unknown("모름"),
-    Normal("보통"),
-    Close("절친"),
+    Unknown("지인"),
+    Normal("가까운 분"),
+    Close("가족/절친"),
+}
+
+enum class GuestEditorMode(val title: String, val saveLabel: String) {
+    Expected("예상 하객", "저장하기"),
+    GiftLedger("축의대", "저장하기"),
 }
 
 data class AddGuestUiState(
+    val mode: GuestEditorMode,
     val name: String,
     val side: GuestSide,
     val relationship: GuestRelationshipLevel,
-    val expectedGiftAmount: String,
+    val expectedStatus: GuestExpectedStatus,
+    val companionCount: String,
+    val actualAttendance: GiftAttendanceState,
+    val actualGiftAmount: String,
     val note: String,
-    val quickAddAmounts: List<String>,
-    val attendance: GuestAttendanceStatus,
 ) {
     val isSaveEnabled: Boolean
         get() = name.trim().isNotEmpty()
 
     companion object {
-        fun sample(): AddGuestUiState = AddGuestUiState(
+        fun expectedSample(): AddGuestUiState = AddGuestUiState(
+            mode = GuestEditorMode.Expected,
             name = "",
             side = GuestSide.Bride,
             relationship = GuestRelationshipLevel.Normal,
-            expectedGiftAmount = "50,000",
+            expectedStatus = GuestExpectedStatus.Maybe,
+            companionCount = "0",
+            actualAttendance = GiftAttendanceState.Unknown,
+            actualGiftAmount = "",
             note = "",
-            quickAddAmounts = listOf("30,000", "50,000", "100,000"),
-            attendance = GuestAttendanceStatus.Undecided,
+        )
+
+        fun giftSample(): AddGuestUiState = AddGuestUiState(
+            mode = GuestEditorMode.GiftLedger,
+            name = "",
+            side = GuestSide.Bride,
+            relationship = GuestRelationshipLevel.Normal,
+            expectedStatus = GuestExpectedStatus.Certain,
+            companionCount = "0",
+            actualAttendance = GiftAttendanceState.Attended,
+            actualGiftAmount = "",
+            note = "",
         )
     }
 }
@@ -43,8 +64,9 @@ sealed interface AddGuestAction {
     data class OnNameChange(val value: String) : AddGuestAction
     data class OnSelectSide(val side: GuestSide) : AddGuestAction
     data class OnSelectRelationship(val level: GuestRelationshipLevel) : AddGuestAction
-    data class OnExpectedGiftAmountChange(val value: String) : AddGuestAction
-    data class OnQuickAddExpectedGift(val value: String) : AddGuestAction
-    data class OnSelectAttendance(val value: GuestAttendanceStatus) : AddGuestAction
+    data class OnSelectExpectedStatus(val value: GuestExpectedStatus) : AddGuestAction
+    data class OnCompanionCountChange(val value: String) : AddGuestAction
+    data class OnSelectActualAttendance(val value: GiftAttendanceState) : AddGuestAction
+    data class OnActualGiftAmountChange(val value: String) : AddGuestAction
     data class OnNoteChange(val value: String) : AddGuestAction
 }

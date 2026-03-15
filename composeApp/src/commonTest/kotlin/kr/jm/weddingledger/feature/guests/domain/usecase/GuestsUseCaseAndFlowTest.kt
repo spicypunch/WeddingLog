@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kr.jm.weddingledger.feature.guests.domain.model.Guest
 import kr.jm.weddingledger.feature.guests.domain.model.GuestAttendance
+import kr.jm.weddingledger.feature.guests.domain.model.GuestSettings
 import kr.jm.weddingledger.feature.guests.domain.model.GuestSideType
 import kr.jm.weddingledger.feature.guests.domain.model.GuestsResult
 import kr.jm.weddingledger.feature.guests.domain.model.NewGuest
@@ -73,7 +74,7 @@ class GuestsUseCaseAndFlowTest {
         val deleteGuestUseCase = DeleteGuestUseCase(repository)
 
         addGuestUseCase(newGuest(name = "신랑 친구"))
-        addGuestUseCase(newGuest(name = "신부 친구"))
+        addGuestUseCase(newGuest(name = "신부 친구", companionCount = 1))
 
         val created = assertIs<GuestsResult.Success<List<Guest>>>(fetchGuestsUseCase()).data
         assertEquals(2, created.size)
@@ -99,6 +100,7 @@ class GuestsUseCaseAndFlowTest {
 
 private class InMemoryGuestRepository : GuestRepository {
     private val guests = linkedMapOf<String, Guest>()
+    private var settings = GuestSettings(guaranteedGuestCount = 0)
     private var seed = 1
 
     var addCallCount: Int = 0
@@ -110,6 +112,15 @@ private class InMemoryGuestRepository : GuestRepository {
         return GuestsResult.Success(guests.values.toList())
     }
 
+    override suspend fun fetchGuestSettings(): GuestsResult<GuestSettings> {
+        return GuestsResult.Success(settings)
+    }
+
+    override suspend fun updateGuestSettings(settings: GuestSettings): GuestsResult<Unit> {
+        this.settings = settings
+        return GuestsResult.Success(Unit)
+    }
+
     override suspend fun addGuest(guest: NewGuest): GuestsResult<Unit> {
         addCallCount += 1
         lastAddedGuest = guest
@@ -119,8 +130,10 @@ private class InMemoryGuestRepository : GuestRepository {
             name = guest.name,
             side = guest.side,
             relationshipScore = guest.relationshipScore,
-            expectedGiftMoney = guest.expectedGiftMoney,
             attendance = guest.attendance,
+            companionCount = guest.companionCount,
+            actualAttended = guest.actualAttended,
+            actualGiftMoney = guest.actualGiftMoney,
             note = guest.note,
         )
         return GuestsResult.Success(Unit)
@@ -132,8 +145,10 @@ private class InMemoryGuestRepository : GuestRepository {
             name = guest.name,
             side = guest.side,
             relationshipScore = guest.relationshipScore,
-            expectedGiftMoney = guest.expectedGiftMoney,
             attendance = guest.attendance,
+            companionCount = guest.companionCount,
+            actualAttended = guest.actualAttended,
+            actualGiftMoney = guest.actualGiftMoney,
             note = guest.note,
         )
         return GuestsResult.Success(Unit)
@@ -156,13 +171,16 @@ private class InMemoryGuestRepository : GuestRepository {
 private fun newGuest(
     name: String,
     attendance: GuestAttendance = GuestAttendance.Attending,
+    companionCount: Int = 0,
 ): NewGuest {
     return NewGuest(
         name = name,
         side = GuestSideType.Groom,
         relationshipScore = 2,
-        expectedGiftMoney = 100_000L,
         attendance = attendance,
+        companionCount = companionCount,
+        actualAttended = null,
+        actualGiftMoney = null,
         note = null,
     )
 }

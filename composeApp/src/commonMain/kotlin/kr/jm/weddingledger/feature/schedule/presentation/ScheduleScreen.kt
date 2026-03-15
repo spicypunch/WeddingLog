@@ -212,30 +212,39 @@ private fun CalendarTab(
             }
         }
 
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = state.upcomingTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
+        state.selectedDayTitle?.let { title ->
+            item(key = "selected-day-header") {
+                SectionHeader(
+                    title = title,
+                    actionLabel = "선택 해제",
+                    onClickAction = { onAction(ScheduleAction.OnClickViewAllUpcoming) },
                 )
-                if (state.selectedDayId != null) {
-                    TextButton(
-                        onClick = { onAction(ScheduleAction.OnClickViewAllUpcoming) },
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    ) {
-                        Text(
-                            text = "전체보기",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+            }
+
+            if (state.selectedDayItems.isEmpty()) {
+                item(key = "selected-day-empty") {
+                    EmptyUpcomingMessage(
+                        text = state.selectedDayEmptyText,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            } else {
+                items(state.selectedDayItems, key = { "selected-${it.id}" }) { item ->
+                    UpcomingScheduleCard(
+                        item = item,
+                        onClick = { onAction(ScheduleAction.OnClickUpcomingSchedule(item.id)) },
+                        onClickMore = if (item.source == UpcomingSource.Event) {
+                            { onAction(ScheduleAction.OnClickUpcomingMore(item.id)) }
+                        } else {
+                            null
+                        },
+                    )
                 }
             }
+        }
+
+        item(key = "upcoming-header") {
+            SectionHeader(title = state.upcomingTitle)
         }
 
         if (state.upcoming.isEmpty()) {
@@ -245,18 +254,74 @@ private fun CalendarTab(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+        } else {
+            items(state.upcoming, key = { it.id }) { item ->
+                UpcomingScheduleCard(
+                    item = item,
+                    onClick = { onAction(ScheduleAction.OnClickUpcomingSchedule(item.id)) },
+                    onClickMore = if (item.source == UpcomingSource.Event) {
+                        { onAction(ScheduleAction.OnClickUpcomingMore(item.id)) }
+                    } else {
+                        null
+                    },
+                )
+            }
         }
 
-        items(state.upcoming, key = { it.id }) { item ->
-            UpcomingScheduleCard(
-                item = item,
-                onClick = { onAction(ScheduleAction.OnClickUpcomingSchedule(item.id)) },
-                onClickMore = if (item.source == UpcomingSource.Event) {
-                    { onAction(ScheduleAction.OnClickUpcomingMore(item.id)) }
-                } else {
-                    null
-                },
+        item(key = "checklist-focus-header") {
+            SectionHeader(
+                title = state.checklistFocusTitle,
+                actionLabel = "체크리스트 보기",
+                onClickAction = { onAction(ScheduleAction.OnSelectTab(ScheduleTab.Checklist)) },
             )
+        }
+
+        if (state.checklistFocusItems.isEmpty()) {
+            item(key = "checklist-focus-empty") {
+                EmptyUpcomingMessage(
+                    text = state.checklistFocusEmptyText,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        } else {
+            items(state.checklistFocusItems, key = { it.id }) { item ->
+                ChecklistItemRow(
+                    item = item,
+                    onToggle = { onAction(ScheduleAction.OnToggleChecklistItem(item.id)) },
+                    onClickMore = { onAction(ScheduleAction.OnClickChecklistItemMore(item.id)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(
+    title: String,
+    actionLabel: String? = null,
+    onClickAction: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        if (actionLabel != null && onClickAction != null) {
+            TextButton(
+                onClick = onClickAction,
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+            ) {
+                Text(
+                    text = actionLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

@@ -22,6 +22,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import kotlin.time.Instant
 import kotlin.time.Clock
+import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 import org.koin.compose.viewmodel.koinViewModel
@@ -48,11 +49,15 @@ fun MoneyRoute(
     var addExpenseState by remember { mutableStateOf(AddExpenseUiState.sample()) }
     var addBudgetItemState by remember { mutableStateOf(AddBudgetItemUiState.sample()) }
     var manageCategoriesState by remember { mutableStateOf(ManageCategoriesUiState.empty()) }
-    var showDatePicker by remember { mutableStateOf(false) }
+    var showExpenseDatePicker by remember { mutableStateOf(false) }
+    var showBudgetDueDatePicker by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<DeleteTarget?>(null) }
 
     LaunchedEffect(activeSheet) {
-        if (activeSheet == null) showDatePicker = false
+        if (activeSheet == null) {
+            showExpenseDatePicker = false
+            showBudgetDueDatePicker = false
+        }
     }
 
     LaunchedEffect(uiState.budget.categories, activeSheet) {
@@ -68,19 +73,8 @@ fun MoneyRoute(
         onAction = { action ->
             when (action) {
                 MoneyAction.OnClickAdd -> {
-                    when (uiState.selectedTab) {
-                        MoneyTab.Expenses -> {
-                            activeSheet = MoneySheet.AddExpense
-                            addExpenseState = newAddExpenseState(uiState)
-                        }
-                        MoneyTab.Budget -> {
-                            activeSheet = MoneySheet.AddBudgetItem
-                            addBudgetItemState = newAddBudgetItemState(
-                                uiState = uiState,
-                                preselectedCategoryId = uiState.budget.categories.firstOrNull()?.id,
-                            )
-                        }
-                    }
+                    activeSheet = MoneySheet.AddExpense
+                    addExpenseState = newAddExpenseState(uiState)
                 }
                 is MoneyAction.OnClickBudgetAddItem -> {
                     activeSheet = MoneySheet.AddBudgetItem
@@ -126,13 +120,13 @@ fun MoneyRoute(
                 showDelete = editingId != null,
                 onDismiss = {
                     activeSheet = null
-                    showDatePicker = false
+                    showExpenseDatePicker = false
                 },
                 onAction = { act ->
                     when (act) {
                         AddExpenseAction.OnClickClose -> {
                             activeSheet = null
-                            showDatePicker = false
+                            showExpenseDatePicker = false
                         }
                         AddExpenseAction.OnClickDelete -> {
                             val id = editingId ?: return@AddExpenseBottomSheet
@@ -170,10 +164,10 @@ fun MoneyRoute(
                             }
 
                             activeSheet = null
-                            showDatePicker = false
+                            showExpenseDatePicker = false
                             addExpenseState = newAddExpenseState(uiState)
                         }
-                        AddExpenseAction.OnClickDate -> showDatePicker = true
+                        AddExpenseAction.OnClickDate -> showExpenseDatePicker = true
                         is AddExpenseAction.OnAmountChange -> addExpenseState = addExpenseState.copy(amount = act.value)
                         is AddExpenseAction.OnVendorNameChange -> addExpenseState = addExpenseState.copy(vendorName = act.value)
                         is AddExpenseAction.OnMemoChange -> addExpenseState = addExpenseState.copy(memo = act.value)
@@ -200,7 +194,7 @@ fun MoneyRoute(
                 }
             )
 
-            if (showDatePicker) {
+            if (showExpenseDatePicker) {
                 // Material3 DatePicker works with UTC milliseconds (date at 00:00 UTC).
                 val timeZone = TimeZone.UTC
                 val initialMillis = addExpenseState.date
@@ -209,7 +203,7 @@ fun MoneyRoute(
                 val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
 
                 DatePickerDialog(
-                    onDismissRequest = { showDatePicker = false },
+                    onDismissRequest = { showExpenseDatePicker = false },
                     confirmButton = {
                         TextButton(
                             onClick = {
@@ -224,14 +218,14 @@ fun MoneyRoute(
                                         dateText = date.toKoreanDateText(),
                                     )
                                 }
-                                showDatePicker = false
+                                showExpenseDatePicker = false
                             }
                         ) {
                             Text(text = "확인")
                         }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showDatePicker = false }) {
+                        TextButton(onClick = { showExpenseDatePicker = false }) {
                             Text(text = "취소")
                         }
                     }
@@ -266,6 +260,8 @@ fun MoneyRoute(
                                         categoryId = categoryId,
                                         name = addBudgetItemState.name,
                                         targetAmount = target,
+                                        stage = addBudgetItemState.selectedStage,
+                                        dueDate = addBudgetItemState.dueDate,
                                         memo = addBudgetItemState.memo,
                                     )
                                 )
@@ -276,6 +272,8 @@ fun MoneyRoute(
                                         categoryId = categoryId,
                                         name = addBudgetItemState.name,
                                         targetAmount = target,
+                                        stage = addBudgetItemState.selectedStage,
+                                        dueDate = addBudgetItemState.dueDate,
                                         memo = addBudgetItemState.memo,
                                     )
                                 )
@@ -287,13 +285,65 @@ fun MoneyRoute(
                                 preselectedCategoryId = uiState.budget.categories.firstOrNull()?.id,
                             )
                         }
+                        AddBudgetItemAction.OnClickDueDate -> showBudgetDueDatePicker = true
+                        AddBudgetItemAction.OnClickClearDueDate -> {
+                            addBudgetItemState = addBudgetItemState.copy(
+                                dueDate = null,
+                                dueDateText = null,
+                            )
+                        }
                         is AddBudgetItemAction.OnSelectCategory -> addBudgetItemState = addBudgetItemState.copy(selectedCategoryId = act.id)
+                        is AddBudgetItemAction.OnSelectQuickName -> {
+                            addBudgetItemState = addBudgetItemState.copy(
+                                name = act.value,
+                                selectedStage = act.value.toSuggestedBudgetStageOrDefault(),
+                            )
+                        }
+                        is AddBudgetItemAction.OnSelectStage -> addBudgetItemState = addBudgetItemState.copy(selectedStage = act.stage)
                         is AddBudgetItemAction.OnNameChange -> addBudgetItemState = addBudgetItemState.copy(name = act.value)
                         is AddBudgetItemAction.OnTargetAmountChange -> addBudgetItemState = addBudgetItemState.copy(targetAmount = act.value)
                         is AddBudgetItemAction.OnMemoChange -> addBudgetItemState = addBudgetItemState.copy(memo = act.value)
                     }
                 }
             )
+
+            if (showBudgetDueDatePicker) {
+                val timeZone = TimeZone.UTC
+                val initialDate = addBudgetItemState.dueDate ?: Clock.System.todayIn(TimeZone.currentSystemDefault())
+                val initialMillis = initialDate.atStartOfDayIn(timeZone).toEpochMilliseconds()
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+
+                DatePickerDialog(
+                    onDismissRequest = { showBudgetDueDatePicker = false },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                val millis = datePickerState.selectedDateMillis
+                                if (millis != null) {
+                                    val date = Instant
+                                        .fromEpochMilliseconds(millis)
+                                        .toLocalDateTime(timeZone)
+                                        .date
+                                    addBudgetItemState = addBudgetItemState.copy(
+                                        dueDate = date,
+                                        dueDateText = date.toKoreanDateText(),
+                                    )
+                                }
+                                showBudgetDueDatePicker = false
+                            }
+                        ) {
+                            Text(text = "확인")
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showBudgetDueDatePicker = false }) {
+                            Text(text = "취소")
+                        }
+                    }
+                ) {
+                    DatePicker(state = datePickerState)
+                }
+            }
         }
         MoneySheet.ManageCategories -> {
             ManageCategoriesBottomSheet(
@@ -370,7 +420,8 @@ fun MoneyRoute(
 
                         deleteTarget = null
                         activeSheet = null
-                        showDatePicker = false
+                        showExpenseDatePicker = false
+                        showBudgetDueDatePicker = false
                         addExpenseState = newAddExpenseState(uiState)
                         addBudgetItemState = newAddBudgetItemState(
                             uiState = uiState,
@@ -453,8 +504,13 @@ private fun newAddBudgetItemState(
     return AddBudgetItemUiState(
         categoryOptions = options,
         selectedCategoryId = selectedId,
+        stageOptions = defaultBudgetStageOptions(),
+        selectedStage = BudgetStageType.General,
+        quickNameSuggestions = defaultBudgetNameSuggestions(),
         name = "",
         targetAmount = "",
+        dueDate = null,
+        dueDateText = null,
         memo = "",
         helperText = null,
     )
@@ -469,11 +525,36 @@ private fun newEditBudgetItemState(
     return AddBudgetItemUiState(
         categoryOptions = options,
         selectedCategoryId = categoryId,
+        stageOptions = defaultBudgetStageOptions(),
+        selectedStage = item.stage,
+        quickNameSuggestions = defaultBudgetNameSuggestions(),
         name = item.label,
         targetAmount = formatNumber(item.targetAmount),
+        dueDate = item.dueDate,
+        dueDateText = item.dueDate?.toKoreanDateText(),
         memo = item.memo.orEmpty(),
         helperText = null,
     )
+}
+
+private fun defaultBudgetNameSuggestions(): List<String> = listOf(
+    "계약금",
+    "중도금",
+    "잔금",
+    "추가 비용",
+)
+
+private fun defaultBudgetStageOptions(): List<BudgetStageOption> = BudgetStageType.entries.map { stage ->
+    BudgetStageOption(stage = stage, label = stage.label)
+}
+
+private fun String.toSuggestedBudgetStageOrDefault(): BudgetStageType {
+    return when (trim()) {
+        "계약금" -> BudgetStageType.Deposit
+        "중도금" -> BudgetStageType.Interim
+        "잔금" -> BudgetStageType.Final
+        else -> BudgetStageType.General
+    }
 }
 
 private fun parseAmountOrNull(value: String): Int? {
@@ -504,9 +585,14 @@ private fun findBudgetItem(uiState: MoneyUiState, budgetItemId: String): FoundBu
 }
 
 private fun findExpense(uiState: MoneyUiState, expenseId: String): ExpenseListItem? {
-    return uiState.expenses.sections
+    return (
+        uiState.expenses.sections
         .asSequence()
         .flatMap { it.items.asSequence() }
+            + uiState.budget.categories
+            .asSequence()
+            .flatMap { it.recentExpenses.asSequence() }
+        )
         .firstOrNull { it.id == expenseId }
 }
 

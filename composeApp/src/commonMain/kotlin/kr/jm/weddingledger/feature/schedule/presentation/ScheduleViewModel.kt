@@ -626,6 +626,16 @@ private fun buildCalendarState(
     val selectedUpcomingTitle = selectedDate?.let {
         "${formatLocalDate(it)} 일정 (${toRelativeDayTag(referenceDate, it)})"
     }
+    val selectedDayItems = selectedDate?.let {
+        buildUpcomingItems(
+            checklistTasks = checklistTasks,
+            scheduleEvents = scheduleEvents,
+            today = referenceDate,
+            selectedDate = it,
+            searchQuery = searchQuery,
+            sortType = sortType,
+        )
+    }.orEmpty()
 
     return CalendarUiState(
         monthLabel = "${firstDay.year}년 ${firstDay.month.number}월",
@@ -635,12 +645,20 @@ private fun buildCalendarState(
             checklistTasks = checklistTasks,
             scheduleEvents = scheduleEvents,
             today = referenceDate,
-            selectedDate = selectedDate,
+            selectedDate = null,
             searchQuery = searchQuery,
             sortType = sortType,
         ),
-        upcomingTitle = selectedUpcomingTitle ?: "다가오는 일정",
-        upcomingEmptyText = if (selectedDate != null) "선택한 날짜에 일정이 없어요." else "예정된 일정이 없어요.",
+        upcomingTitle = "다가오는 일정",
+        upcomingEmptyText = "예정된 일정이 없어요.",
+        selectedDayTitle = selectedUpcomingTitle,
+        selectedDayItems = selectedDayItems,
+        selectedDayEmptyText = "선택한 날짜에 일정이 없어요.",
+        checklistFocusItems = buildChecklistFocusItems(
+            checklistTasks = checklistTasks,
+            today = referenceDate,
+            searchQuery = searchQuery,
+        ),
         selectedDayId = selectedDate?.toString() ?: selectedDayId,
         searchQuery = searchQuery,
         sortType = sortType,
@@ -802,6 +820,45 @@ private fun buildUpcomingItems(
     }
 
     return sorted.take(if (selectedDate != null || query.isNotBlank()) 50 else 6)
+}
+
+private fun buildChecklistFocusItems(
+    checklistTasks: List<ChecklistTask>,
+    today: LocalDate,
+    searchQuery: String,
+): List<ChecklistItem> {
+    val query = searchQuery.trim()
+    val filtered = checklistTasks.asSequence()
+        .filterNot { it.isChecked }
+        .filter { task ->
+            if (query.isBlank()) {
+                true
+            } else {
+                buildString {
+                    append(task.title)
+                    append(' ')
+                    append(task.memo.orEmpty())
+                    append(' ')
+                    append(task.dTag.orEmpty())
+                    append(' ')
+                    append(task.groupTitle.orEmpty())
+                    append(' ')
+                    task.targetDate?.let(::append)
+                }.contains(query, ignoreCase = true)
+            }
+        }
+        .sortedWith(
+            compareBy<ChecklistTask>(
+                { it.targetDate == null },
+                { it.targetDate ?: LocalDate(9999, Month.DECEMBER, 31) },
+                { it.dTag.sortOrderForPreview() },
+                { it.title },
+            )
+        )
+        .map { it.toCalendarChecklistFocusItem(today) }
+        .toList()
+
+    return filtered.take(if (query.isBlank()) 4 else 12)
 }
 
 private data class EventOccurrence(
@@ -1024,6 +1081,36 @@ private fun ChecklistTask.toChecklistItem(): ChecklistItem {
     )
 }
 
+private fun ChecklistTask.toCalendarChecklistFocusItem(
+    today: LocalDate,
+): ChecklistItem {
+    val dueDate = targetDate
+    val relativeTag = dueDate?.let { toRelativeDayTag(today, it) }
+    val dueDateText = dueDate?.let(::formatLocalDate)
+    val groupText = groupTitle?.trim()?.takeIf { it.isNotEmpty() } ?: dTag?.trim()?.takeIf { it.isNotEmpty() }
+    val subtitle = buildList {
+        relativeTag?.let(::add)
+        dueDateText?.let(::add)
+        groupText?.let(::add)
+        if (isEmpty()) {
+            memo?.trim()?.takeIf { it.isNotEmpty() }?.let(::add)
+        }
+    }.joinToString(" · ").ifBlank { memo?.trim()?.takeIf { it.isNotEmpty() } }
+
+    val isUrgent = dueDate?.let { it <= addDays(today, 7) } ?: false
+
+    return ChecklistItem(
+        id = id,
+        dTag = dTag,
+        title = title,
+        targetDate = targetDate,
+        memo = memo,
+        subtitle = subtitle,
+        subtitleTone = if (isUrgent) ChecklistItemSubtitleTone.Primary else ChecklistItemSubtitleTone.Muted,
+        isDone = false,
+    )
+}
+
 private fun parseDTagNumberOrNull(value: String): Int? {
     // Examples: D-180, D-30, D+6
     val trimmed = value.trim()
@@ -1033,6 +1120,11 @@ private fun parseDTagNumberOrNull(value: String): Int? {
     val sign = trimmed[signIndex]
     val num = trimmed.substring(signIndex + 1).toIntOrNull() ?: return null
     return if (sign == '-') num else -num.absoluteValue
+}
+
+private fun String?.sortOrderForPreview(): Int {
+    val parsed = this?.let(::parseDTagNumberOrNull) ?: return Int.MAX_VALUE
+    return if (parsed >= 0) parsed else Int.MAX_VALUE / 2 + parsed.absoluteValue
 }
 
 private fun defaultGroupTitleFor(dTag: String): String {

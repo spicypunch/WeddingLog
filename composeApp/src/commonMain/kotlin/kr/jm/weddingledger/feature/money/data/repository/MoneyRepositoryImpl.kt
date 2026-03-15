@@ -19,6 +19,7 @@ import kr.jm.weddingledger.feature.money.data.dto.CategoryRowDto
 import kr.jm.weddingledger.feature.money.data.dto.ExpenseInsertDto
 import kr.jm.weddingledger.feature.money.data.dto.ExpenseRowDto
 import kr.jm.weddingledger.feature.money.domain.model.BudgetItem
+import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.Expense
 import kr.jm.weddingledger.feature.money.domain.model.MoneyCategory
 import kr.jm.weddingledger.feature.money.domain.model.MoneyResult
@@ -82,7 +83,9 @@ class MoneyRepositoryImpl(
                         categoryId = item.categoryId,
                         name = item.name.trim(),
                         targetAmount = item.targetAmount,
-                        memo = item.memo?.trim()?.takeIf { it.isNotEmpty() },
+                        stage = item.stage.name,
+                        dueDate = item.dueDate?.toString(),
+                        memo = item.memo.trimToNull(),
                     )
                 )
             MoneyResult.Success(Unit)
@@ -145,8 +148,10 @@ class MoneyRepositoryImpl(
                 put("category_id", JsonPrimitive(item.categoryId))
                 put("name", JsonPrimitive(item.name.trim()))
                 put("target_amount", JsonPrimitive(item.targetAmount))
+                put("stage", JsonPrimitive(item.stage.name))
+                if (item.dueDate == null) put("due_date", JsonNull) else put("due_date", JsonPrimitive(item.dueDate.toString()))
 
-                val memo = item.memo?.trim()?.takeIf { it.isNotEmpty() }
+                val memo = item.memo.trimToNull()
                 if (memo == null) put("memo", JsonNull) else put("memo", JsonPrimitive(memo))
             }
 
@@ -307,13 +312,20 @@ private fun CategoryRowDto.toDomain(): MoneyCategory = MoneyCategory(
     isDefault = isDefault,
 )
 
-private fun BudgetItemRowDto.toDomain(): BudgetItem = BudgetItem(
-    id = id,
-    categoryId = categoryId,
-    name = name,
-    targetAmount = targetAmount,
-    memo = memo,
-)
+private fun BudgetItemRowDto.toDomain(): BudgetItem {
+    val decodedMemo = decodeBudgetItemMemo(name = name, rawMemo = memo)
+    val storedStage = BudgetStageType.fromStoredValueOrNull(stage) ?: decodedMemo.stage
+    val storedDueDate = dueDate.parseLocalDateOrNull() ?: decodedMemo.dueDate
+    return BudgetItem(
+        id = id,
+        categoryId = categoryId,
+        name = name,
+        targetAmount = targetAmount,
+        stage = storedStage,
+        dueDate = storedDueDate,
+        memo = decodedMemo.memo,
+    )
+}
 
 private fun ExpenseRowDto.toDomainOrNull(): Expense? {
     val date = runCatching { LocalDate.parse(date) }.getOrNull() ?: return null
@@ -351,6 +363,80 @@ private fun PaymentMethod.toDbValue(): String = when (this) {
 }
 private fun Payer.toDbValue(): String = name.uppercase()
 
+private fun String?.trimToNull(): String? = this?.trim()?.takeIf { it.isNotEmpty() }
+
+private fun String?.parseLocalDateOrNull(): LocalDate? = this
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?.let { value -> runCatching { LocalDate.parse(value) }.getOrNull() }
+
+private data class DecodedBudgetMemo(
+    val stage: BudgetStageType,
+    val dueDate: LocalDate?,
+    val memo: String?,
+)
+
+private fun decodeBudgetItemMemo(
+    name: String,
+    rawMemo: String?,
+): DecodedBudgetMemo {
+    if (rawMemo.isNullOrBlank()) {
+        return DecodedBudgetMemo(
+            stage = BudgetStageType.inferFromName(name),
+            dueDate = null,
+            memo = null,
+        )
+    }
+
+    val lines = rawMemo.lines()
+    var storedStage: BudgetStageType? = null
+    var storedDueDate: LocalDate? = null
+    var markerLineCount = 0
+
+    while (markerLineCount < lines.size) {
+        val line = lines[markerLineCount].trim()
+        when {
+            line.startsWith(BUDGET_STAGE_PREFIX) && line.endsWith(BUDGET_STAGE_SUFFIX) -> {
+                storedStage = line
+                    .removePrefix(BUDGET_STAGE_PREFIX)
+                    .removeSuffix(BUDGET_STAGE_SUFFIX)
+                    .let(BudgetStageType::fromStoredValueOrNull)
+                markerLineCount += 1
+            }
+
+            line.startsWith(BUDGET_DUE_DATE_PREFIX) && line.endsWith(BUDGET_DUE_DATE_SUFFIX) -> {
+                storedDueDate = line
+                    .removePrefix(BUDGET_DUE_DATE_PREFIX)
+                    .removeSuffix(BUDGET_DUE_DATE_SUFFIX)
+                    .let { value -> runCatching { LocalDate.parse(value) }.getOrNull() }
+                markerLineCount += 1
+            }
+
+            else -> break
+        }
+    }
+
+    if (markerLineCount > 0) {
+        val userMemo = lines
+            .drop(markerLineCount)
+            .joinToString(separator = "\n")
+            .trim()
+            .takeIf { it.isNotEmpty() }
+
+        return DecodedBudgetMemo(
+            stage = storedStage ?: BudgetStageType.inferFromName(name),
+            dueDate = storedDueDate,
+            memo = userMemo,
+        )
+    }
+
+    return DecodedBudgetMemo(
+        stage = BudgetStageType.inferFromName(name),
+        dueDate = null,
+        memo = rawMemo,
+    )
+}
+
 private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
     return when (this) {
         is RestException -> defaultMessage
@@ -359,3 +445,7 @@ private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
 }
 
 private const val FEATURE_NAME: String = "Money"
+private const val BUDGET_STAGE_PREFIX: String = "[[wl-stage:"
+private const val BUDGET_STAGE_SUFFIX: String = "]]"
+private const val BUDGET_DUE_DATE_PREFIX: String = "[[wl-due-date:"
+private const val BUDGET_DUE_DATE_SUFFIX: String = "]]"

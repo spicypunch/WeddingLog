@@ -1,49 +1,72 @@
 package kr.jm.weddingledger.feature.guests.presentation
 
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 import kr.jm.weddingledger.feature.guests.domain.model.Guest
 import kr.jm.weddingledger.feature.guests.domain.model.GuestAttendance
+import kr.jm.weddingledger.feature.guests.domain.model.GuestSettings
 import kr.jm.weddingledger.feature.guests.domain.model.GuestSideType
 import kr.jm.weddingledger.feature.guests.domain.model.GuestsResult
 import kr.jm.weddingledger.feature.guests.domain.model.NewGuest
 import kr.jm.weddingledger.feature.guests.domain.repository.GuestRepository
 import kr.jm.weddingledger.feature.guests.domain.usecase.AddGuestUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.DeleteGuestUseCase
+import kr.jm.weddingledger.feature.guests.domain.usecase.FetchGuestSettingsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.FetchGuestsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.SetGuestAttendanceUseCase
+import kr.jm.weddingledger.feature.guests.domain.usecase.UpdateGuestSettingsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.UpdateGuestUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
 
 class GuestsViewModelTest {
 
     @Test
-    fun `initial load calculates summary texts and section count`() = runMainDispatcherTest {
+    fun `initial load calculates expected and gift summaries`() = runMainDispatcherTest {
         val repository = FakeGuestRepositoryForViewModel(
             initialGuests = listOf(
-                guest(id = "g1", name = "김하나", side = GuestSideType.Groom, attendance = GuestAttendance.Attending, expectedGift = 100_000L),
-                guest(id = "g2", name = "박둘", side = GuestSideType.Bride, attendance = GuestAttendance.NotAttending, expectedGift = 50_000L),
-                guest(id = "g3", name = "Alice", side = GuestSideType.Both, attendance = GuestAttendance.Undecided, expectedGift = 100_000L, relationship = 2),
-            )
+                guest(
+                    id = "g1",
+                    name = "김하나",
+                    side = GuestSideType.Groom,
+                    attendance = GuestAttendance.Attending,
+                    companionCount = 1,
+                    actualAttended = true,
+                    actualGiftMoney = 100_000L,
+                ),
+                guest(
+                    id = "g2",
+                    name = "박둘",
+                    side = GuestSideType.Bride,
+                    attendance = GuestAttendance.NotAttending,
+                    actualAttended = false,
+                ),
+                guest(
+                    id = "g3",
+                    name = "공통셋",
+                    side = GuestSideType.Both,
+                    attendance = GuestAttendance.Undecided,
+                    companionCount = 1,
+                ),
+            ),
+            initialSettings = GuestSettings(guaranteedGuestCount = 3),
         )
         val viewModel = createViewModel(repository)
 
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals("3명", state.totalGuestsText)
-        assertEquals("₩250,000", state.expectedGiftTotalText)
-        assertEquals("2명 예상", state.expectedAttendanceText)
-        assertEquals("₩176,000", state.expectedAttendingGiftText)
-        assertEquals(4, state.filters.size)
-        assertTrue(state.sections.isNotEmpty())
+        assertEquals("3명", state.expected.totalExpectedCountText)
+        assertEquals("3명", state.expected.guaranteedGuestCountText)
+        assertEquals("보증인원과 같아요", state.expected.guaranteedDiffText)
+        assertEquals("₩100,000", state.giftLedger.totalGiftText)
+        assertEquals("1명 참석", state.giftLedger.actualAttendingCountText)
+        assertEquals("2명 입력 완료", state.giftLedger.completedEntryCountText)
+        assertEquals("1명 미입력", state.giftLedger.pendingEntryCountText)
     }
 
     @Test
-    fun `search and side filter reduce visible guests`() = runMainDispatcherTest {
+    fun `expected search and side filter reduce visible guests`() = runMainDispatcherTest {
         val repository = FakeGuestRepositoryForViewModel(
             initialGuests = listOf(
                 guest(id = "g1", name = "김민수", side = GuestSideType.Groom, note = "회사 친구"),
@@ -54,20 +77,20 @@ class GuestsViewModelTest {
         val viewModel = createViewModel(repository)
         advanceUntilIdle()
 
-        viewModel.onAction(GuestsAction.OnSearchQueryChange("친구"))
+        viewModel.onAction(GuestsAction.OnExpectedSearchQueryChange("친구"))
         advanceUntilIdle()
 
         var state = viewModel.state.value
-        assertEquals(1, state.sections.sumOf { it.items.size })
-        assertEquals("김민수", state.sections.first().items.first().name)
+        assertEquals(1, state.expected.sections.sumOf { it.items.size })
+        assertEquals("김민수", state.expected.sections.first().items.first().name)
 
-        val groomFilterId = state.filters.first { it.label == "신랑측" }.id
-        viewModel.onAction(GuestsAction.OnSelectFilter(groomFilterId))
+        val groomFilterId = state.expected.sideFilters.first { it.label == "신랑측" }.id
+        viewModel.onAction(GuestsAction.OnSelectExpectedSideFilter(groomFilterId))
         advanceUntilIdle()
 
         state = viewModel.state.value
-        assertEquals(1, state.sections.sumOf { it.items.size })
-        assertEquals("김민수", state.sections.first().items.first().name)
+        assertEquals(1, state.expected.sections.sumOf { it.items.size })
+        assertEquals("김민수", state.expected.sections.first().items.first().name)
     }
 
     @Test
@@ -82,8 +105,10 @@ class GuestsViewModelTest {
                 name = " ",
                 side = GuestSide.Bride,
                 relationship = GuestRelationshipLevel.Normal,
-                expectedGiftAmount = null,
-                attendance = GuestAttendanceStatus.Undecided,
+                expectedStatus = GuestExpectedStatus.Maybe,
+                companionCount = 0,
+                actualAttended = GiftAttendanceState.Unknown,
+                actualGiftAmount = null,
                 note = null,
             )
         )
@@ -94,7 +119,7 @@ class GuestsViewModelTest {
     }
 
     @Test
-    fun `quick set attendance updates repository and reflects ui`() = runMainDispatcherTest {
+    fun `quick set expected status updates repository and reflects ui`() = runMainDispatcherTest {
         val repository = FakeGuestRepositoryForViewModel(
             initialGuests = listOf(
                 guest(id = "g1", name = "김민수", side = GuestSideType.Groom, attendance = GuestAttendance.Undecided),
@@ -105,22 +130,43 @@ class GuestsViewModelTest {
         advanceUntilIdle()
 
         viewModel.onAction(
-            GuestsAction.OnQuickSetAttendance(
+            GuestsAction.OnQuickSetExpectedStatus(
                 id = "g1",
-                value = GuestAttendanceStatus.NotAttending,
+                value = GuestExpectedStatus.NotAttending,
             )
         )
         advanceUntilIdle()
 
-        val status = viewModel.state.value.sections.first().items.first().status
-        assertEquals(GuestAttendanceStatus.NotAttending, status)
+        val status = viewModel.state.value.expected.sections.first().items.first().status
+        assertEquals(GuestExpectedStatus.NotAttending, status)
         assertEquals(1, repository.setAttendanceCallCount)
+    }
+
+    @Test
+    fun `update guaranteed count saves and refreshes summary`() = runMainDispatcherTest {
+        val repository = FakeGuestRepositoryForViewModel(
+            initialGuests = listOf(
+                guest(id = "g1", name = "김민수", side = GuestSideType.Groom, attendance = GuestAttendance.Attending),
+            ),
+            initialSettings = GuestSettings(guaranteedGuestCount = 10),
+        )
+        val viewModel = createViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.onAction(GuestsAction.OnUpdateGuaranteedCount(1))
+        advanceUntilIdle()
+
+        assertEquals(1, repository.updateSettingsCallCount)
+        assertEquals("보증인원과 같아요", viewModel.state.value.expected.guaranteedDiffText)
+        assertEquals("1명", viewModel.state.value.expected.guaranteedGuestCountText)
     }
 }
 
 private fun createViewModel(repository: FakeGuestRepositoryForViewModel): GuestsViewModel {
     return GuestsViewModel(
         fetchGuestsUseCase = FetchGuestsUseCase(repository),
+        fetchGuestSettingsUseCase = FetchGuestSettingsUseCase(repository),
+        updateGuestSettingsUseCase = UpdateGuestSettingsUseCase(repository),
         addGuestUseCase = AddGuestUseCase(repository),
         updateGuestUseCase = UpdateGuestUseCase(repository),
         deleteGuestUseCase = DeleteGuestUseCase(repository),
@@ -130,16 +176,30 @@ private fun createViewModel(repository: FakeGuestRepositoryForViewModel): Guests
 
 private class FakeGuestRepositoryForViewModel(
     initialGuests: List<Guest>,
+    initialSettings: GuestSettings = GuestSettings(guaranteedGuestCount = 0),
 ) : GuestRepository {
     private val guests = linkedMapOf<String, Guest>().apply {
         initialGuests.forEach { guest -> put(guest.id, guest) }
     }
 
+    private var settings: GuestSettings = initialSettings
+
     var addCallCount: Int = 0
     var setAttendanceCallCount: Int = 0
+    var updateSettingsCallCount: Int = 0
 
     override suspend fun fetchGuests(): GuestsResult<List<Guest>> {
         return GuestsResult.Success(guests.values.toList())
+    }
+
+    override suspend fun fetchGuestSettings(): GuestsResult<GuestSettings> {
+        return GuestsResult.Success(settings)
+    }
+
+    override suspend fun updateGuestSettings(settings: GuestSettings): GuestsResult<Unit> {
+        updateSettingsCallCount += 1
+        this.settings = settings
+        return GuestsResult.Success(Unit)
     }
 
     override suspend fun addGuest(guest: NewGuest): GuestsResult<Unit> {
@@ -150,8 +210,10 @@ private class FakeGuestRepositoryForViewModel(
             name = guest.name,
             side = guest.side,
             relationshipScore = guest.relationshipScore,
-            expectedGiftMoney = guest.expectedGiftMoney,
             attendance = guest.attendance,
+            companionCount = guest.companionCount,
+            actualAttended = guest.actualAttended,
+            actualGiftMoney = guest.actualGiftMoney,
             note = guest.note,
         )
         return GuestsResult.Success(Unit)
@@ -163,8 +225,10 @@ private class FakeGuestRepositoryForViewModel(
             name = guest.name,
             side = guest.side,
             relationshipScore = guest.relationshipScore,
-            expectedGiftMoney = guest.expectedGiftMoney,
             attendance = guest.attendance,
+            companionCount = guest.companionCount,
+            actualAttended = guest.actualAttended,
+            actualGiftMoney = guest.actualGiftMoney,
             note = guest.note,
         )
         return GuestsResult.Success(Unit)
@@ -188,7 +252,9 @@ private fun guest(
     name: String,
     side: GuestSideType,
     attendance: GuestAttendance = GuestAttendance.Attending,
-    expectedGift: Long? = 100_000L,
+    companionCount: Int = 0,
+    actualAttended: Boolean? = null,
+    actualGiftMoney: Long? = null,
     relationship: Int = 1,
     note: String? = null,
 ): Guest {
@@ -197,8 +263,10 @@ private fun guest(
         name = name,
         side = side,
         relationshipScore = relationship,
-        expectedGiftMoney = expectedGift,
         attendance = attendance,
+        companionCount = companionCount,
+        actualAttended = actualAttended,
+        actualGiftMoney = actualGiftMoney,
         note = note,
     )
 }

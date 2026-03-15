@@ -14,9 +14,8 @@ enum class TopLevelDestination(
     val icon: ImageVector
 ) {
     Home(route = "home", label = "홈", icon = Icons.Rounded.Home),
-    Money(route = "money", label = "돈", icon = Icons.Rounded.AttachMoney),
+    Money(route = "money", label = "가계부", icon = Icons.Rounded.AttachMoney),
     Schedule(route = "schedule", label = "일정", icon = Icons.Rounded.CalendarToday),
     Guests(route = "guests", label = "하객", icon = Icons.Rounded.People),
     Tools(route = "tools", label = "도구", icon = Icons.Rounded.GridView),
 }
-

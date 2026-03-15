@@ -24,7 +24,6 @@ import kr.jm.weddingledger.feature.home.presentation.HomeScreen
 import kr.jm.weddingledger.feature.home.presentation.HomeUiState
 import kr.jm.weddingledger.feature.money.presentation.MoneyAction
 import kr.jm.weddingledger.feature.money.presentation.MoneyScreen
-import kr.jm.weddingledger.feature.money.presentation.MoneyTab
 import kr.jm.weddingledger.feature.money.presentation.MoneyUiState
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationItemType
 import kr.jm.weddingledger.feature.notifications.presentation.NotificationCenterAction
@@ -113,7 +112,7 @@ class ScreenSmokeUiTest {
     }
 
     @Test
-    fun moneyScreen_selectBudgetTab_dispatchesAction() {
+    fun moneyScreen_clickManageCategories_dispatchesAction() {
         val actions = mutableListOf<MoneyAction>()
 
         setScreen {
@@ -123,8 +122,8 @@ class ScreenSmokeUiTest {
             )
         }
 
-        composeRule.onNodeWithText("예산").assertIsDisplayed().performClick()
-        assertTrue(actions.contains(MoneyAction.OnSelectTab(MoneyTab.Budget)))
+        composeRule.onNodeWithText("카테고리 관리").assertIsDisplayed().performClick()
+        assertTrue(actions.contains(MoneyAction.OnClickManageCategories))
     }
 
     @Test

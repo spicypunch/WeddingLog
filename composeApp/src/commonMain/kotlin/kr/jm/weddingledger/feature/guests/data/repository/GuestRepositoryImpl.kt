@@ -9,12 +9,16 @@ import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kr.jm.weddingledger.core.network.WeddingIdResolver
 import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.guests.data.dto.GuestInsertDto
 import kr.jm.weddingledger.feature.guests.data.dto.GuestRowDto
+import kr.jm.weddingledger.feature.guests.data.dto.GuestSettingsRowDto
+import kr.jm.weddingledger.feature.guests.data.dto.GuestSettingsUpsertDto
 import kr.jm.weddingledger.feature.guests.domain.model.Guest
 import kr.jm.weddingledger.feature.guests.domain.model.GuestAttendance
+import kr.jm.weddingledger.feature.guests.domain.model.GuestSettings
 import kr.jm.weddingledger.feature.guests.domain.model.GuestSideType
 import kr.jm.weddingledger.feature.guests.domain.model.GuestsResult
 import kr.jm.weddingledger.feature.guests.domain.model.NewGuest
@@ -46,6 +50,69 @@ class GuestRepositoryImpl(
         }
     }
 
+    override suspend fun fetchGuestSettings(): GuestsResult<GuestSettings> {
+        return try {
+            val weddingId = weddingIdResolver.resolve()
+            val row = supabaseClient
+                .from(GUEST_SETTINGS_TABLE)
+                .select {
+                    filter { eq("wedding_id", weddingId) }
+                }
+                .decodeList<GuestSettingsRowDto>()
+                .firstOrNull()
+
+            GuestsResult.Success(
+                GuestSettings(
+                    guaranteedGuestCount = row?.guaranteedGuestCount?.coerceAtLeast(0) ?: 0,
+                )
+            )
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
+            GuestsResult.Error(t.toUserFriendlyMessage(defaultMessage = "하객 설정을 불러오지 못했습니다."))
+        }
+    }
+
+    override suspend fun updateGuestSettings(settings: GuestSettings): GuestsResult<Unit> {
+        return try {
+            val weddingId = weddingIdResolver.resolve()
+            val existing = supabaseClient
+                .from(GUEST_SETTINGS_TABLE)
+                .select {
+                    filter { eq("wedding_id", weddingId) }
+                }
+                .decodeList<GuestSettingsRowDto>()
+                .firstOrNull()
+
+            if (existing == null) {
+                supabaseClient
+                    .from(GUEST_SETTINGS_TABLE)
+                    .insert(
+                        GuestSettingsUpsertDto(
+                            weddingId = weddingId,
+                            guaranteedGuestCount = settings.guaranteedGuestCount.coerceAtLeast(0),
+                        )
+                    )
+            } else {
+                supabaseClient
+                    .from(GUEST_SETTINGS_TABLE)
+                    .update(
+                        buildJsonObject {
+                            put("guaranteed_guest_count", JsonPrimitive(settings.guaranteedGuestCount.coerceAtLeast(0)))
+                        }
+                    ) {
+                        filter { eq("wedding_id", weddingId) }
+                    }
+            }
+
+            GuestsResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
+            GuestsResult.Error(t.toUserFriendlyMessage(defaultMessage = "보증인원 저장에 실패했습니다."))
+        }
+    }
+
     override suspend fun addGuest(guest: NewGuest): GuestsResult<Unit> {
         return try {
             val weddingId = weddingIdResolver.resolve()
@@ -57,8 +124,12 @@ class GuestRepositoryImpl(
                         name = guest.name.trim(),
                         group = guest.side.toDbValue(),
                         relationshipScore = guest.relationshipScore.coerceIn(0, 2),
-                        expectedGiftMoney = guest.expectedGiftMoney?.takeIf { it > 0 },
-                        isAttended = guest.attendance.toDbValue(),
+                        expectedGiftMoney = null,
+                        isAttended = guest.attendance.toLegacyDbValue(),
+                        attendanceLikelihood = guest.attendance.toDbValue(),
+                        companionCount = guest.companionCount.coerceAtLeast(0),
+                        actualAttended = guest.actualAttended,
+                        actualGiftMoney = guest.actualGiftMoney?.takeIf { it > 0L },
                         note = guest.note?.trim()?.takeIf { it.isNotEmpty() },
                     )
                 )
@@ -77,19 +148,28 @@ class GuestRepositoryImpl(
                 put("name", JsonPrimitive(guest.name.trim()))
                 put("group", JsonPrimitive(guest.side.toDbValue()))
                 put("relationship_score", JsonPrimitive(guest.relationshipScore.coerceIn(0, 2)))
+                put("attendance_likelihood", JsonPrimitive(guest.attendance.toDbValue()))
 
-                val expectedGiftMoney = guest.expectedGiftMoney?.takeIf { it > 0 }
-                if (expectedGiftMoney == null) {
-                    put("expected_gift_money", JsonNull)
-                } else {
-                    put("expected_gift_money", JsonPrimitive(expectedGiftMoney))
-                }
-
-                val isAttended = guest.attendance.toDbValue()
-                if (isAttended == null) {
+                val legacyAttendance = guest.attendance.toLegacyDbValue()
+                if (legacyAttendance == null) {
                     put("is_attended", JsonNull)
                 } else {
-                    put("is_attended", JsonPrimitive(isAttended))
+                    put("is_attended", JsonPrimitive(legacyAttendance))
+                }
+
+                put("companion_count", JsonPrimitive(guest.companionCount.coerceAtLeast(0)))
+
+                if (guest.actualAttended == null) {
+                    put("actual_attended", JsonNull)
+                } else {
+                    put("actual_attended", JsonPrimitive(guest.actualAttended))
+                }
+
+                val actualGiftMoney = guest.actualGiftMoney?.takeIf { it > 0L }
+                if (actualGiftMoney == null) {
+                    put("actual_gift_money", JsonNull)
+                } else {
+                    put("actual_gift_money", JsonPrimitive(actualGiftMoney))
                 }
 
                 val note = guest.note?.trim()?.takeIf { it.isNotEmpty() }
@@ -135,11 +215,12 @@ class GuestRepositoryImpl(
         return try {
             val weddingId = weddingIdResolver.resolve()
             val payload = buildJsonObject {
-                val isAttended = attendance.toDbValue()
-                if (isAttended == null) {
+                put("attendance_likelihood", JsonPrimitive(attendance.toDbValue()))
+                val legacyAttendance = attendance.toLegacyDbValue()
+                if (legacyAttendance == null) {
                     put("is_attended", JsonNull)
                 } else {
-                    put("is_attended", JsonPrimitive(isAttended))
+                    put("is_attended", JsonPrimitive(legacyAttendance))
                 }
             }
 
@@ -164,8 +245,10 @@ private fun GuestRowDto.toDomain(): Guest {
         name = name,
         side = group.toGuestSideType(),
         relationshipScore = (relationshipScore ?: 1).coerceIn(0, 2),
-        expectedGiftMoney = expectedGiftMoney,
-        attendance = isAttended.toGuestAttendance(),
+        attendance = attendanceLikelihood.toGuestAttendance() ?: isAttended.toGuestAttendance(),
+        companionCount = (companionCount ?: 0).coerceAtLeast(0),
+        actualAttended = actualAttended,
+        actualGiftMoney = actualGiftMoney?.takeIf { it >= 0L },
         note = note?.trim()?.takeIf { it.isNotEmpty() },
     )
 }
@@ -186,6 +269,15 @@ private fun Boolean?.toGuestAttendance(): GuestAttendance {
     }
 }
 
+private fun String?.toGuestAttendance(): GuestAttendance? {
+    return when (this?.trim()?.uppercase()) {
+        "CERTAIN" -> GuestAttendance.Attending
+        "NO" -> GuestAttendance.NotAttending
+        "MAYBE" -> GuestAttendance.Undecided
+        else -> null
+    }
+}
+
 private fun GuestSideType.toDbValue(): String {
     return when (this) {
         GuestSideType.Groom -> "groom"
@@ -194,11 +286,19 @@ private fun GuestSideType.toDbValue(): String {
     }
 }
 
-private fun GuestAttendance.toDbValue(): Boolean? {
+private fun GuestAttendance.toLegacyDbValue(): Boolean? {
     return when (this) {
         GuestAttendance.Attending -> true
         GuestAttendance.NotAttending -> false
         GuestAttendance.Undecided -> null
+    }
+}
+
+private fun GuestAttendance.toDbValue(): String {
+    return when (this) {
+        GuestAttendance.Attending -> "CERTAIN"
+        GuestAttendance.Undecided -> "MAYBE"
+        GuestAttendance.NotAttending -> "NO"
     }
 }
 
@@ -226,3 +326,4 @@ private fun RestException.postgresCodeOrNull(): String? {
 private const val POSTGRES_UNDEFINED_TABLE: String = "42P01"
 private const val POSTGRES_INSUFFICIENT_PRIVILEGE: String = "42501"
 private const val FEATURE_NAME: String = "Guests"
+private const val GUEST_SETTINGS_TABLE: String = "guest_settings"

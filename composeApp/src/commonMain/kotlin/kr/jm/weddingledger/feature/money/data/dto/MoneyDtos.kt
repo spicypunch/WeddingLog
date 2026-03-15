@@ -36,6 +36,9 @@ data class BudgetItemRowDto(
     val name: String,
     @SerialName("target_amount")
     val targetAmount: Int,
+    val stage: String? = null,
+    @SerialName("due_date")
+    val dueDate: String? = null,
     val memo: String? = null,
     @SerialName("created_at")
     val createdAt: String? = null,
@@ -52,6 +55,9 @@ data class BudgetItemInsertDto(
     val name: String,
     @SerialName("target_amount")
     val targetAmount: Int,
+    val stage: String,
+    @SerialName("due_date")
+    val dueDate: String? = null,
     val memo: String? = null,
 )
 

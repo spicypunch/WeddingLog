@@ -5,8 +5,10 @@ data class Guest(
     val name: String,
     val side: GuestSideType,
     val relationshipScore: Int,
-    val expectedGiftMoney: Long?,
     val attendance: GuestAttendance,
+    val companionCount: Int,
+    val actualAttended: Boolean?,
+    val actualGiftMoney: Long?,
     val note: String?,
 )
 
@@ -26,7 +28,13 @@ data class NewGuest(
     val name: String,
     val side: GuestSideType,
     val relationshipScore: Int,
-    val expectedGiftMoney: Long?,
     val attendance: GuestAttendance,
+    val companionCount: Int,
+    val actualAttended: Boolean?,
+    val actualGiftMoney: Long?,
     val note: String?,
+)
+
+data class GuestSettings(
+    val guaranteedGuestCount: Int,
 )

@@ -75,6 +75,7 @@ class ScheduleViewModelTest {
         assertTrue(state.calendar.upcoming.isNotEmpty())
         assertEquals("예식장 계약", state.calendar.upcoming.first().title)
         assertTrue(state.calendar.upcoming.any { it.title == "스튜디오 촬영" })
+        assertEquals("예식장 계약", state.calendar.checklistFocusItems.first().title)
     }
 
     @Test
@@ -143,6 +144,61 @@ class ScheduleViewModelTest {
         advanceUntilIdle()
 
         assertTrue(notificationRepository.cancelledReminderIds.contains("event-reminder-event-1"))
+    }
+
+    @Test
+    fun `selecting calendar day shows day items without replacing upcoming list`() = runMainDispatcherTest {
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val targetDate = today.plus(3, DateTimeUnit.DAY)
+        val checklistRepository = FakeChecklistRepositoryForViewModel(
+            initialTasks = listOf(
+                ChecklistTask(
+                    id = "task-1",
+                    title = "드레스 최종 확인",
+                    dTag = "D-7",
+                    groupTitle = "마지막 점검",
+                    isChecked = false,
+                    targetDate = targetDate,
+                    memo = null,
+                )
+            )
+        )
+        val eventRepository = FakeScheduleEventRepositoryForViewModel(
+            initialEvents = listOf(
+                ScheduleEvent(
+                    id = "event-1",
+                    title = "웨딩홀 미팅",
+                    eventDate = targetDate,
+                    startTime = "11:00",
+                    location = "잠실",
+                    memo = null,
+                    repeatRule = EventRepeatRule.None,
+                ),
+                ScheduleEvent(
+                    id = "event-2",
+                    title = "메이크업 상담",
+                    eventDate = today.plus(4, DateTimeUnit.DAY),
+                    startTime = "15:00",
+                    location = "청담",
+                    memo = null,
+                    repeatRule = EventRepeatRule.None,
+                ),
+            )
+        )
+        val notificationRepository = FakeNotificationCenterRepositoryForViewModel()
+
+        val viewModel = createViewModel(checklistRepository, eventRepository, notificationRepository)
+        advanceUntilIdle()
+
+        viewModel.onAction(ScheduleAction.OnSelectCalendarDay(targetDate.toString()))
+        advanceUntilIdle()
+
+        val calendar = viewModel.state.value.calendar
+        assertEquals(targetDate.toString(), calendar.selectedDayId)
+        assertEquals(2, calendar.selectedDayItems.size)
+        assertTrue(calendar.selectedDayItems.any { it.title == "드레스 최종 확인" })
+        assertTrue(calendar.selectedDayItems.any { it.title == "웨딩홀 미팅" })
+        assertTrue(calendar.upcoming.any { it.title == "메이크업 상담" })
     }
 }
 

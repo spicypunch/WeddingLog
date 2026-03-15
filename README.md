@@ -1,7 +1,7 @@
 # WeddingLedger
 
-Kotlin Multiplatform + Compose Multiplatform 기반의 웨딩 준비 앱입니다.  
-Android/iOS 공용 코드로 일정, 예산, 하객, 온보딩/연결 코드, 알림센터 기능을 제공합니다.
+Kotlin Multiplatform + Compose Multiplatform 기반의 결혼 준비/가계부 앱입니다.  
+Android/iOS 공용 코드로 홈 결산, 가계부, 일정, 하객, 온보딩/연결 코드, 알림센터 기능을 제공합니다.
 
 ## 기술 스택
 
@@ -46,7 +46,7 @@ ENABLE_APPLE_LOGIN=false
 ## 빌드/테스트
 
 ```bash
-cd /Users/mackim/AndroidStudioProjects/WeddingLedger
+cd /Users/jm/StudioProjects/WeddingLedger
 
 # Android debug 빌드
 ./gradlew :androidApp:assembleDebug
@@ -97,19 +97,30 @@ Supabase 대시보드 권장값:
 - 파트너 연결 알림 현황:
   - 현재 알림센터 피드는 일정/체크리스트/예산 초과 기반이며, 파트너 연결 즉시 알림은 미구현 상태
 
-## 최근 기능 반영 (2026-03-05)
+## 최근 제품 개편 (2026-03-15)
 
-- Money:
-  - 지출 입력에 `업체명(선택)` 필드 추가
-  - 지출 목록에서 `날짜 · 업체명` 서브텍스트 표시
-  - 결제 수단 `공동계좌` 추가
-  - `공동계좌` 선택 시 결제자 선택 UI 숨김 + 내부 결제자 자동 `공동`
-  - 카테고리 관리(사용자 카테고리 추가/수정) 바텀시트 추가
-- 상단 헤더:
-  - 홈/돈/일정/하객 상단 액션을 알림 아이콘 1개로 통일
-  - 공용 컴포넌트 `WeddingLogTopBar`로 분리
-- 데이터 안정성:
-  - 계정 전환 시 `wedding_id` 캐시 오염 방지를 위해 repository 캐시를 사용자 단위(`cachedUserId + cachedWeddingId`)로 개선
+- Home:
+  - 결산 대시보드 구조로 재편
+  - 총 예산/총 지출/잔액, 신랑/신부/공동 분담, 카테고리 결산, 다가오는 일정 표시
+- 가계부:
+  - 하단 탭명을 `돈`에서 `가계부`로 변경
+  - 예산/지출 통합형 구조로 재배치
+  - `계약금/중도금/잔금/일반` 단계와 예정일 지원
+  - `남은 결제`, `단계별 요약`, `분담 요약` 추가
+- 일정:
+  - 선택 날짜 일정, 다가오는 일정, 마감 임박 체크리스트를 한 화면에서 항상 보이도록 개편
+- 하객:
+  - `예상 하객 | 축의대` 이중 구조로 재설계
+  - 보증인원, 예상 하객 수(꼭 옴/애매/안 옴 + 동반 인원), 실제 참석/실제 축의금 기록 지원
+- Supabase:
+  - 리포지토리 SQL 파일 생성 없이 원격 DB에 직접 migration 적용
+  - `budget_items.stage`, `budget_items.due_date`
+  - `guests.attendance_likelihood`, `guests.companion_count`, `guests.actual_attended`, `guests.actual_gift_money`
+  - `guest_settings.guaranteed_guest_count`
+
+## QA
+
+- 통합 QA 체크리스트는 [qa.md](./qa.md)에서 확인할 수 있습니다.
 
 ## 최근 기술 반영 (2026-03-08)
 
@@ -128,4 +139,3 @@ Supabase 대시보드 권장값:
 ## 인수인계
 
 상세 변경 이력/백로그/검증 결과는 [HANDOVER.md](./HANDOVER.md)에서 확인할 수 있습니다.
-날짜별 세션 인수인계 문서는 `docs/handover/`에서 확인할 수 있습니다.

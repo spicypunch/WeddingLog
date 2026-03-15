@@ -26,6 +26,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -111,10 +112,28 @@ fun AddBudgetItemBottomSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(state.quickNameSuggestions) { suggestion ->
+                            Surface(
+                                onClick = { onAction(AddBudgetItemAction.OnSelectQuickName(suggestion)) },
+                                color = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                shape = CircleShape,
+                            ) {
+                                Text(
+                                    text = suggestion,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                )
+                            }
+                        }
+                    }
                     TextField(
                         value = state.name,
                         onValueChange = { onAction(AddBudgetItemAction.OnNameChange(it)) },
-                        placeholder = { Text(text = "예: 웨딩 촬영") },
+                        placeholder = { Text(text = "예: 계약금, 잔금, 본식비") },
                         singleLine = true,
                         colors = TextFieldDefaults.colors(
                             focusedContainerColor = Color.Transparent,
@@ -125,6 +144,78 @@ fun AddBudgetItemBottomSheet(
                         ),
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "결제 단계",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(state.stageOptions) { option ->
+                            val selected = option.stage == state.selectedStage
+                            Surface(
+                                onClick = { onAction(AddBudgetItemAction.OnSelectStage(option.stage)) },
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                shape = CircleShape,
+                                shadowElevation = if (selected) 2.dp else 0.dp,
+                            ) {
+                                Text(
+                                    text = option.label,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp),
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = "계약금, 중도금, 잔금을 명시하면 남은 결제와 단계별 결산이 더 정확해져요.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "예정일 (선택)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                    OutlinedButton(
+                        onClick = { onAction(AddBudgetItemAction.OnClickDueDate) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.large,
+                    ) {
+                        Text(
+                            text = state.dueDateText ?: "결제 예정일 선택",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "중도금이나 잔금 예정일을 넣어두면 가계부 탭에서 곧 낼 결제를 바로 볼 수 있어요.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (state.dueDate != null) {
+                            TextButton(onClick = { onAction(AddBudgetItemAction.OnClickClearDueDate) }) {
+                                Text(text = "지우기")
+                            }
+                        }
+                    }
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
