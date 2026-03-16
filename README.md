@@ -52,10 +52,20 @@ cd /Users/jm/StudioProjects/WeddingLedger
 ./gradlew :androidApp:assembleDebug
 
 # Android unit test
-./gradlew :composeApp:testDebugUnitTest
+./gradlew :androidApp:testDebugUnitTest
+
+# KMP shared test
+./gradlew :composeApp:allTests
 
 # iOS 공용 framework 링크 확인
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+```
+
+Android Studio 업데이트 이후 간헐적으로 Gradle sync에서 `convertPbxprojToJson` / `plutil` 오류가 날 수 있습니다.
+그 경우 Finder/Launcher 대신 아래처럼 터미널에서 Android Studio를 실행하면 정상화된 사례가 있습니다.
+
+```bash
+"/Applications/Android Studio.app/Contents/MacOS/studio" /Users/jm/StudioProjects/WeddingLedger
 ```
 
 ## 인증 딥링크

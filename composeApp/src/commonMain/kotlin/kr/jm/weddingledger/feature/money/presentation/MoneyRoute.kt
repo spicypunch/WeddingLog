@@ -76,6 +76,13 @@ fun MoneyRoute(
                     activeSheet = MoneySheet.AddExpense
                     addExpenseState = newAddExpenseState(uiState)
                 }
+                MoneyAction.OnClickAddBudgetItemEntry -> {
+                    activeSheet = MoneySheet.AddBudgetItem
+                    addBudgetItemState = newAddBudgetItemState(
+                        uiState = uiState,
+                        preselectedCategoryId = null,
+                    )
+                }
                 is MoneyAction.OnClickBudgetAddItem -> {
                     activeSheet = MoneySheet.AddBudgetItem
                     addBudgetItemState = newAddBudgetItemState(

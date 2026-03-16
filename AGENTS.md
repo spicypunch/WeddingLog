@@ -111,5 +111,5 @@ Codex(및 모든 기여자)는 변경 작업 시 아래 규칙을 반드시 준�
 - 변경은 작고 리뷰 가능하게 유지합니다.
 - 명시적인 요청이 없으면 광범위 리팩토링을 피합니다.
 - 의미 있는 변경 후에는 최소 1회 sanity build를 수행합니다.
-  - Android: `./gradlew :composeApp:assembleDebug`
+  - Android: `./gradlew :androidApp:assembleDebug`
   - iOS: Xcode에서 `iosApp` 열어 빌드/실행

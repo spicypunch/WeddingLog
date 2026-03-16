@@ -29,15 +29,22 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -112,8 +119,19 @@ fun MoneyScreen(
                 contentColor = MaterialTheme.colorScheme.primary,
             )
 
-            FloatingActionButton(
-                onClick = { onAction(MoneyAction.OnClickAdd) },
+            val fabAction = when (state.selectedTab) {
+                MoneyTab.Budget -> {
+                    if (state.budget.categories.isEmpty()) MoneyAction.OnClickManageCategories else MoneyAction.OnClickAddBudgetItemEntry
+                }
+                MoneyTab.Expenses -> MoneyAction.OnClickAdd
+            }
+            val fabLabel = when (state.selectedTab) {
+                MoneyTab.Budget -> if (state.budget.categories.isEmpty()) "카테고리 만들기" else "예산 항목 추가"
+                MoneyTab.Expenses -> "지출 추가"
+            }
+
+            ExtendedFloatingActionButton(
+                onClick = { onAction(fabAction) },
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier
@@ -122,8 +140,10 @@ fun MoneyScreen(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Add,
-                    contentDescription = "추가",
+                    contentDescription = fabLabel,
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = fabLabel)
             }
         }
     }
@@ -136,6 +156,8 @@ private fun MoneyContent(
     onAction: (MoneyAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showBudgetDetails by rememberSaveable { mutableStateOf(false) }
+    var showExpenseFilters by rememberSaveable { mutableStateOf(false) }
     val filteredExpenseCount = state.expenses.sections.sumOf { it.items.size }
 
     LazyColumn(
@@ -147,127 +169,209 @@ private fun MoneyContent(
             BudgetSummaryCard(state = state.budget)
         }
 
-        if (state.budget.insightItems.isNotEmpty()) {
-            item {
-                BudgetInsightsRow(items = state.budget.insightItems)
-            }
-        }
-
-        if (state.budget.payerSummaries.isNotEmpty()) {
-            item {
-                PayerSummaryCard(items = state.budget.payerSummaries)
-            }
-        }
-
-        if (state.budget.paymentStageSummaries.isNotEmpty()) {
-            item {
-                PaymentStageSection(items = state.budget.paymentStageSummaries)
-            }
-        }
-
-        if (state.budget.pendingPayments.isNotEmpty()) {
-            item {
-                PendingPaymentsSection(
-                    items = state.budget.pendingPayments,
-                    onClickBudgetItem = { onAction(MoneyAction.OnClickBudgetItem(it)) },
-                )
-            }
-        }
-
         item {
-            ExpenseOverviewCard(
-                state = state.expenses,
-                filteredExpenseCount = filteredExpenseCount,
+            MoneyTabRow(
+                selectedTab = state.selectedTab,
+                onSelectTab = { onAction(MoneyAction.OnSelectTab(it)) },
             )
         }
 
-        item {
-            ExpenseFilterPanel(
-                state = state.expenses,
-                onAction = onAction,
-            )
-        }
-
-        item {
-            SectionHeader(
-                title = "카테고리별 예산과 지출",
-                subtitle = "예산을 먼저 잡고, 같은 화면에서 실제 지출 흐름을 함께 보세요.",
-                trailing = {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TextButton(onClick = { onAction(MoneyAction.OnClickManageCategories) }) {
-                            Text(text = "카테고리 관리")
-                        }
-                        TextButton(onClick = { onAction(MoneyAction.OnToggleBudgetFilter) }) {
-                            Text(text = if (state.budget.isOverBudgetOnly) "초과만 보기" else "전체 보기")
-                        }
+        when (state.selectedTab) {
+            MoneyTab.Budget -> {
+                if (state.budget.pendingPayments.isNotEmpty()) {
+                    item {
+                        PendingPaymentsSection(
+                            items = state.budget.pendingPayments,
+                            onClickBudgetItem = { onAction(MoneyAction.OnClickBudgetItem(it)) },
+                        )
                     }
                 }
-            )
-        }
 
-        if (state.budget.categories.isEmpty()) {
-            item {
-                EmptySectionCard(
-                    title = "예산 카테고리가 없어요",
-                    body = "카테고리를 만든 뒤 예산 항목을 추가하면 지출 흐름을 한눈에 볼 수 있어요.",
-                )
-            }
-        } else {
-            items(state.budget.categories, key = { it.id }) { category ->
-                BudgetCategoryCard(
-                    item = category,
-                    onToggle = { onAction(MoneyAction.OnToggleBudgetCategory(category.id)) },
-                    onClickAddItem = { onAction(MoneyAction.OnClickBudgetAddItem(category.id)) },
-                    onClickBudgetItem = { onAction(MoneyAction.OnClickBudgetItem(it)) },
-                    onClickExpense = { onAction(MoneyAction.OnClickExpense(it)) },
-                )
-            }
-        }
+                item {
+                    SectionHeader(
+                        title = "예산 계획",
+                        subtitle = "카테고리를 정리하고 계약금, 중도금, 잔금 예산을 먼저 잡아두세요.",
+                        trailing = {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                TextButton(onClick = { onAction(MoneyAction.OnClickManageCategories) }) {
+                                    Text(text = "카테고리 관리")
+                                }
+                                TextButton(onClick = { onAction(MoneyAction.OnToggleBudgetFilter) }) {
+                                    Text(text = if (state.budget.isOverBudgetOnly) "전체 보기" else "초과만 보기")
+                                }
+                            }
+                        }
+                    )
+                }
 
-        item {
-            SectionHeader(
-                title = "전체 지출 기록",
-                subtitle = if (filteredExpenseCount == 0) {
-                    "현재 필터 조건에 맞는 지출이 없어요."
+                if (state.budget.categories.isEmpty()) {
+                    item {
+                        EmptySectionCard(
+                            title = "예산 카테고리가 없어요",
+                            body = "먼저 카테고리를 만들고, 그다음 계약금이나 잔금 같은 예산 항목을 추가해보세요.",
+                        )
+                    }
                 } else {
-                    "필터 결과 ${filteredExpenseCount}건"
+                    items(state.budget.categories, key = { it.id }) { category ->
+                        BudgetCategoryCard(
+                            item = category,
+                            onToggle = { onAction(MoneyAction.OnToggleBudgetCategory(category.id)) },
+                            onClickAddItem = { onAction(MoneyAction.OnClickBudgetAddItem(category.id)) },
+                            onClickBudgetItem = { onAction(MoneyAction.OnClickBudgetItem(it)) },
+                            onClickExpense = { onAction(MoneyAction.OnClickExpense(it)) },
+                        )
+                    }
                 }
-            )
-        }
 
-        if (state.expenses.sections.isEmpty()) {
-            item {
-                EmptySectionCard(
-                    title = "표시할 지출이 없어요",
-                    body = "필터를 바꾸거나 새 지출을 추가해보세요.",
-                )
+                if (
+                    state.budget.insightItems.isNotEmpty() ||
+                    state.budget.payerSummaries.isNotEmpty() ||
+                    state.budget.paymentStageSummaries.isNotEmpty()
+                ) {
+                    item {
+                        DetailToggleRow(
+                            title = "상세 결산",
+                            subtitle = "분담, 단계별 진행률, 초과 현황은 필요할 때만 펼쳐보세요.",
+                            expanded = showBudgetDetails,
+                            onToggle = { showBudgetDetails = !showBudgetDetails },
+                        )
+                    }
+                }
+
+                if (showBudgetDetails && state.budget.insightItems.isNotEmpty()) {
+                    item {
+                        BudgetInsightsRow(items = state.budget.insightItems)
+                    }
+                }
+
+                if (showBudgetDetails && state.budget.payerSummaries.isNotEmpty()) {
+                    item {
+                        PayerSummaryCard(items = state.budget.payerSummaries)
+                    }
+                }
+
+                if (showBudgetDetails && state.budget.paymentStageSummaries.isNotEmpty()) {
+                    item {
+                        PaymentStageSection(items = state.budget.paymentStageSummaries)
+                    }
+                }
             }
-        } else {
-            state.expenses.sections.forEach { section ->
-                stickyHeader(key = "expense-header-${section.title}") {
-                    Text(
-                        text = section.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.background)
-                            .padding(horizontal = 4.dp, vertical = 10.dp)
+
+            MoneyTab.Expenses -> {
+                item {
+                    ExpenseOverviewCard(
+                        state = state.expenses,
+                        filteredExpenseCount = filteredExpenseCount,
                     )
                 }
-                items(section.items, key = { it.id }) { item ->
-                    ExpenseRow(
-                        item = item,
-                        onClick = { onAction(MoneyAction.OnClickExpense(item.id)) },
+
+                item {
+                    DetailToggleRow(
+                        title = "지출 기록",
+                        subtitle = if (filteredExpenseCount == 0) {
+                            "지출을 추가하면 여기서 최신 기록을 바로 확인할 수 있어요."
+                        } else {
+                            "현재 필터 기준 ${filteredExpenseCount}건의 지출이 보입니다."
+                        },
+                        expanded = showExpenseFilters,
+                        expandedLabel = "필터 숨기기",
+                        collapsedLabel = "필터 보기",
+                        onToggle = { showExpenseFilters = !showExpenseFilters },
                     )
+                }
+
+                if (showExpenseFilters) {
+                    item {
+                        ExpenseFilterPanel(
+                            state = state.expenses,
+                            onAction = onAction,
+                        )
+                    }
+                }
+
+                if (state.expenses.sections.isEmpty()) {
+                    item {
+                        EmptySectionCard(
+                            title = "표시할 지출이 없어요",
+                            body = "새 지출을 추가하거나 필터를 바꿔보세요.",
+                        )
+                    }
+                } else {
+                    state.expenses.sections.forEach { section ->
+                        stickyHeader(key = "expense-header-${section.title}") {
+                            Text(
+                                text = section.title,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(MaterialTheme.colorScheme.background)
+                                    .padding(horizontal = 4.dp, vertical = 10.dp)
+                            )
+                        }
+                        items(section.items, key = { it.id }) { item ->
+                            ExpenseRow(
+                                item = item,
+                                onClick = { onAction(MoneyAction.OnClickExpense(item.id)) },
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun MoneyTabRow(
+    selectedTab: MoneyTab,
+    onSelectTab: (MoneyTab) -> Unit,
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = MaterialTheme.shapes.large,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        TabRow(selectedTabIndex = MoneyTab.entries.indexOf(selectedTab)) {
+            MoneyTab.entries.forEachIndexed { index, tab ->
+                Tab(
+                    selected = selectedTab == tab,
+                    onClick = { onSelectTab(tab) },
+                    text = {
+                        Text(
+                            text = tab.label,
+                            fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Medium,
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailToggleRow(
+    title: String,
+    subtitle: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    expandedLabel: String = "상세 숨기기",
+    collapsedLabel: String = "상세 보기",
+) {
+    SectionHeader(
+        title = title,
+        subtitle = subtitle,
+        trailing = {
+            TextButton(onClick = onToggle) {
+                Text(text = if (expanded) expandedLabel else collapsedLabel)
+            }
+        },
+    )
 }
 
 @Composable

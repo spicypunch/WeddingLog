@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-03-15  
+마지막 갱신: 2026-03-16  
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -15,12 +15,37 @@
 ```bash
 cd /Users/jm/StudioProjects/WeddingLedger
 ./gradlew :androidApp:assembleDebug
-./gradlew :composeApp:assembleDebug
-./gradlew :composeApp:testDebugUnitTest
+./gradlew :androidApp:testDebugUnitTest
+./gradlew :composeApp:allTests
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 # UI(instrumented) 테스트는 에뮬레이터/디바이스 연결 후 실행
 ./gradlew :androidApp:connectedDebugAndroidTest
 ```
+
+4) Android Studio 업데이트 이후 `convertPbxprojToJson` / `plutil` 오류가 나면 Finder가 아니라 터미널에서 IDE 실행:
+
+```bash
+"/Applications/Android Studio.app/Contents/MacOS/studio" /Users/jm/StudioProjects/WeddingLedger
+```
+
+5) 현재 Supabase 데이터는 QA용으로 **앱 데이터 + auth.users까지 전부 비운 상태**다.
+   - 새로운 QA는 회원가입부터 다시 시작하면 된다.
+   - 단, 이메일 전송 rate limit은 데이터 삭제와 별개라 바로 초기화되지 않을 수 있다.
+
+---
+
+## 0-1) 내일 바로 할 일
+
+1. `main` 최신 pull
+2. Android Studio는 필요 시 터미널 실행 방식으로 열기
+3. `local.properties` 값 확인
+4. 새 계정으로 회원가입/로그인부터 다시 시작
+5. **가계부 탭을 제일 먼저 QA**
+   - 첫 진입 시 `예산` 탭이 기본 선택되는지
+   - `예산 / 지출` 분리가 직관적인지
+   - `예산 항목 추가` / `지출 추가` 흐름이 쉬운지
+   - 아직도 복잡하면 어느 구간에서 막히는지 메모
+6. 그 다음 홈/일정/하객 순서로 통합 QA 진행
 
 ---
 
@@ -53,9 +78,21 @@ cd /Users/jm/StudioProjects/WeddingLedger
   - 카테고리별 결산, 다가오는 일정, 최근 지출 요약
 - 가계부:
   - 하단 탭명 `가계부`
-  - 예산/지출 통합형 레이아웃
+  - `예산 / 지출` 분리 탭 레이아웃으로 재정리
+  - 기본 진입 탭은 `예산`
+  - 상단 총 예산/총 지출/남은 금액 요약은 유지
+  - `예산` 탭:
+    - `남은 결제 확인`
+    - 카테고리별 예산 항목 관리
+    - `상세 결산 보기`를 눌렀을 때만 인사이트/분담/단계별 결산 노출
+  - `지출` 탭:
+    - 지출 요약 + 지출 기록 중심
+    - 필터는 기본 숨김
+  - FAB는 탭에 따라 문맥적으로 변경
+    - 예산: `예산 항목 추가` 또는 `카테고리 만들기`
+    - 지출: `지출 추가`
   - `계약금/중도금/잔금/일반` 단계 지원
-  - 단계별 요약, 남은 결제, 결제 분담, 예정일 노출
+  - 단계별 요약, 남은 결제, 결제 분담, 예정일 지원
   - `public.budget_items.stage`, `public.budget_items.due_date` 실DB 반영 완료
 - Schedule:
   - 체크리스트 생성/수정/삭제/체크
@@ -116,6 +153,25 @@ cd /Users/jm/StudioProjects/WeddingLedger
   - Android/shared 쪽 Kakao native key는 루트 `local.properties`의 `KAKAO_NATIVE_APP_KEY`를 읽음
   - iOS `Config.xcconfig`만 채워져 있으면 Android Kakao SDK는 초기화되지 않음
   - 다른 PC에서 작업 시 `local.properties` 누락 여부를 먼저 확인할 것
+
+---
+
+## 1-2) 오늘 추가 변경 (2026-03-16)
+
+- 가계부 탭 UX 단순화
+  - 기존 통합형 화면이 처음 쓰는 사용자에게 복잡하게 느껴져 `예산 / 지출` 탭 구조로 되돌림
+  - `예산` 탭을 계획 중심 화면으로, `지출` 탭을 기록 중심 화면으로 역할 분리
+  - 상세 결산 정보는 기본 노출하지 않고 접힘 상태로 변경
+- Android Studio / Gradle 실행 이슈 정리
+  - `composeApp`는 실행용 앱 모듈이 아니라 shared Android-KMP library
+  - 실제 Android 앱 빌드는 `:androidApp:assembleDebug`
+  - `:composeApp:assembleDebug`, `:composeApp:testDebugUnitTest`는 현재 구조 기준 잘못된 옛 명령
+  - 문서/인수인계/README의 빌드 명령도 현재 구조에 맞게 수정함
+  - IDE 업데이트 후 `convertPbxprojToJson` / `plutil` 오류가 날 경우 터미널 실행으로 우회 가능함
+- QA 초기화
+  - Supabase에서 `public` 앱 데이터 + `auth.users` 포함 인증 데이터까지 삭제 완료
+  - 완전 초기 상태 QA 가능
+  - 테스트용 계정도 새로 만들어야 함
 
 ---
 
@@ -428,8 +484,8 @@ cd /Users/jm/StudioProjects/WeddingLedger
 성공(2026-03-15 기준):
 
 ```bash
-./gradlew :composeApp:testDebugUnitTest --tests '*GuestsViewModelTest' --tests '*GuestsUseCaseAndFlowTest' --tests '*UpdateGuestUseCaseTest' --tests '*UpdateGuestSettingsUseCaseTest'
-./gradlew :composeApp:assembleDebug :composeApp:compileDebugAndroidTestKotlin
+./gradlew :composeApp:allTests
+./gradlew :androidApp:assembleDebug
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build -quiet
 ```
 
@@ -440,7 +496,7 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 성공(2026-03-04 기준):
 
 ```bash
-./gradlew :composeApp:assembleDebug
+./gradlew :androidApp:assembleDebug
 # iOS host
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
@@ -448,7 +504,7 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 성공(2026-03-05 기준):
 
 ```bash
-./gradlew :composeApp:assembleDebug
+./gradlew :androidApp:assembleDebug
 ```
 
 수동 QA(2026-03-04):
@@ -458,21 +514,20 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 성공(2026-02-25 기준):
 
 ```bash
-./gradlew :composeApp:testDebugUnitTest --tests '*OnboardingViewModelTest'
-./gradlew :composeApp:assembleDebug
+./gradlew :composeApp:allTests
+./gradlew :androidApp:assembleDebug
 ```
 
 성공(2026-02-19 기준):
 
 ```bash
-./gradlew :composeApp:testDebugUnitTest --rerun-tasks
-# 결과: 103 tests, 0 failures, 0 errors
+./gradlew :composeApp:allTests --rerun-tasks
 
 ./gradlew :composeApp:compileTestKotlinIosSimulatorArm64 --rerun-tasks
 
-./gradlew :composeApp:compileDebugAndroidTestKotlinAndroid
+./gradlew :androidApp:compileDebugAndroidTestKotlin
 
-./gradlew :composeApp:assembleDebug
+./gradlew :androidApp:assembleDebug
 ```
 
 실행 제약:

@@ -1,6 +1,30 @@
 # Session Handover (2026-03-03) - Kakao Native Login + Auth Refactor
 
-업데이트: 2026-03-08
+업데이트: 2026-03-16
+
+## 0) 최신 메모 (2026-03-16)
+
+- Android Studio 업데이트 후 IDE에서 `convertPbxprojToJson` / `plutil` 오류가 날 수 있었음.
+  - 프로젝트 자체 문제는 아니었고, 터미널에서 Android Studio를 실행하면 정상 sync/실행됨.
+  - 실행 명령:
+
+```bash
+"/Applications/Android Studio.app/Contents/MacOS/studio" /Users/jm/StudioProjects/WeddingLedger
+```
+
+- 현재 구조 기준 Android 앱 모듈은 `androidApp`이다.
+  - `composeApp`는 shared KMP library라 `:composeApp:assembleDebug`가 없다.
+  - 올바른 Android 빌드 명령: `./gradlew :androidApp:assembleDebug`
+
+- Supabase 데이터는 QA용으로 초기화해둔 상태다.
+  - `public` 앱 데이터 + `auth.users` 포함 인증 데이터 전부 삭제 완료
+  - 다음 QA는 회원가입부터 다시 시작하면 됨
+
+- 가계부 탭은 다시 단순화했다.
+  - `예산 / 지출` 탭 분리
+  - 기본 탭은 `예산`
+  - 상세 결산/필터는 기본 접힘
+  - 내일 첫 확인 포인트는 이 가계부 UX가 실제로 쉬워졌는지다
 
 ## 1) 이번 세션 핵심 요약
 
@@ -110,7 +134,7 @@
 
 ## 6) 빌드 검증 상태
 
-- Android: `./gradlew :composeApp:assembleDebug` 성공
+- Android: `./gradlew :androidApp:assembleDebug` 성공
 - iOS: `xcodebuild ... build` 성공
 - 참고: 간헐적으로 Xcode `build.db` lock 이슈가 있었고, 아래 방식으로 복구됨
 

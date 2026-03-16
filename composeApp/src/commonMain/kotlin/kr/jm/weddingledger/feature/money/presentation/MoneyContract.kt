@@ -13,8 +13,8 @@ import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 
 enum class MoneyTab(val label: String) {
-    Expenses("지출"),
     Budget("예산"),
+    Expenses("지출"),
 }
 
 data class MoneyUiState(
@@ -27,7 +27,7 @@ data class MoneyUiState(
 ) {
     companion object {
         fun sample(): MoneyUiState = MoneyUiState(
-            selectedTab = MoneyTab.Expenses,
+            selectedTab = MoneyTab.Budget,
             expenses = ExpensesUiState.sample(),
             budget = BudgetUiState.sample()
         )
@@ -509,6 +509,7 @@ sealed interface MoneyAction {
     data object OnSaveExpenseFilterPreset : MoneyAction
     data class OnSelectExpenseFilterPreset(val id: String) : MoneyAction
     data object OnClickAdd : MoneyAction
+    data object OnClickAddBudgetItemEntry : MoneyAction
     data object OnClickManageCategories : MoneyAction
     data object OnClickNotifications : MoneyAction
     data object OnClickSettings : MoneyAction

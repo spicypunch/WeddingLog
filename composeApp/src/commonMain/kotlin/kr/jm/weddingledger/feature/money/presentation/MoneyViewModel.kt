@@ -68,7 +68,7 @@ class MoneyViewModel(
 
     private val _state = MutableStateFlow(
         MoneyUiState(
-            selectedTab = MoneyTab.Expenses,
+            selectedTab = MoneyTab.Budget,
             expenses = ExpensesUiState.empty(),
             budget = BudgetUiState.empty(),
             isLoading = false,
@@ -106,6 +106,7 @@ class MoneyViewModel(
             is MoneyAction.OnDeleteExpense -> deleteExpense(action)
 
             MoneyAction.OnClickAdd -> Unit // handled in Route (bottom sheets)
+            MoneyAction.OnClickAddBudgetItemEntry -> Unit // handled in Route (bottom sheets)
             MoneyAction.OnClickManageCategories -> Unit // handled in Route (bottom sheets)
             MoneyAction.OnClickNotifications -> Unit // handled in Route (navigation)
             MoneyAction.OnClickSettings -> Unit // handled in Route (navigation)
