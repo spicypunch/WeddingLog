@@ -29,6 +29,10 @@ Android/iOS 공용 코드로 홈 결산, 가계부, 일정, 하객, 온보딩/�
 ```properties
 SUPABASE_URL=...
 SUPABASE_ANON_KEY=...
+FIREBASE_ANDROID_APPLICATION_ID=...
+FIREBASE_PROJECT_ID=...
+FIREBASE_API_KEY=...
+FIREBASE_GCM_SENDER_ID=...
 KAKAO_NATIVE_APP_KEY=...
 
 # 소셜 로그인 노출/활성 토글 (기본값: Kakao/Google=true, Apple=false)
@@ -38,6 +42,13 @@ ENABLE_APPLE_LOGIN=false
 ```
 
 - `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
+- 파트너 활동 푸시까지 쓰려면 Android Firebase 앱의 `Application ID`, `Project ID`, `Web API Key`, `Sender ID`를 `local.properties`에 넣어야 합니다.
+- iOS 파트너 활동 푸시는 `iosApp/Configuration/Config.xcconfig`에 아래 값을 채워야 동작합니다.
+  - `FIREBASE_IOS_GOOGLE_APP_ID`
+  - `FIREBASE_PROJECT_ID`
+  - `FIREBASE_API_KEY`
+  - `FIREBASE_GCM_SENDER_ID`
+- Supabase Edge Function `send-partner-activity-push`가 실제 OS push까지 보내려면 Supabase 프로젝트 secret `FCM_SERVICE_ACCOUNT_JSON`도 별도로 설정해야 합니다.
 - Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - iOS 카카오 로그인도 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - `ENABLE_APPLE_LOGIN=false`면 앱에서 Apple 로그인 버튼/동작이 비활성화됩니다.
@@ -112,21 +123,30 @@ Supabase 대시보드 권장값:
 - Home:
   - 결산 대시보드 구조로 재편
   - 총 예산/총 지출/잔액, 신랑/신부/공동 분담, 카테고리 결산, 다가오는 일정 표시
+  - 큰 금액에서도 깨지지 않도록 결산 카드의 사용률 칩을 금액 아래 별도 행으로 이동
+  - 중간 `지출 추가하기 / 일정 확인하기` 카드 및 홈 FAB 제거
 - 가계부:
   - 하단 탭명을 `돈`에서 `가계부`로 변경
-  - 예산/지출 통합형 구조로 재배치
-  - `계약금/중도금/잔금/일반` 단계와 예정일 지원
-  - `남은 결제`, `단계별 요약`, `분담 요약` 추가
+  - `예산 / 지출` 분리 구조로 재배치
+  - 카테고리 기반 예산/지출 입력 흐름으로 단순화
+  - 지출은 `카테고리 필수`, `예산 항목 선택` 구조 지원
+  - `남은 결제`, `분담 요약` 추가
 - 일정:
   - 선택 날짜 일정, 다가오는 일정, 마감 임박 체크리스트를 한 화면에서 항상 보이도록 개편
 - 하객:
   - `예상 하객 | 축의대` 이중 구조로 재설계
   - 보증인원, 예상 하객 수(꼭 옴/애매/안 옴 + 동반 인원), 실제 참석/실제 축의금 기록 지원
+- 알림:
+  - 알림센터를 `새 활동 / 리마인더` 2섹션으로 확장
+  - 지출 추가 / 일정 추가 시 파트너 활동 기록 생성
+  - Android/iOS 원격 푸시 토큰 저장소 및 Supabase Edge Function 발송 경로 추가
 - Supabase:
   - 리포지토리 SQL 파일 생성 없이 원격 DB에 직접 migration 적용
   - `budget_items.stage`, `budget_items.due_date`
   - `guests.attendance_likelihood`, `guests.companion_count`, `guests.actual_attended`, `guests.actual_gift_money`
   - `guest_settings.guaranteed_guest_count`
+  - `expenses.created_by`, `schedule_events.created_by`
+  - `device_push_tokens`, `partner_activity_notifications`
 
 ## QA
 

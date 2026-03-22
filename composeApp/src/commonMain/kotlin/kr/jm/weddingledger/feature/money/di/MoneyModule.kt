@@ -7,6 +7,7 @@ import kr.jm.weddingledger.feature.money.domain.repository.MoneyRepository
 import kr.jm.weddingledger.feature.money.domain.usecase.AddCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddExpenseUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.DeleteCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.DeleteBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.DeleteExpenseUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.FetchExpenseFilterPreferenceUseCase
@@ -20,7 +21,7 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val moneyModule = module {
-    single<MoneyRepository> { MoneyRepositoryImpl(get()) }
+    single<MoneyRepository> { MoneyRepositoryImpl(get(), get()) }
     single<MoneyFilterPreferenceRepository> { MoneyFilterPreferenceRepositoryImpl() }
 
     factory { FetchMoneySnapshotUseCase(get()) }
@@ -30,10 +31,11 @@ val moneyModule = module {
     factory { AddBudgetItemUseCase(get()) }
     factory { AddExpenseUseCase(get()) }
     factory { UpdateCategoryUseCase(get()) }
+    factory { DeleteCategoryUseCase(get()) }
     factory { UpdateBudgetItemUseCase(get()) }
     factory { UpdateExpenseUseCase(get()) }
     factory { DeleteBudgetItemUseCase(get()) }
     factory { DeleteExpenseUseCase(get()) }
 
-    viewModel { MoneyViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { MoneyViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
 }

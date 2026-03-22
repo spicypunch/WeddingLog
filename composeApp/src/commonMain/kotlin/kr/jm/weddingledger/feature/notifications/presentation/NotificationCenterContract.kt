@@ -5,7 +5,8 @@ import kr.jm.weddingledger.feature.notifications.domain.model.NotificationItemTy
 data class NotificationCenterUiState(
     val title: String,
     val isLoading: Boolean,
-    val items: List<NotificationItemUi>,
+    val activityItems: List<NotificationItemUi>,
+    val reminderItems: List<NotificationItemUi>,
     val message: String?,
     val showPermissionAction: Boolean,
 ) {
@@ -13,7 +14,8 @@ data class NotificationCenterUiState(
         fun initial(): NotificationCenterUiState = NotificationCenterUiState(
             title = "알림센터",
             isLoading = true,
-            items = emptyList(),
+            activityItems = emptyList(),
+            reminderItems = emptyList(),
             message = null,
             showPermissionAction = false,
         )
@@ -28,6 +30,7 @@ data class NotificationItemUi(
     val detail: String,
     val canScheduleReminder: Boolean,
     val isReminderScheduled: Boolean,
+    val isUnread: Boolean,
 )
 
 sealed interface NotificationCenterAction {

@@ -4,6 +4,8 @@ import ComposeApp
 
 @main
 struct iOSApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     init() {
         KakaoNativeSignInCoordinator.shared.startObserving()
     }

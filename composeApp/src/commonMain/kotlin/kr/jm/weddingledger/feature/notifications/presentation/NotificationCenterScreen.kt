@@ -21,6 +21,7 @@ import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -82,7 +83,7 @@ fun NotificationCenterScreen(
             )
         }
 
-        if (!state.isLoading && state.items.isEmpty()) {
+        if (!state.isLoading && state.activityItems.isEmpty() && state.reminderItems.isEmpty()) {
             EmptyState(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -96,19 +97,54 @@ fun NotificationCenterScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(state.items, key = { it.id }) { item ->
-                NotificationCard(
-                    item = item,
-                    onClickScheduleReminder = {
-                        onAction(NotificationCenterAction.OnClickScheduleReminder(item.id))
-                    },
-                    onClickCancelReminder = {
-                        onAction(NotificationCenterAction.OnClickCancelReminder(item.id))
-                    },
-                )
+            if (state.activityItems.isNotEmpty()) {
+                item {
+                    NotificationSectionTitle(title = "새 활동")
+                }
+                items(state.activityItems, key = { it.id }) { item ->
+                    NotificationCard(
+                        item = item,
+                        onClickScheduleReminder = {
+                            onAction(NotificationCenterAction.OnClickScheduleReminder(item.id))
+                        },
+                        onClickCancelReminder = {
+                            onAction(NotificationCenterAction.OnClickCancelReminder(item.id))
+                        },
+                    )
+                }
+            }
+
+            if (state.reminderItems.isNotEmpty()) {
+                item {
+                    NotificationSectionTitle(title = "리마인더")
+                }
+                items(state.reminderItems, key = { it.id }) { item ->
+                    NotificationCard(
+                        item = item,
+                        onClickScheduleReminder = {
+                            onAction(NotificationCenterAction.OnClickScheduleReminder(item.id))
+                        },
+                        onClickCancelReminder = {
+                            onAction(NotificationCenterAction.OnClickCancelReminder(item.id))
+                        },
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun NotificationSectionTitle(
+    title: String,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.onSurface,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp),
+    )
 }
 
 @Composable
@@ -218,7 +254,7 @@ private fun EmptyState(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = "새 일정/체크리스트를 추가하면 여기에서 확인할 수 있어요.",
+                text = "파트너 활동과 리마인더가 생기면 여기에서 확인할 수 있어요.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -266,12 +302,25 @@ private fun NotificationCard(
                 Spacer(modifier = Modifier.width(10.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = item.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (item.isUnread) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                            )
+                        }
+                    }
                     Text(
                         text = item.subtitle,
                         style = MaterialTheme.typography.bodySmall,
@@ -350,6 +399,20 @@ private fun NotificationItemType.toVisuals(): ItemVisuals {
             badgeLabel = "예산",
             containerColor = Color(0xFFFFEDD5),
             contentColor = Color(0xFFC2410C),
+        )
+
+        NotificationItemType.PartnerExpenseAdded -> ItemVisuals(
+            icon = Icons.Rounded.Payments,
+            badgeLabel = "활동",
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+            contentColor = MaterialTheme.colorScheme.primary,
+        )
+
+        NotificationItemType.PartnerScheduleAdded -> ItemVisuals(
+            icon = Icons.Rounded.CalendarToday,
+            badgeLabel = "활동",
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+            contentColor = MaterialTheme.colorScheme.primary,
         )
     }
 }

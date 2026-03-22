@@ -8,9 +8,9 @@ import androidx.compose.material.icons.rounded.Print
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.datetime.LocalDate
-import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
+import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
 
 enum class MoneyTab(val label: String) {
     Budget("예산"),
@@ -19,6 +19,7 @@ enum class MoneyTab(val label: String) {
 
 data class MoneyUiState(
     val selectedTab: MoneyTab,
+    val currentUserRole: UserRole? = null,
     val expenses: ExpensesUiState,
     val budget: BudgetUiState,
     val isLoading: Boolean = false,
@@ -62,7 +63,7 @@ data class ExpensesUiState(
             categoryFilters = listOf(
                 ExpenseFilterChip(id = null, label = "전체", selected = true),
                 ExpenseFilterChip(id = "food", label = "식비", selected = false),
-                ExpenseFilterChip(id = "contract", label = "계약금", selected = false),
+                ExpenseFilterChip(id = "hall", label = "웨딩홀", selected = false),
                 ExpenseFilterChip(id = "dress", label = "드레스", selected = false),
                 ExpenseFilterChip(id = "studio", label = "스튜디오", selected = false),
             ),
@@ -103,7 +104,7 @@ data class ExpensesUiState(
                             categoryId = "wedding_hall",
                             categoryName = "웨딩홀",
                             budgetItemId = "budget-1",
-                            title = "웨딩홀 계약금",
+                            title = "웨딩홀 대관료",
                             dateText = "3월 10일",
                             amountText = "-1,000,000",
                             amount = 1_000_000,
@@ -120,7 +121,7 @@ data class ExpensesUiState(
                             id = "exp-3",
                             categoryId = "stationery",
                             categoryName = "청첩장",
-                            budgetItemId = "budget-1",
+                            budgetItemId = null,
                             title = "청첩장 인쇄",
                             dateText = "3월 05일",
                             amountText = "-250,000",
@@ -143,7 +144,7 @@ data class ExpensesUiState(
                             id = "exp-4",
                             categoryId = "sdme",
                             categoryName = "스드메",
-                            budgetItemId = "budget-2",
+                            budgetItemId = null,
                             title = "스냅 사진 예약",
                             dateText = "2월 28일",
                             amountText = "-500,000",
@@ -161,8 +162,8 @@ data class ExpensesUiState(
                 ),
             ),
             budgetItemOptions = listOf(
-                BudgetItemOption(id = "budget-1", label = "웨딩홀 · 계약금"),
-                BudgetItemOption(id = "budget-2", label = "스드메 · 드레스"),
+                BudgetItemOption(id = "budget-1", categoryId = "wedding_hall", label = "대관료"),
+                BudgetItemOption(id = "budget-2", categoryId = "sdme", label = "드레스"),
             ),
         )
     }
@@ -211,7 +212,7 @@ data class ExpenseListItem(
     val id: String,
     val categoryId: String,
     val categoryName: String,
-    val budgetItemId: String,
+    val budgetItemId: String?,
     val title: String,
     val dateText: String,
     val amountText: String,
@@ -234,7 +235,6 @@ data class BudgetUiState(
     val usedProgress: Float,
     val insightItems: List<BudgetInsightItem>,
     val payerSummaries: List<PayerSummaryItem>,
-    val paymentStageSummaries: List<PaymentStageSummaryItem>,
     val pendingPayments: List<PendingPaymentItem>,
     val isOverBudgetOnly: Boolean = false,
     val categories: List<BudgetCategoryItem>,
@@ -248,7 +248,6 @@ data class BudgetUiState(
             usedProgress = 0f,
             insightItems = emptyList(),
             payerSummaries = emptyList(),
-            paymentStageSummaries = emptyList(),
             pendingPayments = emptyList(),
             isOverBudgetOnly = false,
             categories = emptyList(),
@@ -261,41 +260,22 @@ data class BudgetUiState(
             remainingAmountText = "1,750만원 남음",
             usedProgress = 0.41f,
             insightItems = listOf(
-                BudgetInsightItem(label = "남은 결제", value = "₩1,750,000"),
+                BudgetInsightItem(label = "남은 예산", value = "₩1,750,000"),
                 BudgetInsightItem(label = "미지출 항목", value = "2건", emphasis = BudgetInsightEmphasis.Neutral),
-                BudgetInsightItem(label = "잔금 대기", value = "1건", emphasis = BudgetInsightEmphasis.Highlight),
+                BudgetInsightItem(label = "예정 결제", value = "1건", emphasis = BudgetInsightEmphasis.Highlight),
             ),
             payerSummaries = listOf(
                 PayerSummaryItem(label = "신랑", amountText = "₩650,000", ratioText = "52%", progress = 0.52f),
                 PayerSummaryItem(label = "신부", amountText = "₩400,000", ratioText = "32%", progress = 0.32f),
                 PayerSummaryItem(label = "공동", amountText = "₩200,000", ratioText = "16%", progress = 0.16f),
             ),
-            paymentStageSummaries = listOf(
-                PaymentStageSummaryItem(
-                    label = "계약금",
-                    countText = "2건",
-                    paidText = "₩1,200,000 지급",
-                    remainingText = "예산 소진",
-                    progress = 1f,
-                ),
-                PaymentStageSummaryItem(
-                    label = "잔금",
-                    countText = "1건",
-                    paidText = "₩0 지급",
-                    remainingText = "₩3,000,000 남음",
-                    progress = 0f,
-                    isPriority = true,
-                ),
-            ),
             pendingPayments = listOf(
                 PendingPaymentItem(
                     id = "budget-21",
                     categoryName = "웨딩홀",
-                    title = "잔금",
-                    stage = BudgetStageType.Final,
+                    title = "웨딩홀 대관",
                     dueDate = LocalDate.parse("2026-05-20"),
                     dueDateText = "5월 20일 예정",
-                    stageLabel = "잔금",
                     amountText = "₩3,000,000 남음",
                     paidText = "₩0 사용",
                     targetText = "목표 ₩3,000,000",
@@ -327,23 +307,19 @@ data class BudgetUiState(
                             targetText = "목표 200만원",
                             remainingText = "예산 소진",
                             progress = 1f,
-                            stage = BudgetStageType.General,
-                            stageLabel = "기타",
                             dueDate = null,
                             dueDateText = null,
                             expenseCountText = "지출 1건",
                         ),
                         BudgetSubItem(
                             id = "budget-12",
-                            label = "식대 (계약금)",
+                            label = "식대",
                             valueText = "100만원",
                             targetAmount = 1_000_000,
                             spentText = "100만원 사용",
                             targetText = "목표 100만원",
                             remainingText = "예산 소진",
                             progress = 1f,
-                            stage = BudgetStageType.Deposit,
-                            stageLabel = "계약금",
                             dueDate = LocalDate.parse("2026-03-10"),
                             dueDateText = "예정일 3월 10일",
                             expenseCountText = "지출 1건",
@@ -358,8 +334,6 @@ data class BudgetUiState(
                             targetText = "목표 50만원",
                             remainingText = "50만원 남음",
                             progress = 0f,
-                            stage = BudgetStageType.General,
-                            stageLabel = "기타",
                             dueDate = null,
                             dueDateText = null,
                             expenseCountText = "지출 기록 없음",
@@ -371,7 +345,7 @@ data class BudgetUiState(
                             categoryId = "wedding_hall",
                             categoryName = "웨딩홀",
                             budgetItemId = "budget-1",
-                            title = "웨딩홀 계약금",
+                            title = "웨딩홀 대관료",
                             dateText = "3월 10일",
                             amountText = "-1,000,000",
                             amount = 1_000_000,
@@ -441,23 +415,12 @@ data class PayerSummaryItem(
     val progress: Float,
 )
 
-data class PaymentStageSummaryItem(
-    val label: String,
-    val countText: String,
-    val paidText: String,
-    val remainingText: String,
-    val progress: Float,
-    val isPriority: Boolean = false,
-)
-
 data class PendingPaymentItem(
     val id: String,
     val categoryName: String,
     val title: String,
-    val stage: BudgetStageType,
     val dueDate: LocalDate? = null,
     val dueDateText: String? = null,
-    val stageLabel: String,
     val amountText: String,
     val paidText: String,
     val targetText: String,
@@ -494,10 +457,8 @@ data class BudgetSubItem(
     val remainingText: String = valueText,
     val progress: Float = 0f,
     val isOverBudget: Boolean = false,
-    val stage: BudgetStageType = BudgetStageType.General,
     val dueDate: LocalDate? = null,
     val dueDateText: String? = null,
-    val stageLabel: String = "일반",
     val expenseCountText: String = "지출 기록 없음",
 )
 
@@ -525,7 +486,6 @@ sealed interface MoneyAction {
         val categoryId: String,
         val name: String,
         val targetAmount: Int,
-        val stage: BudgetStageType,
         val dueDate: LocalDate?,
         val memo: String?,
     ) : MoneyAction
@@ -535,7 +495,8 @@ sealed interface MoneyAction {
     ) : MoneyAction
 
     data class OnCreateExpense(
-        val budgetItemId: String,
+        val categoryId: String,
+        val budgetItemId: String?,
         val amount: Int,
         val date: LocalDate,
         val paymentMethod: PaymentMethod,
@@ -549,7 +510,6 @@ sealed interface MoneyAction {
         val categoryId: String,
         val name: String,
         val targetAmount: Int,
-        val stage: BudgetStageType,
         val dueDate: LocalDate?,
         val memo: String?,
     ) : MoneyAction
@@ -559,9 +519,12 @@ sealed interface MoneyAction {
         val name: String,
     ) : MoneyAction
 
+    data class OnDeleteCategory(val id: String) : MoneyAction
+
     data class OnUpdateExpense(
         val id: String,
-        val budgetItemId: String,
+        val categoryId: String,
+        val budgetItemId: String?,
         val amount: Int,
         val date: LocalDate,
         val paymentMethod: PaymentMethod,

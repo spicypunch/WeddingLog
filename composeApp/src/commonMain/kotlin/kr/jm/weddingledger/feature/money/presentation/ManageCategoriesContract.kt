@@ -25,6 +25,7 @@ sealed interface ManageCategoriesAction {
     data object OnClickClose : ManageCategoriesAction
     data class OnNewCategoryNameChange(val value: String) : ManageCategoriesAction
     data object OnClickAddCategory : ManageCategoriesAction
+    data class OnClickDeleteCategory(val id: String) : ManageCategoriesAction
     data class OnStartEditCategory(val id: String) : ManageCategoriesAction
     data class OnEditCategoryNameChange(val value: String) : ManageCategoriesAction
     data object OnClickSaveCategoryEdit : ManageCategoriesAction

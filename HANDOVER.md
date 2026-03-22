@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-03-16  
+마지막 갱신: 2026-03-22  
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -18,6 +18,7 @@ cd /Users/jm/StudioProjects/WeddingLedger
 ./gradlew :androidApp:testDebugUnitTest
 ./gradlew :composeApp:allTests
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator build -quiet
 # UI(instrumented) 테스트는 에뮬레이터/디바이스 연결 후 실행
 ./gradlew :androidApp:connectedDebugAndroidTest
 ```
@@ -31,6 +32,10 @@ cd /Users/jm/StudioProjects/WeddingLedger
 5) 현재 Supabase 데이터는 QA용으로 **앱 데이터 + auth.users까지 전부 비운 상태**다.
    - 새로운 QA는 회원가입부터 다시 시작하면 된다.
    - 단, 이메일 전송 rate limit은 데이터 삭제와 별개라 바로 초기화되지 않을 수 있다.
+6) 파트너 활동 푸시는 코드/DB/Edge Function까지 연결되어 있다.
+   - Android는 `local.properties`의 Firebase 값이 필요하다.
+   - iOS는 `iosApp/Configuration/Config.xcconfig`의 Firebase 값이 필요하다.
+   - 실제 OS push까지 보내려면 Supabase secret `FCM_SERVICE_ACCOUNT_JSON`도 설정해야 한다.
 
 ---
 
@@ -40,12 +45,17 @@ cd /Users/jm/StudioProjects/WeddingLedger
 2. Android Studio는 필요 시 터미널 실행 방식으로 열기
 3. `local.properties` 값 확인
 4. 새 계정으로 회원가입/로그인부터 다시 시작
-5. **가계부 탭을 제일 먼저 QA**
+5. **홈 + 가계부 탭을 제일 먼저 QA**
+   - 홈에서 큰 금액이 들어가도 결산 카드 레이아웃이 안 깨지는지
+   - 홈에서 중간 CTA 카드와 FAB가 제거되었는지
    - 첫 진입 시 `예산` 탭이 기본 선택되는지
    - `예산 / 지출` 분리가 직관적인지
    - `예산 항목 추가` / `지출 추가` 흐름이 쉬운지
    - 아직도 복잡하면 어느 구간에서 막히는지 메모
-6. 그 다음 홈/일정/하객 순서로 통합 QA 진행
+6. 그 다음 일정/하객/알림센터 순서로 통합 QA 진행
+7. 파트너 계정 2개로 지출/일정 추가 후
+   - 알림센터 `새 활동`에 상대방 활동이 뜨는지
+   - Firebase/FCM 설정이 채워진 환경이면 실제 push까지 오는지 확인
 
 ---
 
@@ -172,6 +182,35 @@ cd /Users/jm/StudioProjects/WeddingLedger
   - Supabase에서 `public` 앱 데이터 + `auth.users` 포함 인증 데이터까지 삭제 완료
   - 완전 초기 상태 QA 가능
   - 테스트용 계정도 새로 만들어야 함
+
+---
+
+## 1-3) 오늘 추가 변경 (2026-03-22)
+
+- Home UI 정리
+  - 결산 카드의 사용률 칩을 금액 아래 행으로 이동
+  - 큰 금액일 때 텍스트 크기를 한 단계 줄여 레이아웃 안정화
+  - 중간 `지출 추가하기 / 일정 확인하기` 카드 제거
+  - 홈 FAB 제거
+- 파트너 활동 알림 추가
+  - 지출 추가 시 같은 `wedding_id`의 상대 사용자에게 활동 기록 생성
+  - 일정 추가 시 같은 방식으로 활동 기록 생성
+  - 알림센터를 `새 활동 / 리마인더` 2섹션으로 확장
+  - unread 표시 및 알림센터 진입 시 읽음 처리 반영
+- Push 인프라 추가
+  - `device_push_tokens`, `partner_activity_notifications` 테이블/RLS/인덱스 직접 반영
+  - `expenses.created_by`, `schedule_events.created_by` 컬럼 직접 반영
+  - Supabase Edge Function `send-partner-activity-push` 배포 완료
+  - Android Firebase Messaging 토큰 업서트 연결
+  - iOS Swift 호스트 앱에서 Firebase Messaging/APNs 토큰 저장 및 shared 브리지 연결
+  - 로그아웃 시 현재 기기 토큰 비활성화
+- 빌드/테스트
+  - `./gradlew :composeApp:allTests :androidApp:assembleDebug :composeApp:compileKotlinIosSimulatorArm64` 성공
+  - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -configuration Debug build -quiet` 성공
+- 남은 수동 설정
+  - Android `local.properties` Firebase 값 입력
+  - iOS `Config.xcconfig` Firebase 값 입력
+  - Supabase secret `FCM_SERVICE_ACCOUNT_JSON` 설정
 
 ---
 

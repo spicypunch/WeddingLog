@@ -8,6 +8,7 @@ import kr.jm.weddingledger.core.platform.NotificationPermissionRequestResult
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationCenterErrorCode
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationCenterResult
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedItem
+import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedSection
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationItemType
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationReminderPlan
 import kr.jm.weddingledger.feature.notifications.domain.repository.NotificationCenterRepository
@@ -30,8 +31,9 @@ class NotificationCenterViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(1, state.items.size)
-        assertEquals(true, state.items.first().isReminderScheduled)
+        assertEquals(0, state.activityItems.size)
+        assertEquals(1, state.reminderItems.size)
+        assertEquals(true, state.reminderItems.first().isReminderScheduled)
     }
 
     @Test
@@ -62,7 +64,7 @@ class NotificationCenterViewModelTest {
 
         state = viewModel.state.value
         assertEquals(false, state.showPermissionAction)
-        assertEquals(true, state.items.first().isReminderScheduled)
+        assertEquals(true, state.reminderItems.first().isReminderScheduled)
         assertTrue(repository.scheduledIds.contains("event-reminder-1"))
     }
 
@@ -80,7 +82,7 @@ class NotificationCenterViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(false, state.items.first().isReminderScheduled)
+        assertEquals(false, state.reminderItems.first().isReminderScheduled)
         assertEquals("리마인더를 취소했습니다.", state.message)
     }
 }
@@ -132,6 +134,7 @@ private fun reminderFeedItem(
     return NotificationFeedItem(
         id = id,
         type = NotificationItemType.Schedule,
+        section = NotificationFeedSection.Reminder,
         title = "일정 알림",
         subtitle = "내일 일정",
         detail = "일정이 있습니다",

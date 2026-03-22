@@ -112,7 +112,7 @@ class ScreenSmokeUiTest {
     }
 
     @Test
-    fun moneyScreen_clickManageCategories_dispatchesAction() {
+    fun moneyScreen_openFabMenuAndClickManageCategories_dispatchesAction() {
         val actions = mutableListOf<MoneyAction>()
 
         setScreen {
@@ -122,6 +122,7 @@ class ScreenSmokeUiTest {
             )
         }
 
+        composeRule.onNodeWithContentDescription("추가 메뉴 열기").assertIsDisplayed().performClick()
         composeRule.onNodeWithText("카테고리 관리").assertIsDisplayed().performClick()
         assertTrue(actions.contains(MoneyAction.OnClickManageCategories))
     }

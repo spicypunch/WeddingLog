@@ -9,6 +9,7 @@ import kr.jm.weddingledger.feature.guests.domain.usecase.FetchGuestsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.SetGuestAttendanceUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.UpdateGuestSettingsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.UpdateGuestUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
 import kr.jm.weddingledger.feature.guests.presentation.GuestsViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
@@ -24,5 +25,5 @@ val guestsModule = module {
     factory { DeleteGuestUseCase(get()) }
     factory { SetGuestAttendanceUseCase(get()) }
 
-    viewModel { GuestsViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { GuestsViewModel(get(), get<FetchMyProfileUseCase>(), get(), get(), get(), get(), get(), get()) }
 }

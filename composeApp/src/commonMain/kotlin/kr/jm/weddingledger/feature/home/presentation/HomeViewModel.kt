@@ -26,6 +26,8 @@ import kotlinx.datetime.todayIn
 import kotlin.math.absoluteValue
 import kotlin.math.floor
 import kotlin.time.Clock
+import kr.jm.weddingledger.core.network.logSupabaseInfo
+import kr.jm.weddingledger.core.network.logSupabaseWarning
 import kr.jm.weddingledger.feature.money.domain.model.MoneySnapshot
 import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.usecase.FetchMoneySnapshotUseCase
@@ -109,8 +111,20 @@ private fun resolveDdayTitle(
 ): String {
     val profile = when (profileResult) {
         is OnboardingResult.Success -> profileResult.data
-        is OnboardingResult.Error -> return "우리 결혼 준비 중"
+        is OnboardingResult.Error -> {
+            logSupabaseWarning(
+                featureName = HOME_LOG_FEATURE_NAME,
+                message = "dday_profile_fetch_error=${profileResult.message}",
+            )
+            return "우리 결혼 준비 중"
+        }
     }
+
+    logSupabaseInfo(
+        featureName = HOME_LOG_FEATURE_NAME,
+        message = "dday weddingId=${profile.weddingId} weddingDate=${profile.weddingDate} " +
+            "undecided=${profile.isWeddingDateUndecided}",
+    )
 
     return profile.toDdayTitle(today)
 }
@@ -242,14 +256,13 @@ private fun payerSummary(
 
 private fun MoneySnapshot.toCategorySettlements(): List<HomeCategorySettlement> {
     val budgetItemsByCategory = budgetItems.groupBy { it.categoryId }
-    val categoryById = categories.associateBy { it.id }
-    val spentByBudgetItemId = expenses.groupBy { it.budgetItemId }.mapValues { (_, value) -> value.sumOf { it.amount } }
+    val spentByCategoryId = expenses.groupBy { it.categoryId }.mapValues { (_, value) -> value.sumOf { it.amount } }
 
     return categories
         .mapNotNull { category ->
             val categoryBudgetItems = budgetItemsByCategory[category.id].orEmpty()
             val targetAmount = categoryBudgetItems.sumOf { it.targetAmount }
-            val spentAmount = categoryBudgetItems.sumOf { item -> spentByBudgetItemId[item.id] ?: 0 }
+            val spentAmount = spentByCategoryId[category.id] ?: 0
             if (targetAmount <= 0 && spentAmount <= 0) return@mapNotNull null
 
             val remainingAmount = targetAmount - spentAmount
@@ -282,8 +295,8 @@ private fun MoneySnapshot.toRecentExpenses(): List<HomeRecentExpense> {
         .sortedWith(compareByDescending<kr.jm.weddingledger.feature.money.domain.model.Expense> { it.date }.thenByDescending { it.amount })
         .take(5)
         .map { expense ->
-            val budgetItem = budgetItemsById[expense.budgetItemId]
-            val category = budgetItem?.let { categoriesById[it.categoryId] }
+            val budgetItem = expense.budgetItemId?.let { budgetItemsById[it] }
+            val category = categoriesById[expense.categoryId]
             val visuals = category?.name.toCategoryVisuals()
             val noteParts = buildList {
                 category?.name?.takeIf { it.isNotBlank() }?.let(::add)
@@ -292,7 +305,7 @@ private fun MoneySnapshot.toRecentExpenses(): List<HomeRecentExpense> {
 
             HomeRecentExpense(
                 id = expense.id,
-                title = budgetItem?.name ?: "지출",
+                title = budgetItem?.name ?: expense.vendorName ?: category?.name?.let { "$it 지출" } ?: "지출",
                 dateText = expense.date.toDotDate(),
                 amountText = "- ${formatKrw(expense.amount)}",
                 noteText = noteParts.joinToString(" · "),
@@ -439,3 +452,5 @@ private fun extractNumericAmount(text: String): Int = text
     .filter { it.isDigit() }
     .toIntOrNull()
     ?: 0
+
+private const val HOME_LOG_FEATURE_NAME: String = "Home"

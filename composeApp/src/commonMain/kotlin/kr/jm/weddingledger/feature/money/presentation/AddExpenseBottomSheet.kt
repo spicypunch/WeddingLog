@@ -18,6 +18,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.Check
@@ -101,9 +102,15 @@ fun AddExpenseBottomSheet(
                     onClick = { onAction(AddExpenseAction.OnClickDate) }
                 )
 
-                CategorySelector(
-                    selected = state.budgetItemOptions.firstOrNull { it.id == state.selectedBudgetItemId }?.label,
-                    options = state.budgetItemOptions,
+                ExpenseCategorySelector(
+                    options = state.categoryOptions,
+                    selectedCategoryId = state.selectedCategoryId,
+                    onSelect = { onAction(AddExpenseAction.OnSelectCategory(it)) }
+                )
+
+                BudgetItemSelector(
+                    selected = state.filteredBudgetItemOptions.firstOrNull { it.id == state.selectedBudgetItemId }?.label,
+                    options = state.filteredBudgetItemOptions,
                     onSelect = { onAction(AddExpenseAction.OnSelectBudgetItem(it)) }
                 )
 
@@ -118,14 +125,17 @@ fun AddExpenseBottomSheet(
                 )
 
                 if (state.paymentMethod != PaymentMethod.JointAccount) {
-                    SegmentedTwoOption(
+                    SegmentedThreeOption(
                         label = "결제자",
-                        left = Payer.Groom.label,
-                        right = Payer.Bride.label,
-                        leftSelected = state.payer == Payer.Groom,
-                        rightSelected = state.payer == Payer.Bride,
-                        onSelectLeft = { onAction(AddExpenseAction.OnSelectPayer(Payer.Groom)) },
-                        onSelectRight = { onAction(AddExpenseAction.OnSelectPayer(Payer.Bride)) },
+                        first = Payer.Groom.label,
+                        second = Payer.Bride.label,
+                        third = Payer.Joint.label,
+                        firstSelected = state.payer == Payer.Groom,
+                        secondSelected = state.payer == Payer.Bride,
+                        thirdSelected = state.payer == Payer.Joint,
+                        onSelectFirst = { onAction(AddExpenseAction.OnSelectPayer(Payer.Groom)) },
+                        onSelectSecond = { onAction(AddExpenseAction.OnSelectPayer(Payer.Bride)) },
+                        onSelectThird = { onAction(AddExpenseAction.OnSelectPayer(Payer.Joint)) },
                     )
                 }
 
@@ -291,14 +301,52 @@ private fun DateRow(
 }
 
 @Composable
-private fun CategorySelector(
-    selected: String?,
-    options: List<BudgetItemOption>,
+private fun ExpenseCategorySelector(
+    options: List<CategoryOption>,
+    selectedCategoryId: String?,
     onSelect: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "예산 항목",
+            text = "카테고리",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
+
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(items = options, key = { it.id }) { option ->
+                val selected = option.id == selectedCategoryId
+                Surface(
+                    onClick = { onSelect(option.id) },
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    contentColor = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    shape = CircleShape,
+                    shadowElevation = if (selected) 2.dp else 0.dp,
+                ) {
+                    Text(
+                        text = option.label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BudgetItemSelector(
+    selected: String?,
+    options: List<BudgetItemOption>,
+    onSelect: (String?) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "예산 항목 (선택)",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.Medium
@@ -307,7 +355,7 @@ private fun CategorySelector(
         var expanded by remember { mutableStateOf(false) }
         Box(modifier = Modifier.fillMaxWidth()) {
             Surface(
-                onClick = { expanded = true },
+                onClick = { if (options.isNotEmpty()) expanded = true },
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shape = MaterialTheme.shapes.large,
                 modifier = Modifier.fillMaxWidth()
@@ -320,7 +368,11 @@ private fun CategorySelector(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = selected ?: "선택해주세요",
+                        text = when {
+                            selected != null -> selected
+                            options.isEmpty() -> "선택 가능한 예산 항목이 없어요"
+                            else -> "선택 안 함"
+                        },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (selected == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Medium
@@ -338,6 +390,13 @@ private fun CategorySelector(
                 onDismissRequest = { expanded = false },
                 modifier = Modifier.fillMaxWidth()
             ) {
+                DropdownMenuItem(
+                    text = { Text(text = "선택 안 함") },
+                    onClick = {
+                        expanded = false
+                        onSelect(null)
+                    }
+                )
                 options.forEach { option ->
                     DropdownMenuItem(
                         text = { Text(text = option.label) },
@@ -367,7 +426,6 @@ private fun VendorNameSection(
         TextField(
             value = vendorName,
             onValueChange = onVendorNameChange,
-            placeholder = { Text(text = "예: 라비앙 웨딩홀") },
             singleLine = true,
             colors = TextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -383,14 +441,17 @@ private fun VendorNameSection(
 }
 
 @Composable
-private fun SegmentedTwoOption(
+private fun SegmentedThreeOption(
     label: String,
-    left: String,
-    right: String,
-    leftSelected: Boolean,
-    rightSelected: Boolean,
-    onSelectLeft: () -> Unit,
-    onSelectRight: () -> Unit,
+    first: String,
+    second: String,
+    third: String,
+    firstSelected: Boolean,
+    secondSelected: Boolean,
+    thirdSelected: Boolean,
+    onSelectFirst: () -> Unit,
+    onSelectSecond: () -> Unit,
+    onSelectThird: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -409,16 +470,23 @@ private fun SegmentedTwoOption(
         ) {
             Row(modifier = Modifier.padding(4.dp)) {
                 SegmentButton(
-                    text = left,
-                    selected = leftSelected,
-                    onClick = onSelectLeft,
+                    text = first,
+                    selected = firstSelected,
+                    onClick = onSelectFirst,
                     modifier = Modifier.weight(1f)
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 SegmentButton(
-                    text = right,
-                    selected = rightSelected,
-                    onClick = onSelectRight,
+                    text = second,
+                    selected = secondSelected,
+                    onClick = onSelectSecond,
+                    modifier = Modifier.weight(1f)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                SegmentButton(
+                    text = third,
+                    selected = thirdSelected,
+                    onClick = onSelectThird,
                     modifier = Modifier.weight(1f)
                 )
             }

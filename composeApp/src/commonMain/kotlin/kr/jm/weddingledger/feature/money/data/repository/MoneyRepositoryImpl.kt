@@ -19,7 +19,6 @@ import kr.jm.weddingledger.feature.money.data.dto.CategoryRowDto
 import kr.jm.weddingledger.feature.money.data.dto.ExpenseInsertDto
 import kr.jm.weddingledger.feature.money.data.dto.ExpenseRowDto
 import kr.jm.weddingledger.feature.money.domain.model.BudgetItem
-import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.Expense
 import kr.jm.weddingledger.feature.money.domain.model.MoneyCategory
 import kr.jm.weddingledger.feature.money.domain.model.MoneyResult
@@ -29,9 +28,11 @@ import kr.jm.weddingledger.feature.money.domain.model.NewExpense
 import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 import kr.jm.weddingledger.feature.money.domain.repository.MoneyRepository
+import kr.jm.weddingledger.feature.notifications.domain.repository.PartnerActivityNotifier
 
 class MoneyRepositoryImpl(
     private val supabaseClient: SupabaseClient,
+    private val partnerActivityNotifier: PartnerActivityNotifier,
 ) : MoneyRepository {
 
     private val weddingIdResolver = WeddingIdResolver(supabaseClient)
@@ -60,7 +61,9 @@ class MoneyRepositoryImpl(
 
             MoneyResult.Success(
                 MoneySnapshot(
-                    categories = categories.map { it.toDomain() },
+                    categories = categories
+                        .sortedForDisplay()
+                        .map { it.toDomain() },
                     budgetItems = budgetItemRows.map { it.toDomain() },
                     expenses = expenseRows.mapNotNull { it.toDomainOrNull() },
                 )
@@ -83,7 +86,7 @@ class MoneyRepositoryImpl(
                         categoryId = item.categoryId,
                         name = item.name.trim(),
                         targetAmount = item.targetAmount,
-                        stage = item.stage.name,
+                        stage = DEFAULT_BUDGET_STAGE_DB_VALUE,
                         dueDate = item.dueDate?.toString(),
                         memo = item.memo.trimToNull(),
                     )
@@ -119,11 +122,13 @@ class MoneyRepositoryImpl(
     override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> {
         return try {
             val weddingId = weddingIdResolver.resolve()
-            supabaseClient
+            val insertedExpense = supabaseClient
                 .from("expenses")
                 .insert(
                     ExpenseInsertDto(
                         weddingId = weddingId,
+                        createdBy = null,
+                        categoryId = expense.categoryId,
                         budgetItemId = expense.budgetItemId,
                         amount = expense.amount,
                         date = expense.date.toString(),
@@ -132,7 +137,12 @@ class MoneyRepositoryImpl(
                         vendorName = expense.vendorName?.trim()?.takeIf { it.isNotEmpty() },
                         memo = expense.memo?.trim()?.takeIf { it.isNotEmpty() },
                     )
-                )
+                ) {
+                    select()
+                    single()
+                }
+                .decodeSingle<ExpenseRowDto>()
+            partnerActivityNotifier.notifyExpenseAdded(insertedExpense.id)
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
@@ -148,7 +158,7 @@ class MoneyRepositoryImpl(
                 put("category_id", JsonPrimitive(item.categoryId))
                 put("name", JsonPrimitive(item.name.trim()))
                 put("target_amount", JsonPrimitive(item.targetAmount))
-                put("stage", JsonPrimitive(item.stage.name))
+                put("stage", JsonPrimitive(DEFAULT_BUDGET_STAGE_DB_VALUE))
                 if (item.dueDate == null) put("due_date", JsonNull) else put("due_date", JsonPrimitive(item.dueDate.toString()))
 
                 val memo = item.memo.trimToNull()
@@ -159,6 +169,17 @@ class MoneyRepositoryImpl(
                 .from("budget_items")
                 .update(payload) {
                     filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
+                }
+
+            supabaseClient
+                .from("expenses")
+                .update(
+                    buildJsonObject {
+                        put("category_id", JsonPrimitive(item.categoryId))
+                    }
+                ) {
+                    filter { eq("budget_item_id", id) }
                     filter { eq("wedding_id", weddingId) }
                 }
 
@@ -192,11 +213,57 @@ class MoneyRepositoryImpl(
         }
     }
 
+    override suspend fun deleteCategory(id: String): MoneyResult<Unit> {
+        return try {
+            val weddingId = weddingIdResolver.resolve()
+            val hasLinkedBudgetItems = supabaseClient
+                .from("budget_items")
+                .select {
+                    filter { eq("wedding_id", weddingId) }
+                    filter { eq("category_id", id) }
+                    limit(count = 1)
+                }
+                .decodeList<BudgetItemRowDto>()
+                .isNotEmpty()
+            val hasLinkedExpenses = supabaseClient
+                .from("expenses")
+                .select {
+                    filter { eq("wedding_id", weddingId) }
+                    filter { eq("category_id", id) }
+                    limit(count = 1)
+                }
+                .decodeList<ExpenseRowDto>()
+                .isNotEmpty()
+
+            if (hasLinkedBudgetItems || hasLinkedExpenses) {
+                return MoneyResult.Error("지출이나 예산 항목이 남아 있는 카테고리는 삭제할 수 없어요.")
+            }
+
+            supabaseClient
+                .from("categories")
+                .delete {
+                    filter { eq("id", id) }
+                    filter { eq("wedding_id", weddingId) }
+                }
+
+            MoneyResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseRepositoryThrowable(FEATURE_NAME, t)
+            MoneyResult.Error(t.toUserFriendlyMessage(defaultMessage = "카테고리 삭제에 실패했습니다."))
+        }
+    }
+
     override suspend fun updateExpense(id: String, expense: NewExpense): MoneyResult<Unit> {
         return try {
             val weddingId = weddingIdResolver.resolve()
             val payload = buildJsonObject {
-                put("budget_item_id", JsonPrimitive(expense.budgetItemId))
+                put("category_id", JsonPrimitive(expense.categoryId))
+                if (expense.budgetItemId == null) {
+                    put("budget_item_id", JsonNull)
+                } else {
+                    put("budget_item_id", JsonPrimitive(expense.budgetItemId))
+                }
                 put("amount", JsonPrimitive(expense.amount))
                 put("date", JsonPrimitive(expense.date.toString()))
                 put("payment_method", JsonPrimitive(expense.paymentMethod.toDbValue()))
@@ -306,6 +373,9 @@ class MoneyRepositoryImpl(
 
 }
 
+internal fun List<CategoryRowDto>.sortedForDisplay(): List<CategoryRowDto> =
+    sortedBy { it.name.trim() == ETC_CATEGORY_NAME }
+
 private fun CategoryRowDto.toDomain(): MoneyCategory = MoneyCategory(
     id = id,
     name = name,
@@ -313,15 +383,13 @@ private fun CategoryRowDto.toDomain(): MoneyCategory = MoneyCategory(
 )
 
 private fun BudgetItemRowDto.toDomain(): BudgetItem {
-    val decodedMemo = decodeBudgetItemMemo(name = name, rawMemo = memo)
-    val storedStage = BudgetStageType.fromStoredValueOrNull(stage) ?: decodedMemo.stage
+    val decodedMemo = decodeBudgetItemMemo(rawMemo = memo)
     val storedDueDate = dueDate.parseLocalDateOrNull() ?: decodedMemo.dueDate
     return BudgetItem(
         id = id,
         categoryId = categoryId,
         name = name,
         targetAmount = targetAmount,
-        stage = storedStage,
         dueDate = storedDueDate,
         memo = decodedMemo.memo,
     )
@@ -331,6 +399,7 @@ private fun ExpenseRowDto.toDomainOrNull(): Expense? {
     val date = runCatching { LocalDate.parse(date) }.getOrNull() ?: return null
     return Expense(
         id = id,
+        categoryId = categoryId,
         budgetItemId = budgetItemId,
         amount = amount,
         date = date,
@@ -371,25 +440,19 @@ private fun String?.parseLocalDateOrNull(): LocalDate? = this
     ?.let { value -> runCatching { LocalDate.parse(value) }.getOrNull() }
 
 private data class DecodedBudgetMemo(
-    val stage: BudgetStageType,
     val dueDate: LocalDate?,
     val memo: String?,
 )
 
-private fun decodeBudgetItemMemo(
-    name: String,
-    rawMemo: String?,
-): DecodedBudgetMemo {
+private fun decodeBudgetItemMemo(rawMemo: String?): DecodedBudgetMemo {
     if (rawMemo.isNullOrBlank()) {
         return DecodedBudgetMemo(
-            stage = BudgetStageType.inferFromName(name),
             dueDate = null,
             memo = null,
         )
     }
 
     val lines = rawMemo.lines()
-    var storedStage: BudgetStageType? = null
     var storedDueDate: LocalDate? = null
     var markerLineCount = 0
 
@@ -397,10 +460,6 @@ private fun decodeBudgetItemMemo(
         val line = lines[markerLineCount].trim()
         when {
             line.startsWith(BUDGET_STAGE_PREFIX) && line.endsWith(BUDGET_STAGE_SUFFIX) -> {
-                storedStage = line
-                    .removePrefix(BUDGET_STAGE_PREFIX)
-                    .removeSuffix(BUDGET_STAGE_SUFFIX)
-                    .let(BudgetStageType::fromStoredValueOrNull)
                 markerLineCount += 1
             }
 
@@ -424,14 +483,12 @@ private fun decodeBudgetItemMemo(
             .takeIf { it.isNotEmpty() }
 
         return DecodedBudgetMemo(
-            stage = storedStage ?: BudgetStageType.inferFromName(name),
             dueDate = storedDueDate,
             memo = userMemo,
         )
     }
 
     return DecodedBudgetMemo(
-        stage = BudgetStageType.inferFromName(name),
         dueDate = null,
         memo = rawMemo,
     )
@@ -445,6 +502,8 @@ private fun Throwable.toUserFriendlyMessage(defaultMessage: String): String {
 }
 
 private const val FEATURE_NAME: String = "Money"
+private const val ETC_CATEGORY_NAME: String = "기타"
+private const val DEFAULT_BUDGET_STAGE_DB_VALUE: String = "GENERAL"
 private const val BUDGET_STAGE_PREFIX: String = "[[wl-stage:"
 private const val BUDGET_STAGE_SUFFIX: String = "]]"
 private const val BUDGET_DUE_DATE_PREFIX: String = "[[wl-due-date:"

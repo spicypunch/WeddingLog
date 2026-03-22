@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlin.math.abs
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,9 +23,13 @@ import kr.jm.weddingledger.feature.guests.domain.usecase.FetchGuestsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.SetGuestAttendanceUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.UpdateGuestSettingsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.UpdateGuestUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
+import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
+import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
 
 class GuestsViewModel(
     private val fetchGuestsUseCase: FetchGuestsUseCase,
+    private val fetchMyProfileUseCase: FetchMyProfileUseCase,
     private val fetchGuestSettingsUseCase: FetchGuestSettingsUseCase,
     private val updateGuestSettingsUseCase: UpdateGuestSettingsUseCase,
     private val addGuestUseCase: AddGuestUseCase,
@@ -42,6 +47,7 @@ class GuestsViewModel(
     private var expectedStatusFilterId: String = EXPECTED_FILTER_ALL
     private var giftSideFilterId: String = FILTER_ALL
     private var giftStatusFilterId: String = GIFT_FILTER_ALL
+    private var currentUserRole: UserRole? = null
 
     private val _state = MutableStateFlow(
         GuestsUiState(
@@ -114,6 +120,7 @@ class GuestsViewModel(
         }
 
         viewModelScope.launch {
+            val profileDeferred = async { fetchMyProfileUseCase() }
             var message: String? = null
 
             when (val settingsResult = fetchGuestSettingsUseCase()) {
@@ -124,6 +131,11 @@ class GuestsViewModel(
             when (val result = fetchGuestsUseCase()) {
                 is GuestsResult.Success -> allGuests = result.data
                 is GuestsResult.Error -> message = result.message
+            }
+
+            currentUserRole = when (val profileResult = profileDeferred.await()) {
+                is OnboardingResult.Success -> profileResult.data.role
+                is OnboardingResult.Error -> currentUserRole
             }
 
             applyGuestsToState(
@@ -214,6 +226,7 @@ class GuestsViewModel(
         _state.update {
             it.copy(
                 selectedTab = selectedTab,
+                currentUserRole = currentUserRole,
                 expected = buildExpectedUiState(
                     guests = allGuests,
                     guaranteedGuestCount = guestSettings.guaranteedGuestCount,

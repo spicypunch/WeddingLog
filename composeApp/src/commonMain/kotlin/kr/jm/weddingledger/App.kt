@@ -1,12 +1,5 @@
 package kr.jm.weddingledger
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -15,11 +8,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import kr.jm.weddingledger.core.designsystem.WeddingLogTheme
 import kr.jm.weddingledger.core.designsystem.WeddingLogThemeStyle
 import kr.jm.weddingledger.core.settings.data.ThemeStylePreferenceStorage
+import kr.jm.weddingledger.core.ui.components.WeddingLogSplashScreen
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 import kr.jm.weddingledger.feature.auth.domain.usecase.HandleAuthDeepLinkUseCase
@@ -28,7 +20,9 @@ import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.auth.presentation.AuthDeepLinkBridge
 import kr.jm.weddingledger.feature.auth.presentation.AuthMessage
 import kr.jm.weddingledger.feature.auth.presentation.AuthRoute
+import kr.jm.weddingledger.feature.notifications.domain.repository.PartnerActivityNotifier
 import kr.jm.weddingledger.feature.onboarding.presentation.OnboardingGateRoute
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.koinInject
@@ -39,6 +33,12 @@ fun App() {
     val scope = rememberCoroutineScope()
     val themeStyle by ThemeStylePreferenceStorage.themeStyle.collectAsState(initial = WeddingLogThemeStyle.Minimal)
     var authInitialMessage by remember { mutableStateOf<AuthMessage?>(null) }
+    var isMinimumSplashElapsed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(3_000)
+        isMinimumSplashElapsed = true
+    }
 
     WeddingLogTheme(style = themeStyle) {
         val observeAuthStateUseCase: ObserveAuthStateUseCase = koinInject()
@@ -72,22 +72,37 @@ fun App() {
         }
 
         when (authState) {
-            AuthState.Loading -> SplashScreen()
+            AuthState.Loading -> WeddingLogSplashScreen(themeStyle = themeStyle)
             is AuthState.Unauthenticated -> {
-                AuthRoute(
-                    initialMessage = authInitialMessage
-                        ?: (authState as AuthState.Unauthenticated).reason?.let(AuthMessage::Error),
-                )
+                if (isMinimumSplashElapsed) {
+                    AuthRoute(
+                        initialMessage = authInitialMessage
+                            ?: (authState as AuthState.Unauthenticated).reason?.let(AuthMessage::Error),
+                    )
+                } else {
+                    WeddingLogSplashScreen(themeStyle = themeStyle)
+                }
             }
             is AuthState.Authenticated -> {
                 val signOutUseCase: SignOutUseCase = koinInject()
+                val partnerActivityNotifier: PartnerActivityNotifier = koinInject()
+
+                LaunchedEffect(Unit) {
+                    partnerActivityNotifier.syncCurrentDevicePushToken()
+                }
 
                 OnboardingGateRoute(
                     themeStyle = themeStyle,
+                    holdSplash = !isMinimumSplashElapsed,
                     onThemeStyleChange = {
                         scope.launch { ThemeStylePreferenceStorage.saveThemeStyle(it) }
                     },
-                    onLogout = { scope.launch { signOutUseCase() } },
+                    onLogout = {
+                        scope.launch {
+                            partnerActivityNotifier.deactivateCurrentDevicePushToken()
+                            signOutUseCase()
+                        }
+                    },
                 )
             }
         }
@@ -106,18 +121,5 @@ private fun deepLinkSuccessMessage(url: String): String {
         }
 
         else -> "인증 링크를 확인했습니다."
-    }
-}
-
-@Composable
-private fun SplashScreen() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "WeddingLog")
-            CircularProgressIndicator()
-        }
     }
 }

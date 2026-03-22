@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,16 +18,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CalendarToday
 import androidx.compose.material.icons.rounded.NorthEast
-import androidx.compose.material.icons.rounded.Payments
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -93,19 +91,13 @@ fun HomeScreen(
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 120.dp),
+                contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 0.dp, bottom = 56.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
                 item {
                     OverviewCard(
                         overview = state.overview,
                         onClick = { onAction(HomeAction.OnClickOpenMoney) },
-                    )
-                }
-                item {
-                    QuickActionRow(
-                        onClickMoney = { onAction(HomeAction.OnClickOpenMoney) },
-                        onClickSchedule = { onAction(HomeAction.OnClickOpenSchedule) },
                     )
                 }
                 item {
@@ -146,24 +138,13 @@ fun HomeScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .height(28.dp)
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(Color.Transparent, MaterialTheme.colorScheme.background)
                         )
                     )
             )
-
-            FloatingActionButton(
-                onClick = { onAction(HomeAction.OnClickOpenMoney) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 24.dp, bottom = 24.dp)
-            ) {
-                Icon(imageVector = Icons.Rounded.Add, contentDescription = "지출 추가")
-            }
         }
     }
 }
@@ -191,34 +172,37 @@ private fun OverviewCard(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 22.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = "현재 결산",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = overview.remainingBudgetText,
-                            style = MaterialTheme.typography.displaySmall,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text(
+                        text = "현재 결산",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = overview.remainingBudgetText,
+                        style = when {
+                            overview.remainingBudgetText.length >= 15 -> MaterialTheme.typography.headlineMedium
+                            overview.remainingBudgetText.length >= 12 -> MaterialTheme.typography.headlineLarge
+                            else -> MaterialTheme.typography.displaySmall
+                        },
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
                     Box(
                         modifier = Modifier
+                            .defaultMinSize(minHeight = 34.dp)
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), CircleShape)
-                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = overview.usedPercentText,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
@@ -279,86 +263,6 @@ private fun OverviewStat(
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.Bold,
         )
-    }
-}
-
-@Composable
-private fun QuickActionRow(
-    onClickMoney: () -> Unit,
-    onClickSchedule: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        QuickActionCard(
-            title = "지출 추가하기",
-            subtitle = "예산과 결산을 바로 갱신해요",
-            icon = Icons.Rounded.Payments,
-            onClick = onClickMoney,
-            modifier = Modifier.weight(1f),
-        )
-        QuickActionCard(
-            title = "일정 확인하기",
-            subtitle = "다가오는 일정과 체크리스트 보기",
-            icon = Icons.Rounded.CalendarToday,
-            onClick = onClickSchedule,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun QuickActionCard(
-    title: String,
-    subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        onClick = onClick,
-        shape = MaterialTheme.shapes.large,
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 1.dp,
-        modifier = modifier
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.10f), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
     }
 }
 

@@ -66,6 +66,8 @@ kotlin {
 
 dependencies {
     implementation(project(":composeApp"))
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.koin.android)

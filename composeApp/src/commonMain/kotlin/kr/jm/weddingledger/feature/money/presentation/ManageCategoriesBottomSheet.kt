@@ -21,6 +21,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -148,6 +149,12 @@ fun ManageCategoriesBottomSheet(
                                         modifier = Modifier.fillMaxWidth(),
                                         horizontalArrangement = Arrangement.End,
                                     ) {
+                                        TextButton(
+                                            onClick = { onAction(ManageCategoriesAction.OnClickDeleteCategory(category.id)) },
+                                        ) {
+                                            Text(text = "삭제")
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         OutlinedButton(
                                             onClick = { onAction(ManageCategoriesAction.OnClickCancelCategoryEdit) },
                                         ) {
@@ -173,10 +180,17 @@ fun ManageCategoriesBottomSheet(
                                             color = MaterialTheme.colorScheme.onSurface,
                                             fontWeight = FontWeight.SemiBold,
                                         )
-                                        OutlinedButton(
-                                            onClick = { onAction(ManageCategoriesAction.OnStartEditCategory(category.id)) },
-                                        ) {
-                                            Text(text = "수정")
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            TextButton(
+                                                onClick = { onAction(ManageCategoriesAction.OnClickDeleteCategory(category.id)) },
+                                            ) {
+                                                Text(text = "삭제")
+                                            }
+                                            OutlinedButton(
+                                                onClick = { onAction(ManageCategoriesAction.OnStartEditCategory(category.id)) },
+                                            ) {
+                                                Text(text = "수정")
+                                            }
                                         }
                                     }
                                 }

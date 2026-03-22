@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlin.math.absoluteValue
 import kotlin.math.floor
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,7 +23,6 @@ import kotlinx.datetime.daysUntil
 import kotlinx.datetime.number
 import kotlinx.datetime.todayIn
 import kotlin.time.Clock
-import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.ExpenseFilterPreferenceState
 import kr.jm.weddingledger.feature.money.domain.model.ExpenseFilterPresetPreference
 import kr.jm.weddingledger.feature.money.domain.model.MoneyResult
@@ -33,6 +33,7 @@ import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.usecase.AddCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddExpenseUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.DeleteCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.DeleteBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.DeleteExpenseUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.FetchExpenseFilterPreferenceUseCase
@@ -41,15 +42,20 @@ import kr.jm.weddingledger.feature.money.domain.usecase.SaveExpenseFilterPrefere
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateExpenseUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
+import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
+import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
 
 class MoneyViewModel(
     private val fetchMoneySnapshotUseCase: FetchMoneySnapshotUseCase,
+    private val fetchMyProfileUseCase: FetchMyProfileUseCase,
     private val fetchExpenseFilterPreferenceUseCase: FetchExpenseFilterPreferenceUseCase,
     private val saveExpenseFilterPreferenceUseCase: SaveExpenseFilterPreferenceUseCase,
     private val addCategoryUseCase: AddCategoryUseCase,
     private val addBudgetItemUseCase: AddBudgetItemUseCase,
     private val addExpenseUseCase: AddExpenseUseCase,
     private val updateCategoryUseCase: UpdateCategoryUseCase,
+    private val deleteCategoryUseCase: DeleteCategoryUseCase,
     private val updateBudgetItemUseCase: UpdateBudgetItemUseCase,
     private val updateExpenseUseCase: UpdateExpenseUseCase,
     private val deleteBudgetItemUseCase: DeleteBudgetItemUseCase,
@@ -65,6 +71,7 @@ class MoneyViewModel(
     private var expensePresetSeed: Int = 1
     private var overBudgetOnly: Boolean = false
     private var latestSnapshot: MoneySnapshot? = null
+    private var currentUserRole: UserRole? = null
 
     private val _state = MutableStateFlow(
         MoneyUiState(
@@ -100,6 +107,7 @@ class MoneyViewModel(
             is MoneyAction.OnCreateBudgetItem -> createBudgetItem(action)
             is MoneyAction.OnCreateExpense -> createExpense(action)
             is MoneyAction.OnUpdateCategory -> updateCategory(action)
+            is MoneyAction.OnDeleteCategory -> deleteCategory(action)
             is MoneyAction.OnUpdateBudgetItem -> updateBudgetItem(action)
             is MoneyAction.OnUpdateExpense -> updateExpense(action)
             is MoneyAction.OnDeleteBudgetItem -> deleteBudgetItem(action)
@@ -120,12 +128,21 @@ class MoneyViewModel(
         _state.update { it.copy(isLoading = showLoading, isRefreshing = isRefreshing, message = null) }
 
         viewModelScope.launch {
+            val profileDeferred = async { fetchMyProfileUseCase() }
             when (val result = fetchMoneySnapshotUseCase()) {
                 is MoneyResult.Success -> {
                     latestSnapshot = result.data
+                    currentUserRole = when (val profileResult = profileDeferred.await()) {
+                        is OnboardingResult.Success -> profileResult.data.role
+                        is OnboardingResult.Error -> currentUserRole
+                    }
                     applySnapshot(result.data)
                 }
                 is MoneyResult.Error -> {
+                    currentUserRole = when (val profileResult = profileDeferred.await()) {
+                        is OnboardingResult.Success -> profileResult.data.role
+                        is OnboardingResult.Error -> currentUserRole
+                    }
                     _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
                 }
             }
@@ -151,6 +168,7 @@ class MoneyViewModel(
 
         _state.update {
             it.copy(
+                currentUserRole = currentUserRole,
                 budget = budgetUi,
                 expenses = expensesUi,
                 isLoading = false,
@@ -329,7 +347,6 @@ class MoneyViewModel(
                 categoryId = action.categoryId,
                 name = action.name,
                 targetAmount = action.targetAmount,
-                stage = action.stage,
                 dueDate = action.dueDate,
                 memo = action.memo,
             )
@@ -367,6 +384,7 @@ class MoneyViewModel(
 
         viewModelScope.launch {
             val expense = NewExpense(
+                categoryId = action.categoryId,
                 budgetItemId = action.budgetItemId,
                 amount = action.amount,
                 date = action.date,
@@ -413,6 +431,39 @@ class MoneyViewModel(
         }
     }
 
+    private fun deleteCategory(action: MoneyAction.OnDeleteCategory) {
+        val category = latestSnapshot?.categories?.firstOrNull { it.id == action.id }
+        if (category == null) {
+            _state.update { it.copy(message = "카테고리를 찾지 못했습니다.") }
+            return
+        }
+
+        val linkedBudgetItemCount = latestSnapshot
+            ?.budgetItems
+            ?.count { it.categoryId == action.id }
+            ?: 0
+        val linkedExpenseCount = latestSnapshot
+            ?.expenses
+            ?.count { it.categoryId == action.id }
+            ?: 0
+
+        if (linkedBudgetItemCount > 0 || linkedExpenseCount > 0) {
+            _state.update { it.copy(message = "지출이나 예산 항목이 남아 있는 카테고리는 삭제할 수 없어요.") }
+            return
+        }
+
+        _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
+        viewModelScope.launch {
+            when (val result = deleteCategoryUseCase(action.id)) {
+                is MoneyResult.Success -> {
+                    expandedCategoryIds.remove(action.id)
+                    refresh(showLoading = false)
+                }
+                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+            }
+        }
+    }
+
     private fun updateBudgetItem(action: MoneyAction.OnUpdateBudgetItem) {
         _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
 
@@ -421,7 +472,6 @@ class MoneyViewModel(
                 categoryId = action.categoryId,
                 name = action.name,
                 targetAmount = action.targetAmount,
-                stage = action.stage,
                 dueDate = action.dueDate,
                 memo = action.memo,
             )
@@ -438,6 +488,7 @@ class MoneyViewModel(
 
         viewModelScope.launch {
             val expense = NewExpense(
+                categoryId = action.categoryId,
                 budgetItemId = action.budgetItemId,
                 amount = action.amount,
                 date = action.date,
@@ -588,19 +639,9 @@ private fun MoneySnapshot.toExpensesUiState(
     val categoriesById = categories.associateBy { it.id }
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
 
-    val selectedFilteredBudgetItemIds = if (selectedCategoryId == null) {
-        null
-    } else {
-        budgetItems
-            .asSequence()
-            .filter { it.categoryId == selectedCategoryId }
-            .map { it.id }
-            .toSet()
-    }
-
     val filteredExpenses = expenses
         .asSequence()
-        .filter { selectedFilteredBudgetItemIds?.contains(it.budgetItemId) ?: true }
+        .filter { expense -> selectedCategoryId?.let { expense.categoryId == it } ?: true }
         .filter { expense -> selectedPeriodFilter.matches(expense.date, today) }
         .filter { expense -> selectedStatusFilter.matches(expense) }
         .toList()
@@ -663,12 +704,12 @@ private fun MoneySnapshot.toExpensesUiState(
                             .thenByDescending { it.amount }
                     )
                     .map { exp ->
-                        val budgetItem = budgetItemsById[exp.budgetItemId]
-                        val category = budgetItem?.let { categoriesById[it.categoryId] }
+                        val budgetItem = exp.budgetItemId?.let { budgetItemsById[it] }
+                        val category = categoriesById[exp.categoryId]
                         val visuals = category?.name.visualsOrDefault()
                         exp.toExpenseListItem(
                             budgetItemName = budgetItem?.name,
-                            categoryId = category?.id,
+                            categoryId = exp.categoryId,
                             categoryName = category?.name,
                             visuals = visuals,
                         )
@@ -680,6 +721,7 @@ private fun MoneySnapshot.toExpensesUiState(
         val categoryName = categoriesById[item.categoryId]?.name ?: "기타"
         BudgetItemOption(
             id = item.id,
+            categoryId = item.categoryId,
             label = "$categoryName · ${item.name}",
         )
     }
@@ -724,22 +766,22 @@ private fun MoneySnapshot.toBudgetUiState(
     expandedCategoryIds: Set<String>,
     overBudgetOnly: Boolean,
 ): BudgetUiState {
-    val expensesByBudgetItemId = expenses.groupBy { it.budgetItemId }
+    val expensesByBudgetItemId = expenses
+        .asSequence()
+        .mapNotNull { expense -> expense.budgetItemId?.let { budgetItemId -> budgetItemId to expense } }
+        .groupBy({ it.first }, { it.second })
+    val expensesByCategoryId = expenses.groupBy { it.categoryId }
     val budgetItemsById = budgetItems.associateBy { it.id }
     val categoriesById = categories.associateBy { it.id }
     val budgetItemsByCategory = budgetItems.groupBy { it.categoryId }
     val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
-    val sortedExpenses = expenses.sortedWith(
-        compareByDescending<kr.jm.weddingledger.feature.money.domain.model.Expense> { it.date }
-            .thenByDescending { it.amount }
-    )
     val totalTarget = budgetItems.sumOf { it.targetAmount }
     val totalUsed = expenses.sumOf { it.amount }
     val remaining = totalTarget - totalUsed
     val overBudgetCategoryCount = categories.count { category ->
         val items = budgetItemsByCategory[category.id].orEmpty()
         val target = items.sumOf { it.targetAmount }
-        val used = items.sumOf { item -> expensesByBudgetItemId[item.id].orEmpty().sumOf { it.amount } }
+        val used = expensesByCategoryId[category.id].orEmpty().sumOf { it.amount }
         target > 0 && used > target
     }
 
@@ -752,31 +794,21 @@ private fun MoneySnapshot.toBudgetUiState(
             if (remainingAmount <= 0) {
                 null
             } else {
-                val stage = item.stage
-                val priorityText = when (stage) {
-                    BudgetStageType.Final -> "예정일 미설정"
-                    BudgetStageType.Interim -> "예정일 미설정"
-                    BudgetStageType.Deposit -> if (spent <= 0) "예정일 미설정" else null
-                    BudgetStageType.General -> null
-                }
                 PendingPaymentItem(
                     id = item.id,
                     categoryName = categoriesById[item.categoryId]?.name ?: "기타",
                     title = item.name,
-                    stage = stage,
                     dueDate = item.dueDate,
                     dueDateText = item.dueDate?.toPendingDueDateText(),
-                    stageLabel = stage.label,
                     amountText = formatRemainingText(remainingAmount),
                     paidText = if (spent <= 0) "₩0 지급" else "${formatKrw(spent)} 지급",
                     targetText = "목표 ${formatKrw(item.targetAmount)}",
-                    priorityText = item.dueDate.toDuePriorityText(today) ?: priorityText,
+                    priorityText = item.dueDate.toDuePriorityText(today),
                 )
             }
         }
         .sortedWith(
             compareBy<PendingPaymentItem> { it.dueDate ?: FAR_FUTURE_DATE }
-                .thenBy { it.stage.priority }
                 .thenByDescending { extractAmountFromRemainingText(it.amountText) }
         )
 
@@ -792,27 +824,9 @@ private fun MoneySnapshot.toBudgetUiState(
         )
     }
 
-    val stageSummaries = BudgetStageType.entries
-        .mapNotNull { stage ->
-            val items = budgetItems.filter { it.stage == stage }
-            if (items.isEmpty()) return@mapNotNull null
-
-            val target = items.sumOf { it.targetAmount }
-            val used = items.sumOf { item -> expensesByBudgetItemId[item.id].orEmpty().sumOf { it.amount } }
-            val progress = if (target <= 0) 0f else used.toFloat() / target.toFloat()
-            PaymentStageSummaryItem(
-                label = stage.label,
-                countText = "${items.size}건",
-                paidText = "${formatKrw(used)} 지급",
-                remainingText = formatRemainingText(target - used),
-                progress = progress.coerceIn(0f, 1f),
-                isPriority = stage == BudgetStageType.Final && target - used > 0,
-            )
-        }
-
     val insightItems = listOf(
         BudgetInsightItem(
-            label = "남은 결제",
+            label = "남은 예산",
             value = formatKrw(remaining.absoluteValue),
             emphasis = if (remaining < 0) BudgetInsightEmphasis.Caution else BudgetInsightEmphasis.Neutral,
         ),
@@ -822,9 +836,9 @@ private fun MoneySnapshot.toBudgetUiState(
             emphasis = BudgetInsightEmphasis.Neutral,
         ),
         BudgetInsightItem(
-            label = "중요 결제",
-            value = "${pendingPayments.count { it.stage != BudgetStageType.General }}건",
-            emphasis = BudgetInsightEmphasis.Highlight,
+            label = "예정 결제",
+            value = "${pendingPayments.count { it.dueDate != null }}건",
+            emphasis = if (pendingPayments.any { it.dueDate != null }) BudgetInsightEmphasis.Highlight else BudgetInsightEmphasis.Neutral,
         ),
         BudgetInsightItem(
             label = "초과 카테고리",
@@ -838,12 +852,13 @@ private fun MoneySnapshot.toBudgetUiState(
         val items = budgetItemsByCategory[category.id].orEmpty()
 
         val target = items.sumOf { it.targetAmount }
-        val used = items.sumOf { item ->
-            expensesByBudgetItemId[item.id].orEmpty().sumOf { it.amount }
-        }
-        val categoryExpenses = sortedExpenses.filter { expense ->
-            budgetItemsById[expense.budgetItemId]?.categoryId == category.id
-        }
+        val categoryExpenses = expensesByCategoryId[category.id]
+            .orEmpty()
+            .sortedWith(
+                compareByDescending<kr.jm.weddingledger.feature.money.domain.model.Expense> { it.date }
+                    .thenByDescending { it.amount }
+            )
+        val used = categoryExpenses.sumOf { it.amount }
 
         val progress = if (target <= 0) 0f else used.toFloat() / target.toFloat()
 
@@ -865,7 +880,6 @@ private fun MoneySnapshot.toBudgetUiState(
                 val spent = linkedExpenses.sumOf { it.amount }
                 val remainingAmount = item.targetAmount - spent
                 val itemProgress = if (item.targetAmount <= 0) 0f else spent.toFloat() / item.targetAmount.toFloat()
-                val stage = item.stage
                 BudgetSubItem(
                     id = item.id,
                     label = item.name,
@@ -878,17 +892,15 @@ private fun MoneySnapshot.toBudgetUiState(
                     remainingText = formatRemainingText(remainingAmount),
                     progress = itemProgress.coerceIn(0f, 1f),
                     isOverBudget = item.targetAmount > 0 && spent > item.targetAmount,
-                    stage = stage,
                     dueDate = item.dueDate,
                     dueDateText = item.dueDate?.toBudgetDueDateText(),
-                    stageLabel = stage.label,
                     expenseCountText = if (linkedExpenses.isEmpty()) "지출 기록 없음" else "지출 ${linkedExpenses.size}건",
                 )
             },
             recentExpenses = categoryExpenses
                 .take(3)
                 .map { expense ->
-                    val budgetItem = budgetItemsById[expense.budgetItemId]
+                    val budgetItem = expense.budgetItemId?.let { budgetItemsById[it] }
                     expense.toExpenseListItem(
                         budgetItemName = budgetItem?.name,
                         categoryId = category.id,
@@ -910,7 +922,6 @@ private fun MoneySnapshot.toBudgetUiState(
         usedProgress = usedProgress.coerceIn(0f, 1f),
         insightItems = insightItems,
         payerSummaries = payerSummaries,
-        paymentStageSummaries = stageSummaries,
         pendingPayments = pendingPayments,
         isOverBudgetOnly = overBudgetOnly,
         categories = categoriesUi,
@@ -919,16 +930,16 @@ private fun MoneySnapshot.toBudgetUiState(
 
 private fun kr.jm.weddingledger.feature.money.domain.model.Expense.toExpenseListItem(
     budgetItemName: String?,
-    categoryId: String?,
+    categoryId: String,
     categoryName: String?,
     visuals: CategoryVisuals,
 ): ExpenseListItem {
     return ExpenseListItem(
         id = id,
-        categoryId = categoryId ?: "unknown",
+        categoryId = categoryId,
         categoryName = categoryName ?: "기타",
         budgetItemId = budgetItemId,
-        title = budgetItemName ?: "지출",
+        title = budgetItemName ?: vendorName ?: categoryName?.let { "$it 지출" } ?: "지출",
         dateText = "${date.month.number}월 ${date.day}일",
         amountText = "-${formatNumber(amount)}",
         amount = amount,

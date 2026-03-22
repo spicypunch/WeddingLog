@@ -1,8 +1,26 @@
 # Session Handover (2026-03-03) - Kakao Native Login + Auth Refactor
 
-업데이트: 2026-03-16
+업데이트: 2026-03-22
 
-## 0) 최신 메모 (2026-03-16)
+## 0) 최신 메모 (2026-03-22)
+
+- 홈 결산 카드 정리
+  - 큰 금액에서도 사용률 칩이 세로로 찌그러지지 않도록 금액 아래 행으로 이동
+  - 홈 중간 CTA 카드와 FAB 제거
+- 파트너 활동 알림 추가
+  - 지출 추가 / 일정 추가 시 상대방 대상 활동 기록 생성
+  - 알림센터가 `새 활동 / 리마인더` 2섹션 구조로 확장됨
+- 원격 푸시 인프라 추가
+  - Supabase 테이블: `device_push_tokens`, `partner_activity_notifications`
+  - 컬럼: `expenses.created_by`, `schedule_events.created_by`
+  - Edge Function: `send-partner-activity-push`
+  - Android FCM, iOS Firebase Messaging + APNs 브리지 코드 추가
+- 실제 OS push까지 쓰려면 수동 설정 필요
+  - Android `local.properties` Firebase 값
+  - iOS `iosApp/Configuration/Config.xcconfig` Firebase 값
+  - Supabase secret `FCM_SERVICE_ACCOUNT_JSON`
+
+## 0-1) 이전 메모 (2026-03-16)
 
 - Android Studio 업데이트 후 IDE에서 `convertPbxprojToJson` / `plutil` 오류가 날 수 있었음.
   - 프로젝트 자체 문제는 아니었고, 터미널에서 Android Studio를 실행하면 정상 sync/실행됨.

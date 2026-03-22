@@ -2,11 +2,14 @@ package kr.jm.weddingledger.feature.onboarding.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kr.jm.weddingledger.core.network.logSupabaseInfo
+import kr.jm.weddingledger.core.network.logSupabaseWarning
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingErrorType
@@ -240,7 +243,10 @@ class OnboardingViewModel(
             }
 
             when (val result = connectPartnerUseCase(code)) {
-                is OnboardingResult.Success -> finishOnboarding()
+                is OnboardingResult.Success -> {
+                    awaitSharedProfileRefresh()
+                    finishOnboarding()
+                }
                 is OnboardingResult.Error -> _state.update { it.copy(isLoading = false, message = result.message) }
             }
         }
@@ -278,9 +284,44 @@ class OnboardingViewModel(
             is OnboardingResult.Error -> _state.update { it.copy(isLoading = false, message = complete.message) }
         }
     }
+
+    private suspend fun awaitSharedProfileRefresh() {
+        repeat(4) { attempt ->
+            when (val result = fetchMyProfileUseCase()) {
+                is OnboardingResult.Success -> {
+                    val profile = result.data
+                    logSupabaseInfo(
+                        featureName = FEATURE_NAME,
+                        message = "join_refresh attempt=${attempt + 1} " +
+                            "weddingId=${profile.weddingId} weddingDate=${profile.weddingDate} " +
+                            "undecided=${profile.isWeddingDateUndecided}",
+                    )
+                    _state.update {
+                        it.copy(
+                            profile = it.profile.copy(
+                                weddingDate = profile.weddingDate,
+                                isDateUndecided = profile.isWeddingDateUndecided,
+                            )
+                        )
+                    }
+                    if (profile.weddingDate != null || profile.isWeddingDateUndecided) return
+                }
+
+                is OnboardingResult.Error -> {
+                    logSupabaseWarning(
+                        featureName = FEATURE_NAME,
+                        message = "join_refresh attempt=${attempt + 1} error=${result.message}",
+                    )
+                }
+            }
+
+            delay(350)
+        }
+    }
 }
 
 private val inviteCodeRegex = Regex("^\\d{6}$")
+private const val FEATURE_NAME: String = "Onboarding"
 
 private fun normalizeInviteCode(value: String): String {
     return value.trim().filter { it in '0'..'9' }

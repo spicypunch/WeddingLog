@@ -1,25 +1,36 @@
 package kr.jm.weddingledger.feature.notifications.data.repository
 
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.number
 import kotlinx.datetime.toInstant
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.datetime.todayIn
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlin.math.absoluteValue
 import kotlin.time.Clock
 import kr.jm.weddingledger.core.platform.LocalNotificationPayload
 import kr.jm.weddingledger.core.platform.LocalNotificationScheduleResult
 import kr.jm.weddingledger.core.platform.cancelLocalNotification
 import kr.jm.weddingledger.core.platform.scheduleLocalNotification
-import kr.jm.weddingledger.feature.notifications.data.local.ReminderPreferenceStorage
-import kr.jm.weddingledger.feature.notifications.domain.model.NotificationCenterErrorCode
 import kr.jm.weddingledger.feature.money.domain.model.MoneyResult
 import kr.jm.weddingledger.feature.money.domain.repository.MoneyRepository
+import kr.jm.weddingledger.feature.notifications.data.dto.PartnerActivityNotificationRowDto
+import kr.jm.weddingledger.feature.notifications.data.local.ReminderPreferenceStorage
+import kr.jm.weddingledger.feature.notifications.domain.model.NotificationCenterErrorCode
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationCenterResult
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedItem
+import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedSection
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationItemType
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationReminderPlan
 import kr.jm.weddingledger.feature.notifications.domain.repository.NotificationCenterRepository
@@ -28,6 +39,7 @@ import kr.jm.weddingledger.feature.schedule.domain.repository.ChecklistRepositor
 import kr.jm.weddingledger.feature.schedule.domain.repository.ScheduleEventRepository
 
 class NotificationCenterRepositoryImpl(
+    private val supabaseClient: SupabaseClient,
     private val scheduleEventRepository: ScheduleEventRepository,
     private val checklistRepository: ChecklistRepository,
     private val moneyRepository: MoneyRepository,
@@ -38,17 +50,18 @@ class NotificationCenterRepositoryImpl(
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         val zone = TimeZone.currentSystemDefault()
 
-        val items = buildList {
+        val activityItems = loadPartnerActivityItems()
+            .sortedBy { it.sortKeyEpochMillis }
+            .take(MAX_ACTIVITY_ITEMS)
+        val reminderItems = buildList {
             addAll(loadScheduleItems(today = today, nowEpoch = nowEpoch, zone = zone))
             addAll(loadChecklistItems(today = today, nowEpoch = nowEpoch, zone = zone))
             addAll(loadBudgetWarningItems(nowEpoch = nowEpoch))
         }
+            .sortedBy { it.sortKeyEpochMillis }
+            .take(MAX_REMINDER_ITEMS)
 
-        return NotificationCenterResult.Success(
-            items
-                .sortedBy { it.sortKeyEpochMillis }
-                .take(60)
-        )
+        return NotificationCenterResult.Success(activityItems + reminderItems)
     }
 
     override suspend fun scheduleReminder(
@@ -105,6 +118,42 @@ class NotificationCenterRepositoryImpl(
             )
     }
 
+    private suspend fun loadPartnerActivityItems(): List<NotificationFeedItem> {
+        val user = supabaseClient.auth.currentUserOrNull() ?: return emptyList()
+        val rows = runCatching {
+            supabaseClient
+                .from("partner_activity_notifications")
+                .select {
+                    filter { eq("target_user_id", user.id) }
+                    order(column = "created_at", order = Order.DESCENDING)
+                    limit(MAX_ACTIVITY_ITEMS.toLong())
+                }
+                .decodeList<PartnerActivityNotificationRowDto>()
+        }.getOrElse {
+            return emptyList()
+        }
+
+        val unreadIds = rows.filter { !it.isRead }.map { it.id }
+        if (unreadIds.isNotEmpty()) {
+            runCatching {
+                supabaseClient
+                    .from("partner_activity_notifications")
+                    .update(
+                        buildJsonObject {
+                            put("is_read", JsonPrimitive(true))
+                        }
+                    ) {
+                        filter {
+                            eq("target_user_id", user.id)
+                            isIn("id", unreadIds)
+                        }
+                    }
+            }
+        }
+
+        return rows.mapNotNull { it.toFeedItemOrNull() }
+    }
+
     private suspend fun loadScheduleItems(
         today: LocalDate,
         nowEpoch: Long,
@@ -123,6 +172,7 @@ class NotificationCenterRepositoryImpl(
                     NotificationFeedItem(
                         id = "event-${event.id}",
                         type = NotificationItemType.Schedule,
+                        section = NotificationFeedSection.Reminder,
                         title = "일정: ${event.title}",
                         subtitle = "${event.eventDate.toDotDate()} · $startTimeText · $dDayText",
                         detail = locationText,
@@ -167,6 +217,7 @@ class NotificationCenterRepositoryImpl(
                     NotificationFeedItem(
                         id = "checklist-${task.id}",
                         type = NotificationItemType.Checklist,
+                        section = NotificationFeedSection.Reminder,
                         title = "체크리스트: ${task.title}",
                         subtitle = "마감 ${targetDate.toDotDate()} · $dDayText",
                         detail = task.memo?.trim()?.takeIf { it.isNotEmpty() } ?: "체크가 필요한 할 일이 있어요.",
@@ -192,6 +243,7 @@ class NotificationCenterRepositoryImpl(
     ): List<NotificationFeedItem> = when (val result = moneyRepository.fetchSnapshot()) {
         is MoneyResult.Success -> {
             val spentByBudgetItem = result.data.expenses
+                .filter { it.budgetItemId != null }
                 .groupBy { it.budgetItemId }
                 .mapValues { (_, expenses) -> expenses.sumOf { it.amount } }
 
@@ -209,6 +261,7 @@ class NotificationCenterRepositoryImpl(
                 NotificationFeedItem(
                     id = "budget-${category.id}",
                     type = NotificationItemType.BudgetWarning,
+                    section = NotificationFeedSection.Reminder,
                     title = "예산 초과: ${category.name}",
                     subtitle = "목표 ${formatKrw(target)} / 사용 ${formatKrw(spent)}",
                     detail = "${formatKrw(exceeded)} 초과되었습니다.",
@@ -272,23 +325,50 @@ private fun kr.jm.weddingledger.feature.schedule.domain.model.ScheduleEvent.toEv
     ).toInstant(zone).toEpochMilliseconds()
 }
 
-private fun LocalDate.toDotDate(): String = buildString {
-    append(year)
-    append('.')
-    append(month.number.toString().padStart(2, '0'))
-    append('.')
-    append(day.toString().padStart(2, '0'))
+private fun LocalDate.toDotDate(): String {
+    val mm = month.number.toString().padStart(2, '0')
+    val dd = day.toString().padStart(2, '0')
+    return "${year}.$mm.$dd"
 }
 
 private fun formatKrw(amount: Int): String {
     val sign = if (amount < 0) "-" else ""
-    return "${sign}₩${amount.toLong().absoluteValue.toThousands()}"
+    return "${sign}₩${formatNumber(amount.toLong().absoluteValue)}"
 }
 
-private fun Long.toThousands(): String = toString()
+private fun formatNumber(value: Long): String = value
+    .toString()
     .reversed()
     .chunked(3)
     .joinToString(",")
     .reversed()
 
-private const val ONE_DAY_MILLIS: Long = 24L * 60L * 60L * 1_000L
+private fun PartnerActivityNotificationRowDto.toFeedItemOrNull(): NotificationFeedItem? {
+    val itemType = when (type.trim().lowercase()) {
+        "expense_added" -> NotificationItemType.PartnerExpenseAdded
+        "schedule_added" -> NotificationItemType.PartnerScheduleAdded
+        else -> return null
+    }
+    val createdInstant = runCatching { Instant.parse(createdAt) }.getOrElse { return null }
+    val createdEpoch = createdInstant.toEpochMilliseconds()
+    return NotificationFeedItem(
+        id = id,
+        type = itemType,
+        section = NotificationFeedSection.Activity,
+        title = title,
+        subtitle = createdInstant.toKoreanActivityDateText(),
+        detail = body,
+        sortKeyEpochMillis = -createdEpoch,
+        reminderPlan = null,
+        isUnread = !isRead,
+    )
+}
+
+private fun Instant.toKoreanActivityDateText(): String {
+    val dateTime = toLocalDateTime(TimeZone.currentSystemDefault())
+    return "${dateTime.date.toDotDate()} ${dateTime.hour.toString().padStart(2, '0')}:${dateTime.minute.toString().padStart(2, '0')}"
+}
+
+private const val MAX_ACTIVITY_ITEMS: Int = 30
+private const val MAX_REMINDER_ITEMS: Int = 30
+private const val ONE_DAY_MILLIS: Long = 24L * 60L * 60L * 1000L

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.coroutines.cancellation.CancellationException
+import kr.jm.weddingledger.core.network.logSupabaseError
 import kr.jm.weddingledger.feature.auth.data.platform.KakaoNativeSignInClient
 import kr.jm.weddingledger.feature.auth.data.platform.KakaoNativeSignInResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthErrorType
@@ -381,13 +382,24 @@ private fun logSupabaseThrowable(t: Throwable) {
     // Avoid printing t.message (RestException includes URL + request headers).
     when (t) {
         is AuthRestException -> {
-            println("Supabase(Auth) error=${t.error} description=${t.errorDescription} status=${t.statusCode}")
+            logSupabaseError(
+                featureName = AUTH_LOG_FEATURE_NAME,
+                message = "auth_error=${t.error} description=${t.errorDescription} status=${t.statusCode}",
+            )
         }
         is RestException -> {
-            println("Supabase error=${t.error} description=${t.description} status=${t.statusCode}")
+            logSupabaseError(
+                featureName = AUTH_LOG_FEATURE_NAME,
+                message = "error=${t.error} description=${t.description} status=${t.statusCode}",
+            )
         }
         else -> {
-            println("Auth error=${t::class.simpleName}")
+            logSupabaseError(
+                featureName = AUTH_LOG_FEATURE_NAME,
+                message = "type=${t::class.simpleName}",
+            )
         }
     }
 }
+
+private const val AUTH_LOG_FEATURE_NAME: String = "Auth"

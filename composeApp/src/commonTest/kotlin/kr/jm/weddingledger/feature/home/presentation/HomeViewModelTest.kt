@@ -12,7 +12,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kr.jm.weddingledger.feature.money.domain.model.BudgetItem
-import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.Expense
 import kr.jm.weddingledger.feature.money.domain.model.MoneyCategory
 import kr.jm.weddingledger.feature.money.domain.model.MoneyResult
@@ -57,9 +56,8 @@ class HomeViewModelTest {
                         BudgetItem(
                             id = "budget-1",
                             categoryId = "cat-1",
-                            name = "홀 계약금",
+                            name = "홀 대관료",
                             targetAmount = 1_000_000,
-                            stage = BudgetStageType.Deposit,
                             memo = null,
                         ),
                         BudgetItem(
@@ -67,13 +65,13 @@ class HomeViewModelTest {
                             categoryId = "cat-2",
                             name = "여행 예약",
                             targetAmount = 2_000_000,
-                            stage = BudgetStageType.General,
                             memo = null,
                         ),
                     ),
                     expenses = listOf(
                         Expense(
                             id = "exp-1",
+                            categoryId = "cat-1",
                             budgetItemId = "budget-1",
                             amount = 300_000,
                             date = today,
@@ -85,6 +83,7 @@ class HomeViewModelTest {
                         ),
                         Expense(
                             id = "exp-2",
+                            categoryId = "cat-2",
                             budgetItemId = "budget-2",
                             amount = 500_000,
                             date = today.plus(-1, DateTimeUnit.DAY),
@@ -189,6 +188,52 @@ class HomeViewModelTest {
         assertTrue(state.categories.isEmpty())
         assertTrue(state.upcoming.isEmpty())
     }
+
+    @Test
+    fun `recent expense falls back to category label when budget item is missing`() = runMainDispatcherTest {
+        val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        val viewModel = HomeViewModel(
+            fetchMoneySnapshotUseCase = FetchMoneySnapshotUseCase(
+                FakeMoneyRepositoryForHome(
+                    result = MoneyResult.Success(
+                        MoneySnapshot(
+                            categories = listOf(MoneyCategory(id = "cat-1", name = "웨딩홀", isDefault = true)),
+                            budgetItems = emptyList(),
+                            expenses = listOf(
+                                Expense(
+                                    id = "exp-1",
+                                    categoryId = "cat-1",
+                                    budgetItemId = null,
+                                    amount = 150_000,
+                                    date = today,
+                                    paymentMethod = PaymentMethod.Card,
+                                    payer = Payer.Bride,
+                                    vendorName = null,
+                                    memo = null,
+                                    imageUrl = null,
+                                )
+                            ),
+                        )
+                    )
+                )
+            ),
+            fetchMyProfileUseCase = FetchMyProfileUseCase(
+                FakeOnboardingRepositoryForHome(result = OnboardingResult.Error("프로필 로드 실패"))
+            ),
+            fetchScheduleEventsUseCase = FetchScheduleEventsUseCase(
+                FakeScheduleEventRepositoryForHome(result = ScheduleResult.Success(emptyList()))
+            ),
+            fetchChecklistUseCase = FetchChecklistUseCase(
+                FakeChecklistRepositoryForHome(result = ScheduleResult.Success(emptyList()))
+            ),
+        )
+        advanceUntilIdle()
+
+        val recent = viewModel.state.value.recentExpenses.single()
+        assertEquals("웨딩홀 지출", recent.title)
+        assertTrue(recent.noteText.contains("웨딩홀"))
+        assertTrue(recent.noteText.contains("신부"))
+    }
 }
 
 private class FakeMoneyRepositoryForHome(
@@ -203,6 +248,8 @@ private class FakeMoneyRepositoryForHome(
     override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
     override suspend fun updateCategory(id: String, name: String): MoneyResult<Unit> = MoneyResult.Success(Unit)
+
+    override suspend fun deleteCategory(id: String): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
     override suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit> = MoneyResult.Success(Unit)
 

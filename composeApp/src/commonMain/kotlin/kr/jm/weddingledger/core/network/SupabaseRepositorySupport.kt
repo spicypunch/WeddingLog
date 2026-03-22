@@ -7,6 +7,8 @@ import io.github.jan.supabase.postgrest.from
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kr.jm.weddingledger.core.logging.LogLevel
+import kr.jm.weddingledger.core.logging.platformLog
 
 class WeddingIdResolver(
     private val supabaseClient: SupabaseClient,
@@ -75,16 +77,62 @@ internal class WeddingIdCache {
     }
 }
 
+fun logSupabaseInfo(
+    featureName: String,
+    message: String,
+) {
+    printSupabaseLog(level = LogLevel.Info, featureName = featureName, message = message)
+}
+
+fun logSupabaseWarning(
+    featureName: String,
+    message: String,
+) {
+    printSupabaseLog(level = LogLevel.Warning, featureName = featureName, message = message)
+}
+
+fun logSupabaseError(
+    featureName: String,
+    message: String,
+) {
+    printSupabaseLog(level = LogLevel.Error, featureName = featureName, message = message)
+}
+
 fun logSupabaseRepositoryThrowable(
     featureName: String,
     t: Throwable,
 ) {
     // Avoid printing t.message (RestException may include URL + request headers).
     when (t) {
-        is RestException -> println("Supabase[$featureName] error=${t.error} description=${t.description} status=${t.statusCode}")
-        else -> println("$featureName error=${t::class.simpleName}")
+        is RestException -> {
+            logSupabaseError(
+                featureName = featureName,
+                message = "error=${t.error} description=${t.description} status=${t.statusCode}",
+            )
+        }
+
+        else -> {
+            logSupabaseError(
+                featureName = featureName,
+                message = "type=${t::class.simpleName}",
+            )
+        }
     }
 }
+
+private fun printSupabaseLog(
+    level: LogLevel,
+    featureName: String,
+    message: String,
+) {
+    platformLog(
+        level = level,
+        tag = SUPABASE_LOG_TAG,
+        message = "[${level.name.uppercase()}][$featureName] $message",
+    )
+}
+
+private const val SUPABASE_LOG_TAG: String = "WL_SUPABASE"
 
 @Serializable
 private data class WeddingIdProfileRow(

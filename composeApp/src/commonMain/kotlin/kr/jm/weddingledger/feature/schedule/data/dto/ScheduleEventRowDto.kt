@@ -8,6 +8,8 @@ data class ScheduleEventRowDto(
     val id: String,
     @SerialName("wedding_id")
     val weddingId: String,
+    @SerialName("created_by")
+    val createdBy: String? = null,
     val title: String,
     @SerialName("event_date")
     val eventDate: String,
@@ -27,6 +29,8 @@ data class ScheduleEventRowDto(
 data class ScheduleEventInsertDto(
     @SerialName("wedding_id")
     val weddingId: String,
+    @SerialName("created_by")
+    val createdBy: String? = null,
     val title: String,
     @SerialName("event_date")
     val eventDate: String,

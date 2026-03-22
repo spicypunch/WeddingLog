@@ -11,6 +11,7 @@ import kr.jm.weddingledger.core.platform.NotificationPermissionRequestResult
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationCenterErrorCode
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationCenterResult
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedItem
+import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedSection
 import kr.jm.weddingledger.feature.notifications.domain.usecase.CancelReminderUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.FetchNotificationFeedUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.FetchScheduledReminderIdsUseCase
@@ -98,9 +99,16 @@ class NotificationCenterViewModel(
                         is NotificationCenterResult.Error -> Unit
                     }
                     _state.update {
+                        val activityItems = feedItems
+                            .filter { item -> item.section == NotificationFeedSection.Activity }
+                            .map(::toUiItem)
+                        val reminderItems = feedItems
+                            .filter { item -> item.section == NotificationFeedSection.Reminder }
+                            .map(::toUiItem)
                         it.copy(
                             isLoading = false,
-                            items = feedItems.map(::toUiItem),
+                            activityItems = activityItems,
+                            reminderItems = reminderItems,
                             message = null,
                             showPermissionAction = false,
                         )
@@ -111,7 +119,8 @@ class NotificationCenterViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            items = emptyList(),
+                            activityItems = emptyList(),
+                            reminderItems = emptyList(),
                             message = feedResult.message,
                             showPermissionAction = false,
                         )
@@ -131,6 +140,7 @@ class NotificationCenterViewModel(
             detail = item.detail,
             canScheduleReminder = item.reminderPlan != null,
             isReminderScheduled = reminderId != null && scheduledReminderIds.contains(reminderId),
+            isUnread = item.isUnread,
         )
     }
 
@@ -153,7 +163,7 @@ class NotificationCenterViewModel(
                     pendingPermissionItemId = null
                     _state.update {
                         it.copy(
-                            items = it.items.map { item ->
+                            reminderItems = it.reminderItems.map { item ->
                                 if (item.id == itemId) item.copy(isReminderScheduled = true) else item
                             },
                             message = "리마인더를 예약했습니다.",
@@ -191,7 +201,7 @@ class NotificationCenterViewModel(
                     scheduledReminderIds.remove(reminderId)
                     _state.update {
                         it.copy(
-                            items = it.items.map { item ->
+                            reminderItems = it.reminderItems.map { item ->
                                 if (item.id == itemId) item.copy(isReminderScheduled = false) else item
                             },
                             message = "리마인더를 취소했습니다.",

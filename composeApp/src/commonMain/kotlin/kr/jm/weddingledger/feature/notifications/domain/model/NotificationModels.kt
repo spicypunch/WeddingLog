@@ -4,6 +4,13 @@ enum class NotificationItemType {
     Schedule,
     Checklist,
     BudgetWarning,
+    PartnerExpenseAdded,
+    PartnerScheduleAdded,
+}
+
+enum class NotificationFeedSection {
+    Activity,
+    Reminder,
 }
 
 data class NotificationReminderPlan(
@@ -16,11 +23,13 @@ data class NotificationReminderPlan(
 data class NotificationFeedItem(
     val id: String,
     val type: NotificationItemType,
+    val section: NotificationFeedSection,
     val title: String,
     val subtitle: String,
     val detail: String,
     val sortKeyEpochMillis: Long,
     val reminderPlan: NotificationReminderPlan? = null,
+    val isUnread: Boolean = false,
 )
 
 enum class NotificationCenterErrorCode {

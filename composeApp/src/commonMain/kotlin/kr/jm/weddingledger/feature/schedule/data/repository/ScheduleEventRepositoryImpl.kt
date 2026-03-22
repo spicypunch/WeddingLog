@@ -14,14 +14,16 @@ import kotlinx.serialization.json.put
 import kr.jm.weddingledger.core.network.WeddingIdResolver
 import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.schedule.data.dto.ScheduleEventRowDto
-import kr.jm.weddingledger.feature.schedule.domain.model.NewScheduleEvent
 import kr.jm.weddingledger.feature.schedule.domain.model.EventRepeatRule
+import kr.jm.weddingledger.feature.schedule.domain.model.NewScheduleEvent
 import kr.jm.weddingledger.feature.schedule.domain.model.ScheduleEvent
 import kr.jm.weddingledger.feature.schedule.domain.model.ScheduleResult
 import kr.jm.weddingledger.feature.schedule.domain.repository.ScheduleEventRepository
+import kr.jm.weddingledger.feature.notifications.domain.repository.PartnerActivityNotifier
 
 class ScheduleEventRepositoryImpl(
     private val supabaseClient: SupabaseClient,
+    private val partnerActivityNotifier: PartnerActivityNotifier,
 ) : ScheduleEventRepository {
 
     private val weddingIdResolver = WeddingIdResolver(supabaseClient)
@@ -54,19 +56,8 @@ class ScheduleEventRepositoryImpl(
     override suspend fun createEvent(event: NewScheduleEvent): ScheduleResult<Unit> {
         return try {
             val weddingId = weddingIdResolver.resolve()
-            try {
-                supabaseClient
-                    .from("schedule_events")
-                    .insert(buildCreatePayload(weddingId = weddingId, event = event, preferRepeatColumn = true))
-            } catch (t: Throwable) {
-                if (t is RestException && t.isMissingColumn(REPEAT_RULE_COLUMN)) {
-                    supabaseClient
-                        .from("schedule_events")
-                        .insert(buildCreatePayload(weddingId = weddingId, event = event, preferRepeatColumn = false))
-                } else {
-                    throw t
-                }
-            }
+            val insertedRow = insertEventRow(weddingId = weddingId, event = event)
+            partnerActivityNotifier.notifyScheduleAdded(insertedRow.id)
 
             ScheduleResult.Success(Unit)
         } catch (t: Throwable) {
@@ -132,6 +123,33 @@ class ScheduleEventRepositoryImpl(
                 ScheduleResult.Error("일정 테이블이 아직 준비되지 않았습니다. SQL을 먼저 실행해 주세요.")
             } else {
                 ScheduleResult.Error(t.toUserFriendlyMessage(defaultMessage = "일정 삭제에 실패했습니다."))
+            }
+        }
+    }
+
+    private suspend fun insertEventRow(
+        weddingId: String,
+        event: NewScheduleEvent,
+    ): ScheduleEventRowDto {
+        return try {
+            supabaseClient
+                .from("schedule_events")
+                .insert(buildCreatePayload(weddingId = weddingId, event = event, preferRepeatColumn = true)) {
+                    select()
+                    single()
+                }
+                .decodeSingle<ScheduleEventRowDto>()
+        } catch (t: Throwable) {
+            if (t is RestException && t.isMissingColumn(REPEAT_RULE_COLUMN)) {
+                supabaseClient
+                    .from("schedule_events")
+                    .insert(buildCreatePayload(weddingId = weddingId, event = event, preferRepeatColumn = false)) {
+                        select()
+                        single()
+                    }
+                    .decodeSingle<ScheduleEventRowDto>()
+            } else {
+                throw t
             }
         }
     }

@@ -66,8 +66,12 @@ data class ExpenseRowDto(
     val id: String,
     @SerialName("wedding_id")
     val weddingId: String,
+    @SerialName("created_by")
+    val createdBy: String? = null,
     @SerialName("budget_item_id")
-    val budgetItemId: String,
+    val budgetItemId: String? = null,
+    @SerialName("category_id")
+    val categoryId: String,
     val amount: Int,
     val date: String,
     @SerialName("payment_method")
@@ -88,8 +92,12 @@ data class ExpenseRowDto(
 data class ExpenseInsertDto(
     @SerialName("wedding_id")
     val weddingId: String,
+    @SerialName("created_by")
+    val createdBy: String? = null,
     @SerialName("budget_item_id")
-    val budgetItemId: String,
+    val budgetItemId: String? = null,
+    @SerialName("category_id")
+    val categoryId: String,
     val amount: Int,
     val date: String,
     @SerialName("payment_method")

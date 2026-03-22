@@ -11,7 +11,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Clock
 import kr.jm.weddingledger.feature.money.domain.model.BudgetItem
-import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.Expense
 import kr.jm.weddingledger.feature.money.domain.model.ExpenseFilterPreferenceState
 import kr.jm.weddingledger.feature.money.domain.model.ExpenseFilterPresetPreference
@@ -27,6 +26,7 @@ import kr.jm.weddingledger.feature.money.domain.repository.MoneyRepository
 import kr.jm.weddingledger.feature.money.domain.usecase.AddCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.AddExpenseUseCase
+import kr.jm.weddingledger.feature.money.domain.usecase.DeleteCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.DeleteBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.DeleteExpenseUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.FetchExpenseFilterPreferenceUseCase
@@ -35,6 +35,11 @@ import kr.jm.weddingledger.feature.money.domain.usecase.SaveExpenseFilterPrefere
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateBudgetItemUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateCategoryUseCase
 import kr.jm.weddingledger.feature.money.domain.usecase.UpdateExpenseUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.model.MyProfile
+import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
+import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
+import kr.jm.weddingledger.feature.onboarding.domain.repository.OnboardingRepository
+import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
 
 class MoneyViewModelTest {
@@ -75,7 +80,7 @@ class MoneyViewModelTest {
         assertEquals("₩200,000 초과", hallCategory.remainingText)
         assertEquals(1, hallCategory.recentExpenses.size)
         assertEquals("신랑", state.budget.payerSummaries.first().label)
-        assertEquals("계약금", state.budget.paymentStageSummaries.first().label)
+        assertEquals("예정 결제", state.budget.insightItems[2].label)
         assertTrue(state.budget.pendingPayments.isNotEmpty())
     }
 
@@ -115,33 +120,6 @@ class MoneyViewModelTest {
     }
 
     @Test
-    fun `explicit stage is used even when item name is generic`() = runMainDispatcherTest {
-        val repository = FakeMoneyRepositoryForViewModel(
-            snapshot = MoneySnapshot(
-                categories = listOf(MoneyCategory(id = "cat-hall", name = "웨딩홀", isDefault = true)),
-                budgetItems = listOf(
-                    BudgetItem(
-                        id = "budget-1",
-                        categoryId = "cat-hall",
-                        name = "본식 1차 결제",
-                        targetAmount = 3_000_000,
-                        stage = BudgetStageType.Final,
-                        memo = null,
-                    )
-                ),
-                expenses = emptyList(),
-            )
-        )
-        val viewModel = createViewModel(repository, FakeMoneyPreferenceRepository(initialState = null))
-        advanceUntilIdle()
-
-        val state = viewModel.state.value
-        assertEquals("잔금", state.budget.paymentStageSummaries.first().label)
-        assertEquals("잔금", state.budget.pendingPayments.first().stageLabel)
-        assertEquals("잔금", state.budget.categories.first().subItems.first().stageLabel)
-    }
-
-    @Test
     fun `pending payments prefer earlier due date and expose due text`() = runMainDispatcherTest {
         val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
         val repository = FakeMoneyRepositoryForViewModel(
@@ -151,18 +129,16 @@ class MoneyViewModelTest {
                     BudgetItem(
                         id = "budget-final",
                         categoryId = "cat-hall",
-                        name = "잔금",
+                        name = "웨딩홀 대관",
                         targetAmount = 3_000_000,
-                        stage = BudgetStageType.Final,
                         dueDate = today.plus(10, DateTimeUnit.DAY),
                         memo = null,
                     ),
                     BudgetItem(
                         id = "budget-mid",
                         categoryId = "cat-hall",
-                        name = "중도금",
+                        name = "식대",
                         targetAmount = 1_000_000,
-                        stage = BudgetStageType.Interim,
                         dueDate = today.plus(3, DateTimeUnit.DAY),
                         memo = null,
                     ),
@@ -178,6 +154,84 @@ class MoneyViewModelTest {
         assertEquals("D-3", pendingPayments.first().priorityText)
         assertTrue(pendingPayments.first().dueDateText?.contains("예정") == true)
     }
+
+    @Test
+    fun `category-only expense counts in category total but not in budget sub item progress`() = runMainDispatcherTest {
+        val repository = FakeMoneyRepositoryForViewModel(
+            snapshot = MoneySnapshot(
+                categories = listOf(MoneyCategory(id = "cat-hall", name = "웨딩홀", isDefault = true)),
+                budgetItems = listOf(
+                    BudgetItem(
+                        id = "budget-1",
+                        categoryId = "cat-hall",
+                        name = "홀 대관료",
+                        targetAmount = 1_000_000,
+                        memo = null,
+                    )
+                ),
+                expenses = listOf(
+                    Expense(
+                        id = "expense-1",
+                        categoryId = "cat-hall",
+                        budgetItemId = "budget-1",
+                        amount = 300_000,
+                        date = LocalDate.parse("2026-03-10"),
+                        paymentMethod = PaymentMethod.Card,
+                        payer = Payer.Groom,
+                        vendorName = null,
+                        memo = null,
+                        imageUrl = null,
+                    ),
+                    Expense(
+                        id = "expense-2",
+                        categoryId = "cat-hall",
+                        budgetItemId = null,
+                        amount = 200_000,
+                        date = LocalDate.parse("2026-03-11"),
+                        paymentMethod = PaymentMethod.Cash,
+                        payer = Payer.Bride,
+                        vendorName = "현장 추가금",
+                        memo = null,
+                        imageUrl = null,
+                    ),
+                ),
+            )
+        )
+        val viewModel = createViewModel(repository, FakeMoneyPreferenceRepository(initialState = null))
+        advanceUntilIdle()
+
+        val category = viewModel.state.value.budget.categories.first()
+        val budgetItem = category.subItems.first()
+
+        assertEquals("₩500,000 사용", category.usedText)
+        assertEquals("₩300,000 사용", budgetItem.spentText)
+        assertEquals("현장 추가금", viewModel.state.value.expenses.sections.first().items.first().title)
+    }
+
+    @Test
+    fun `create expense allows category-only payload`() = runMainDispatcherTest {
+        val repository = FakeMoneyRepositoryForViewModel(snapshot = sampleSnapshot())
+        val viewModel = createViewModel(repository, FakeMoneyPreferenceRepository(initialState = null))
+        advanceUntilIdle()
+
+        viewModel.onAction(
+            MoneyAction.OnCreateExpense(
+                categoryId = "cat-hall",
+                budgetItemId = null,
+                amount = 180_000,
+                date = LocalDate.parse("2026-03-12"),
+                paymentMethod = PaymentMethod.Card,
+                payer = Payer.Bride,
+                vendorName = "현장 결제",
+                memo = null,
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals("cat-hall", repository.lastAddedExpense?.categoryId)
+        assertEquals(null, repository.lastAddedExpense?.budgetItemId)
+        assertEquals("현장 결제", repository.lastAddedExpense?.vendorName)
+    }
 }
 
 private fun createViewModel(
@@ -186,12 +240,14 @@ private fun createViewModel(
 ): MoneyViewModel {
     return MoneyViewModel(
         fetchMoneySnapshotUseCase = FetchMoneySnapshotUseCase(repository),
+        fetchMyProfileUseCase = FetchMyProfileUseCase(FakeOnboardingRepositoryForMoney()),
         fetchExpenseFilterPreferenceUseCase = FetchExpenseFilterPreferenceUseCase(preferenceRepository),
         saveExpenseFilterPreferenceUseCase = SaveExpenseFilterPreferenceUseCase(preferenceRepository),
         addCategoryUseCase = AddCategoryUseCase(repository),
         addBudgetItemUseCase = AddBudgetItemUseCase(repository),
         addExpenseUseCase = AddExpenseUseCase(repository),
         updateCategoryUseCase = UpdateCategoryUseCase(repository),
+        deleteCategoryUseCase = DeleteCategoryUseCase(repository),
         updateBudgetItemUseCase = UpdateBudgetItemUseCase(repository),
         updateExpenseUseCase = UpdateExpenseUseCase(repository),
         deleteBudgetItemUseCase = DeleteBudgetItemUseCase(repository),
@@ -199,9 +255,42 @@ private fun createViewModel(
     )
 }
 
+private class FakeOnboardingRepositoryForMoney : OnboardingRepository {
+    override suspend fun fetchMyProfile(): OnboardingResult<MyProfile> = OnboardingResult.Success(
+        MyProfile(
+            id = "profile-1",
+            email = null,
+            nickname = "신부",
+            role = UserRole.Bride,
+            weddingId = "wedding-1",
+            weddingDate = null,
+            isWeddingDateUndecided = false,
+            inviteCode = null,
+            onboardingCompleted = true,
+        )
+    )
+
+    override suspend fun updateNickname(nickname: String): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
+
+    override suspend fun updateMyProfile(
+        nickname: String,
+        role: UserRole,
+        weddingDate: LocalDate?,
+        isWeddingDateUndecided: Boolean,
+    ): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
+
+    override suspend fun getOrCreateInviteCode(): OnboardingResult<String> = OnboardingResult.Success("123456")
+
+    override suspend fun connectPartner(inviteCode: String): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
+
+    override suspend fun completeOnboarding(): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
+}
+
 private class FakeMoneyRepositoryForViewModel(
     private var snapshot: MoneySnapshot,
 ) : MoneyRepository {
+
+    var lastAddedExpense: NewExpense? = null
 
     override suspend fun fetchSnapshot(): MoneyResult<MoneySnapshot> = MoneyResult.Success(snapshot)
 
@@ -209,9 +298,14 @@ private class FakeMoneyRepositoryForViewModel(
 
     override suspend fun addBudgetItem(item: NewBudgetItem): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
-    override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> = MoneyResult.Success(Unit)
+    override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> {
+        lastAddedExpense = expense
+        return MoneyResult.Success(Unit)
+    }
 
     override suspend fun updateCategory(id: String, name: String): MoneyResult<Unit> = MoneyResult.Success(Unit)
+
+    override suspend fun deleteCategory(id: String): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
     override suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit> = MoneyResult.Success(Unit)
 
@@ -246,9 +340,8 @@ private fun sampleSnapshot(): MoneySnapshot {
         BudgetItem(
             id = "budget-1",
             categoryId = "cat-hall",
-            name = "홀 계약금",
+            name = "홀 대관료",
             targetAmount = 1_000_000,
-            stage = BudgetStageType.Deposit,
             memo = null,
         ),
         BudgetItem(
@@ -256,7 +349,6 @@ private fun sampleSnapshot(): MoneySnapshot {
             categoryId = "cat-studio",
             name = "스튜디오",
             targetAmount = 1_000_000,
-            stage = BudgetStageType.General,
             memo = null,
         ),
     )
@@ -264,6 +356,7 @@ private fun sampleSnapshot(): MoneySnapshot {
     val expenses = listOf(
         Expense(
             id = "expense-1",
+            categoryId = "cat-hall",
             budgetItemId = "budget-1",
             amount = 1_200_000,
             date = LocalDate.parse("2026-03-10"),
@@ -275,6 +368,7 @@ private fun sampleSnapshot(): MoneySnapshot {
         ),
         Expense(
             id = "expense-2",
+            categoryId = "cat-studio",
             budgetItemId = "budget-2",
             amount = 300_000,
             date = LocalDate.parse("2026-03-11"),

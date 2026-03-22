@@ -29,7 +29,8 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -59,6 +60,8 @@ fun MoneyScreen(
     state: MoneyUiState,
     onAction: (MoneyAction) -> Unit,
 ) {
+    var showFabMenu by rememberSaveable { mutableStateOf(false) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -119,35 +122,60 @@ fun MoneyScreen(
                 contentColor = MaterialTheme.colorScheme.primary,
             )
 
-            val fabAction = when (state.selectedTab) {
-                MoneyTab.Budget -> {
-                    if (state.budget.categories.isEmpty()) MoneyAction.OnClickManageCategories else MoneyAction.OnClickAddBudgetItemEntry
-                }
-                MoneyTab.Expenses -> MoneyAction.OnClickAdd
-            }
-            val fabLabel = when (state.selectedTab) {
-                MoneyTab.Budget -> if (state.budget.categories.isEmpty()) "카테고리 만들기" else "예산 항목 추가"
-                MoneyTab.Expenses -> "지출 추가"
-            }
+            val fabMenuItems = listOf(
+                FabMenuItem(
+                    label = "카테고리 관리",
+                    action = MoneyAction.OnClickManageCategories,
+                ),
+                FabMenuItem(
+                    label = "예산 항목 추가",
+                    action = MoneyAction.OnClickAddBudgetItemEntry,
+                ),
+                FabMenuItem(
+                    label = "지출 추가",
+                    action = MoneyAction.OnClickAdd,
+                ),
+            )
 
-            ExtendedFloatingActionButton(
-                onClick = { onAction(fabAction) },
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 24.dp, bottom = 24.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = fabLabel,
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = fabLabel)
+                DropdownMenu(
+                    expanded = showFabMenu,
+                    onDismissRequest = { showFabMenu = false },
+                ) {
+                    fabMenuItems.forEach { item ->
+                        DropdownMenuItem(
+                            text = { Text(text = item.label) },
+                            onClick = {
+                                showFabMenu = false
+                                onAction(item.action)
+                            },
+                        )
+                    }
+                }
+
+                FloatingActionButton(
+                    onClick = { showFabMenu = !showFabMenu },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = "추가 메뉴 열기",
+                    )
+                }
             }
         }
     }
 }
+
+private data class FabMenuItem(
+    val label: String,
+    val action: MoneyAction,
+)
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -187,31 +215,11 @@ private fun MoneyContent(
                     }
                 }
 
-                item {
-                    SectionHeader(
-                        title = "예산 계획",
-                        subtitle = "카테고리를 정리하고 계약금, 중도금, 잔금 예산을 먼저 잡아두세요.",
-                        trailing = {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                TextButton(onClick = { onAction(MoneyAction.OnClickManageCategories) }) {
-                                    Text(text = "카테고리 관리")
-                                }
-                                TextButton(onClick = { onAction(MoneyAction.OnToggleBudgetFilter) }) {
-                                    Text(text = if (state.budget.isOverBudgetOnly) "전체 보기" else "초과만 보기")
-                                }
-                            }
-                        }
-                    )
-                }
-
                 if (state.budget.categories.isEmpty()) {
                     item {
                         EmptySectionCard(
                             title = "예산 카테고리가 없어요",
-                            body = "먼저 카테고리를 만들고, 그다음 계약금이나 잔금 같은 예산 항목을 추가해보세요.",
+                            body = "먼저 카테고리를 만들고, 그다음 예산 항목을 추가해보세요.",
                         )
                     }
                 } else {
@@ -228,13 +236,12 @@ private fun MoneyContent(
 
                 if (
                     state.budget.insightItems.isNotEmpty() ||
-                    state.budget.payerSummaries.isNotEmpty() ||
-                    state.budget.paymentStageSummaries.isNotEmpty()
+                    state.budget.payerSummaries.isNotEmpty()
                 ) {
                     item {
                         DetailToggleRow(
                             title = "상세 결산",
-                            subtitle = "분담, 단계별 진행률, 초과 현황은 필요할 때만 펼쳐보세요.",
+                            subtitle = "분담과 예산 인사이트는 필요할 때만 펼쳐보세요.",
                             expanded = showBudgetDetails,
                             onToggle = { showBudgetDetails = !showBudgetDetails },
                         )
@@ -250,12 +257,6 @@ private fun MoneyContent(
                 if (showBudgetDetails && state.budget.payerSummaries.isNotEmpty()) {
                     item {
                         PayerSummaryCard(items = state.budget.payerSummaries)
-                    }
-                }
-
-                if (showBudgetDetails && state.budget.paymentStageSummaries.isNotEmpty()) {
-                    item {
-                        PaymentStageSection(items = state.budget.paymentStageSummaries)
                     }
                 }
             }
@@ -292,7 +293,14 @@ private fun MoneyContent(
                     }
                 }
 
-                if (state.expenses.sections.isEmpty()) {
+                if (state.budget.categories.isEmpty()) {
+                    item {
+                        EmptySectionCard(
+                            title = "먼저 카테고리가 필요해요",
+                            body = "웨딩홀, 스드메 같은 카테고리를 먼저 만들면 바로 지출을 기록할 수 있어요.",
+                        )
+                    }
+                } else if (state.expenses.sections.isEmpty()) {
                     item {
                         EmptySectionCard(
                             title = "표시할 지출이 없어요",
@@ -418,7 +426,7 @@ private fun ExpenseOverviewCard(
             ) {
                 OverviewMeta(label = "필터 결과", value = "${filteredExpenseCount}건")
                 OverviewMeta(label = "저장된 필터", value = "${state.presets.size}개")
-                OverviewMeta(label = "연결된 예산 항목", value = "${state.budgetItemOptions.size}개")
+                OverviewMeta(label = "예산 항목 수", value = "${state.budgetItemOptions.size}개")
             }
         }
     }
@@ -876,94 +884,6 @@ private fun PayerSummaryCard(
 }
 
 @Composable
-private fun PaymentStageSection(
-    items: List<PaymentStageSummaryItem>,
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        shape = MaterialTheme.shapes.large,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(
-                text = "지출 단계 현황",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.SemiBold,
-            )
-            items.forEach { item ->
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(
-                                text = item.label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            if (item.isPriority) {
-                                Surface(
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                    contentColor = MaterialTheme.colorScheme.primary,
-                                    shape = CircleShape,
-                                ) {
-                                    Text(
-                                        text = "확인 필요",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    )
-                                }
-                            }
-                        }
-                        Text(
-                            text = item.countText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        Text(
-                            text = item.paidText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = item.remainingText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (item.isPriority) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (item.isPriority) FontWeight.SemiBold else FontWeight.Medium,
-                        )
-                    }
-                    LinearProgressIndicator(
-                        progress = { item.progress.coerceIn(0f, 1f) },
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(6.dp)
-                            .clip(CircleShape),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PendingPaymentsSection(
     items: List<PendingPaymentItem>,
     onClickBudgetItem: (String) -> Unit,
@@ -1012,17 +932,6 @@ private fun PendingPaymentsSection(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                                        contentColor = MaterialTheme.colorScheme.primary,
-                                        shape = CircleShape,
-                                    ) {
-                                        Text(
-                                            text = item.stageLabel,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        )
-                                    }
                                     item.priorityText?.let { priority ->
                                         Text(
                                             text = priority,
@@ -1187,7 +1096,7 @@ private fun BudgetCategoryCard(
                 ) {
                     if (item.subItems.isEmpty()) {
                         EmptyMiniState(
-                            text = "아직 예산 항목이 없어요. 계약금, 잔금 같은 항목부터 추가해보세요.",
+                            text = "아직 예산 항목이 없어요. 필요한 항목부터 추가해보세요.",
                         )
                     } else {
                         item.subItems.forEach { subItem ->
@@ -1262,17 +1171,6 @@ private fun BudgetSubItemCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                            contentColor = MaterialTheme.colorScheme.primary,
-                            shape = CircleShape,
-                        ) {
-                            Text(
-                                text = item.stageLabel,
-                                style = MaterialTheme.typography.labelSmall,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            )
-                        }
                         Text(
                             text = item.expenseCountText,
                             style = MaterialTheme.typography.labelSmall,

@@ -1,6 +1,7 @@
 package kr.jm.weddingledger.feature.guests.presentation
 
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kr.jm.weddingledger.feature.guests.domain.model.Guest
@@ -17,6 +18,11 @@ import kr.jm.weddingledger.feature.guests.domain.usecase.FetchGuestsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.SetGuestAttendanceUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.UpdateGuestSettingsUseCase
 import kr.jm.weddingledger.feature.guests.domain.usecase.UpdateGuestUseCase
+import kr.jm.weddingledger.feature.onboarding.domain.model.MyProfile
+import kr.jm.weddingledger.feature.onboarding.domain.model.OnboardingResult
+import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
+import kr.jm.weddingledger.feature.onboarding.domain.repository.OnboardingRepository
+import kr.jm.weddingledger.feature.onboarding.domain.usecase.FetchMyProfileUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
 
 class GuestsViewModelTest {
@@ -160,11 +166,32 @@ class GuestsViewModelTest {
         assertEquals("보증인원과 같아요", viewModel.state.value.expected.guaranteedDiffText)
         assertEquals("1명", viewModel.state.value.expected.guaranteedGuestCountText)
     }
+
+    @Test
+    fun `loads current user role into ui state`() = runMainDispatcherTest {
+        val repository = FakeGuestRepositoryForViewModel(initialGuests = emptyList())
+        val viewModel = createViewModel(repository, userRole = UserRole.Groom)
+
+        advanceUntilIdle()
+
+        assertEquals(UserRole.Groom, viewModel.state.value.currentUserRole)
+    }
+
+    @Test
+    fun `guest editor default side follows current user role`() {
+        assertEquals(GuestSide.Groom, AddGuestUiState.expectedSample(UserRole.Groom.toDefaultGuestSide()).side)
+        assertEquals(GuestSide.Bride, AddGuestUiState.giftSample(UserRole.Bride.toDefaultGuestSide()).side)
+        assertEquals(GuestSide.Both, AddGuestUiState.expectedSample(null.toDefaultGuestSide()).side)
+    }
 }
 
-private fun createViewModel(repository: FakeGuestRepositoryForViewModel): GuestsViewModel {
+private fun createViewModel(
+    repository: FakeGuestRepositoryForViewModel,
+    userRole: UserRole = UserRole.Bride,
+): GuestsViewModel {
     return GuestsViewModel(
         fetchGuestsUseCase = FetchGuestsUseCase(repository),
+        fetchMyProfileUseCase = FetchMyProfileUseCase(FakeOnboardingRepositoryForGuests(userRole)),
         fetchGuestSettingsUseCase = FetchGuestSettingsUseCase(repository),
         updateGuestSettingsUseCase = UpdateGuestSettingsUseCase(repository),
         addGuestUseCase = AddGuestUseCase(repository),
@@ -172,6 +199,39 @@ private fun createViewModel(repository: FakeGuestRepositoryForViewModel): Guests
         deleteGuestUseCase = DeleteGuestUseCase(repository),
         setGuestAttendanceUseCase = SetGuestAttendanceUseCase(repository),
     )
+}
+
+private class FakeOnboardingRepositoryForGuests(
+    private val role: UserRole,
+) : OnboardingRepository {
+    override suspend fun fetchMyProfile(): OnboardingResult<MyProfile> = OnboardingResult.Success(
+        MyProfile(
+            id = "profile-1",
+            email = null,
+            nickname = "테스트",
+            role = role,
+            weddingId = "wedding-1",
+            weddingDate = null,
+            isWeddingDateUndecided = false,
+            inviteCode = null,
+            onboardingCompleted = true,
+        )
+    )
+
+    override suspend fun updateNickname(nickname: String): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
+
+    override suspend fun updateMyProfile(
+        nickname: String,
+        role: UserRole,
+        weddingDate: LocalDate?,
+        isWeddingDateUndecided: Boolean,
+    ): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
+
+    override suspend fun getOrCreateInviteCode(): OnboardingResult<String> = OnboardingResult.Success("123456")
+
+    override suspend fun connectPartner(inviteCode: String): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
+
+    override suspend fun completeOnboarding(): OnboardingResult<Unit> = OnboardingResult.Success(Unit)
 }
 
 private class FakeGuestRepositoryForViewModel(

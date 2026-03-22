@@ -7,6 +7,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationCenterResult
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedItem
+import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedSection
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationItemType
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationReminderPlan
 import kr.jm.weddingledger.feature.notifications.domain.repository.NotificationCenterRepository
@@ -54,6 +55,7 @@ private class InMemoryNotificationCenterRepository : NotificationCenterRepositor
         NotificationFeedItem(
             id = "feed-1",
             type = NotificationItemType.Schedule,
+            section = NotificationFeedSection.Reminder,
             title = "다가오는 일정",
             subtitle = "스튜디오 촬영",
             detail = "내일 오후 2시",
@@ -68,6 +70,7 @@ private class InMemoryNotificationCenterRepository : NotificationCenterRepositor
         NotificationFeedItem(
             id = "feed-2",
             type = NotificationItemType.Checklist,
+            section = NotificationFeedSection.Reminder,
             title = "체크리스트",
             subtitle = "청첩장 전달",
             detail = "이번 주말까지 완료",

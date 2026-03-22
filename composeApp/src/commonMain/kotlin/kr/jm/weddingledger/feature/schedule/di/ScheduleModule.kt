@@ -19,7 +19,7 @@ import org.koin.dsl.module
 
 val scheduleModule = module {
     single<ChecklistRepository> { ChecklistRepositoryImpl(get()) }
-    single<ScheduleEventRepository> { ScheduleEventRepositoryImpl(get()) }
+    single<ScheduleEventRepository> { ScheduleEventRepositoryImpl(get(), get()) }
 
     factory { FetchChecklistUseCase(get()) }
     factory { AddChecklistUseCase(get()) }

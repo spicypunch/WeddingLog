@@ -1,5 +1,7 @@
 package kr.jm.weddingledger.feature.guests.presentation
 
+import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
+
 enum class GuestSide(val label: String) {
     Groom("신랑측"),
     Bride("신부측"),
@@ -32,10 +34,10 @@ data class AddGuestUiState(
         get() = name.trim().isNotEmpty()
 
     companion object {
-        fun expectedSample(): AddGuestUiState = AddGuestUiState(
+        fun expectedSample(defaultSide: GuestSide = GuestSide.Both): AddGuestUiState = AddGuestUiState(
             mode = GuestEditorMode.Expected,
             name = "",
-            side = GuestSide.Bride,
+            side = defaultSide,
             relationship = GuestRelationshipLevel.Normal,
             expectedStatus = GuestExpectedStatus.Maybe,
             companionCount = "0",
@@ -44,10 +46,10 @@ data class AddGuestUiState(
             note = "",
         )
 
-        fun giftSample(): AddGuestUiState = AddGuestUiState(
+        fun giftSample(defaultSide: GuestSide = GuestSide.Both): AddGuestUiState = AddGuestUiState(
             mode = GuestEditorMode.GiftLedger,
             name = "",
-            side = GuestSide.Bride,
+            side = defaultSide,
             relationship = GuestRelationshipLevel.Normal,
             expectedStatus = GuestExpectedStatus.Certain,
             companionCount = "0",
@@ -55,6 +57,14 @@ data class AddGuestUiState(
             actualGiftAmount = "",
             note = "",
         )
+    }
+}
+
+internal fun UserRole?.toDefaultGuestSide(): GuestSide {
+    return when (this) {
+        UserRole.Groom -> GuestSide.Groom
+        UserRole.Bride -> GuestSide.Bride
+        null -> GuestSide.Both
     }
 }
 

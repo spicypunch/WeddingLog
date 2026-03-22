@@ -20,6 +20,10 @@ val localProperties = Properties().apply {
 
 val supabaseUrl: String = localProperties.getProperty("SUPABASE_URL") ?: ""
 val supabaseAnonKey: String = localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""
+val firebaseAndroidApplicationId: String = localProperties.getProperty("FIREBASE_ANDROID_APPLICATION_ID") ?: ""
+val firebaseProjectId: String = localProperties.getProperty("FIREBASE_PROJECT_ID") ?: ""
+val firebaseApiKey: String = localProperties.getProperty("FIREBASE_API_KEY") ?: ""
+val firebaseGcmSenderId: String = localProperties.getProperty("FIREBASE_GCM_SENDER_ID") ?: ""
 val kakaoNativeAppKey: String = localProperties.getProperty("KAKAO_NATIVE_APP_KEY")?.trim().orEmpty()
 val kakaoNativeAppKeySchemeSuffix: String = kakaoNativeAppKey.ifBlank { "disabled" }
 val enableKakaoLogin: Boolean = localProperties.getProperty("ENABLE_KAKAO_LOGIN")
@@ -67,6 +71,8 @@ kotlin {
     
     sourceSets {
         androidMain.dependencies {
+            implementation(project.dependencies.platform(libs.firebase.bom))
+            implementation(libs.firebase.messaging)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kakao.user)
         }
@@ -162,6 +168,10 @@ val generateBuildConfig by tasks.registering(Sync::class) {
         object BuildConfig {
             const val SUPABASE_URL = "$supabaseUrl"
             const val SUPABASE_ANON_KEY = "$supabaseAnonKey"
+            const val FIREBASE_ANDROID_APPLICATION_ID = "$firebaseAndroidApplicationId"
+            const val FIREBASE_PROJECT_ID = "$firebaseProjectId"
+            const val FIREBASE_API_KEY = "$firebaseApiKey"
+            const val FIREBASE_GCM_SENDER_ID = "$firebaseGcmSenderId"
             const val KAKAO_NATIVE_APP_KEY = "$kakaoNativeAppKey"
             const val ENABLE_KAKAO_LOGIN = $enableKakaoLogin
             const val ENABLE_GOOGLE_LOGIN = $enableGoogleLogin

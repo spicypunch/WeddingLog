@@ -33,13 +33,14 @@ fun GuestsRoute(
         onAction = { action ->
             when (action) {
                 GuestsAction.OnClickAdd -> {
+                    val defaultSide = uiState.currentUserRole.toDefaultGuestSide()
                     when (uiState.selectedTab) {
                         GuestsTab.Expected -> {
-                            guestEditorState = AddGuestUiState.expectedSample()
+                            guestEditorState = AddGuestUiState.expectedSample(defaultSide)
                             activeSheet = GuestsSheet.CreateExpected
                         }
                         GuestsTab.GiftLedger -> {
-                            guestEditorState = AddGuestUiState.giftSample()
+                            guestEditorState = AddGuestUiState.giftSample(defaultSide)
                             activeSheet = GuestsSheet.CreateGiftLedger
                         }
                     }

@@ -6,7 +6,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kr.jm.weddingledger.feature.money.domain.model.BudgetItem
-import kr.jm.weddingledger.feature.money.domain.model.BudgetStageType
 import kr.jm.weddingledger.feature.money.domain.model.Expense
 import kr.jm.weddingledger.feature.money.domain.model.ExpenseFilterPreferenceState
 import kr.jm.weddingledger.feature.money.domain.model.ExpenseFilterPresetPreference
@@ -25,7 +24,7 @@ class MoneyUseCaseAndFlowTest {
     @Test
     fun `fetch snapshot delegates to repository`() = runBlocking {
         val repository = InMemoryMoneyRepository()
-        repository.addBudgetItem(newBudgetItem(name = "웨딩홀 계약금", targetAmount = 1_000_000))
+        repository.addBudgetItem(newBudgetItem(name = "웨딩홀 대관료", targetAmount = 1_000_000))
 
         val result = FetchMoneySnapshotUseCase(repository)()
 
@@ -43,9 +42,9 @@ class MoneyUseCaseAndFlowTest {
         val updateExpenseUseCase = UpdateExpenseUseCase(repository)
 
         addBudgetItemUseCase(newBudgetItem(name = "드레스", targetAmount = 1_500_000))
-        addExpenseUseCase(newExpense(budgetItemId = "budget-1", amount = 200_000))
+        addExpenseUseCase(newExpense(categoryId = "wedding_hall", budgetItemId = "budget-1", amount = 200_000))
         updateBudgetItemUseCase("budget-1", newBudgetItem(name = "드레스 수정", targetAmount = 1_700_000))
-        updateExpenseUseCase("expense-1", newExpense(budgetItemId = "budget-1", amount = 250_000))
+        updateExpenseUseCase("expense-1", newExpense(categoryId = "wedding_hall", budgetItemId = "budget-1", amount = 250_000))
 
         assertEquals(1, repository.addBudgetItemCallCount)
         assertEquals(1, repository.addExpenseCallCount)
@@ -57,7 +56,7 @@ class MoneyUseCaseAndFlowTest {
     fun `delete usecases remove entities from repository`() = runBlocking {
         val repository = InMemoryMoneyRepository()
         repository.addBudgetItem(newBudgetItem(name = "스튜디오", targetAmount = 900_000))
-        repository.addExpense(newExpense(budgetItemId = "budget-1", amount = 150_000))
+        repository.addExpense(newExpense(categoryId = "wedding_hall", budgetItemId = "budget-1", amount = 150_000))
 
         val deleteBudgetItemUseCase = DeleteBudgetItemUseCase(repository)
         val deleteExpenseUseCase = DeleteExpenseUseCase(repository)
@@ -73,6 +72,31 @@ class MoneyUseCaseAndFlowTest {
     }
 
     @Test
+    fun `delete category usecase removes empty category`() = runBlocking {
+        val repository = InMemoryMoneyRepository()
+        val deleteCategoryUseCase = DeleteCategoryUseCase(repository)
+
+        deleteCategoryUseCase("studio")
+
+        val snapshot = assertIs<MoneyResult.Success<MoneySnapshot>>(FetchMoneySnapshotUseCase(repository)()).data
+        assertEquals(1, snapshot.categories.size)
+        assertEquals("웨딩홀", snapshot.categories.single().name)
+        assertEquals(1, repository.deleteCategoryCallCount)
+    }
+
+    @Test
+    fun `delete category usecase blocks category with direct expenses`() = runBlocking {
+        val repository = InMemoryMoneyRepository()
+        repository.addExpense(newExpense(categoryId = "studio", budgetItemId = null, amount = 80_000))
+        val deleteCategoryUseCase = DeleteCategoryUseCase(repository)
+
+        val result = deleteCategoryUseCase("studio")
+
+        assertIs<MoneyResult.Error>(result)
+        assertEquals(0, repository.deleteCategoryCallCount)
+    }
+
+    @Test
     fun `integration flow budget and expense lifecycle`() = runBlocking {
         val repository = InMemoryMoneyRepository()
         val addBudgetItemUseCase = AddBudgetItemUseCase(repository)
@@ -81,8 +105,8 @@ class MoneyUseCaseAndFlowTest {
         val updateBudgetItemUseCase = UpdateBudgetItemUseCase(repository)
 
         addBudgetItemUseCase(newBudgetItem(name = "웨딩홀", targetAmount = 2_000_000))
-        addExpenseUseCase(newExpense(budgetItemId = "budget-1", amount = 300_000))
-        addExpenseUseCase(newExpense(budgetItemId = "budget-1", amount = 250_000))
+        addExpenseUseCase(newExpense(categoryId = "wedding_hall", budgetItemId = "budget-1", amount = 300_000))
+        addExpenseUseCase(newExpense(categoryId = "wedding_hall", budgetItemId = "budget-1", amount = 250_000))
 
         updateBudgetItemUseCase("budget-1", newBudgetItem(name = "웨딩홀 계약", targetAmount = 2_500_000))
 
@@ -142,6 +166,7 @@ private class InMemoryMoneyRepository : MoneyRepository {
     var addExpenseCallCount: Int = 0
     var updateBudgetItemCallCount: Int = 0
     var updateExpenseCallCount: Int = 0
+    var deleteCategoryCallCount: Int = 0
     var deleteBudgetItemCallCount: Int = 0
     var deleteExpenseCallCount: Int = 0
 
@@ -173,7 +198,6 @@ private class InMemoryMoneyRepository : MoneyRepository {
             categoryId = item.categoryId,
             name = item.name,
             targetAmount = item.targetAmount,
-            stage = item.stage,
             dueDate = item.dueDate,
             memo = item.memo,
         )
@@ -185,6 +209,7 @@ private class InMemoryMoneyRepository : MoneyRepository {
         val id = "expense-${expenseSeed++}"
         expenses[id] = Expense(
             id = id,
+            categoryId = expense.categoryId,
             budgetItemId = expense.budgetItemId,
             amount = expense.amount,
             date = expense.date,
@@ -204,6 +229,15 @@ private class InMemoryMoneyRepository : MoneyRepository {
         return MoneyResult.Success(Unit)
     }
 
+    override suspend fun deleteCategory(id: String): MoneyResult<Unit> {
+        if (budgetItems.values.any { it.categoryId == id } || expenses.values.any { it.categoryId == id }) {
+            return MoneyResult.Error("지출이나 예산 항목이 남아 있는 카테고리는 삭제할 수 없어요.")
+        }
+        deleteCategoryCallCount += 1
+        categories.removeAll { it.id == id }
+        return MoneyResult.Success(Unit)
+    }
+
     override suspend fun updateBudgetItem(id: String, item: NewBudgetItem): MoneyResult<Unit> {
         updateBudgetItemCallCount += 1
         val current = budgetItems[id] ?: return MoneyResult.Error("예산 항목을 찾지 못했습니다.")
@@ -211,7 +245,6 @@ private class InMemoryMoneyRepository : MoneyRepository {
             categoryId = item.categoryId,
             name = item.name,
             targetAmount = item.targetAmount,
-            stage = item.stage,
             dueDate = item.dueDate,
             memo = item.memo,
         )
@@ -222,6 +255,7 @@ private class InMemoryMoneyRepository : MoneyRepository {
         updateExpenseCallCount += 1
         val current = expenses[id] ?: return MoneyResult.Error("지출 항목을 찾지 못했습니다.")
         expenses[id] = current.copy(
+            categoryId = expense.categoryId,
             budgetItemId = expense.budgetItemId,
             amount = expense.amount,
             date = expense.date,
@@ -271,22 +305,22 @@ private fun newBudgetItem(
     categoryId: String = "wedding_hall",
     name: String,
     targetAmount: Int,
-    stage: BudgetStageType = BudgetStageType.General,
 ): NewBudgetItem {
     return NewBudgetItem(
         categoryId = categoryId,
         name = name,
         targetAmount = targetAmount,
-        stage = stage,
         memo = null,
     )
 }
 
 private fun newExpense(
-    budgetItemId: String,
+    categoryId: String,
+    budgetItemId: String? = null,
     amount: Int,
 ): NewExpense {
     return NewExpense(
+        categoryId = categoryId,
         budgetItemId = budgetItemId,
         amount = amount,
         date = LocalDate.parse("2026-03-15"),

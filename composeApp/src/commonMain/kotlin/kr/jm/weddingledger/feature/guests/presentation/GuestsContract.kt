@@ -1,6 +1,7 @@
 package kr.jm.weddingledger.feature.guests.presentation
 
 import androidx.compose.ui.graphics.Color
+import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
 
 enum class GuestsTab(val label: String) {
     Expected("예상 하객"),
@@ -16,6 +17,7 @@ enum class SummaryTone {
 
 data class GuestsUiState(
     val selectedTab: GuestsTab,
+    val currentUserRole: UserRole? = null,
     val expected: ExpectedGuestsUiState,
     val giftLedger: GiftLedgerUiState,
     val isLoading: Boolean = false,

@@ -14,7 +14,9 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kr.jm.weddingledger.core.network.logSupabaseInfo
 import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
+import kr.jm.weddingledger.core.network.logSupabaseWarning
 import kr.jm.weddingledger.feature.onboarding.data.dto.ProfileInsertDto
 import kr.jm.weddingledger.feature.onboarding.data.dto.ProfileRowDto
 import kr.jm.weddingledger.feature.onboarding.domain.model.MyProfile
@@ -36,7 +38,28 @@ class OnboardingRepositoryImpl(
             }
 
             val profile = loadProfile(userId) ?: return OnboardingResult.Error("프로필 정보를 불러오지 못했습니다.")
-            OnboardingResult.Success(profile.toDomain())
+            val relatedProfiles = if (profile.weddingId.isNullOrBlank()) {
+                emptyList()
+            } else {
+                runCatching { loadProfilesByWeddingId(profile.weddingId) }
+                    .onFailure { t ->
+                        logSupabaseRepositoryThrowable(FEATURE_NAME, t)
+                        logSupabaseWarning(
+                            featureName = FEATURE_NAME,
+                            message = "related_profile_read_failed user=$userId weddingId=${profile.weddingId}",
+                        )
+                    }
+                    .getOrDefault(emptyList())
+            }
+            val resolvedProfile = profile.toResolvedDomain(relatedProfiles)
+            logSupabaseInfo(
+                featureName = FEATURE_NAME,
+                message = "fetchMyProfile " +
+                    "user=$userId ownWeddingId=${profile.weddingId} ownDate=${profile.weddingDate} " +
+                    "ownUndecided=${profile.isWeddingDateUndecided} relatedCount=${relatedProfiles.size} " +
+                    "resolvedDate=${resolvedProfile.weddingDate} resolvedUndecided=${resolvedProfile.isWeddingDateUndecided}",
+            )
+            OnboardingResult.Success(resolvedProfile)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseRepositoryThrowable(FEATURE_NAME, t)
@@ -217,6 +240,16 @@ class OnboardingRepositoryImpl(
             .firstOrNull()
     }
 
+    private suspend fun loadProfilesByWeddingId(weddingId: String): List<ProfileRowDto> {
+        return supabaseClient
+            .from("profiles")
+            .select {
+                filter { eq("wedding_id", weddingId) }
+                order(column = "created_at", order = io.github.jan.supabase.postgrest.query.Order.ASCENDING)
+            }
+            .decodeList()
+    }
+
     private suspend fun ensureProfileRow(userId: String, email: String?): OnboardingResult<Unit> {
         val existing = runCatching { loadProfile(userId) }.getOrNull()
         if (existing != null) return OnboardingResult.Success(Unit)
@@ -282,17 +315,36 @@ private fun normalizeInviteCode(value: String): String {
 
 private fun isValidInviteCode(value: String): Boolean = inviteCodeRegex.matches(value)
 
-private fun ProfileRowDto.toDomain(): MyProfile = MyProfile(
+internal fun ProfileRowDto.toResolvedDomain(
+    relatedProfiles: List<ProfileRowDto>,
+): MyProfile {
+    val profiles = buildList {
+        add(this@toResolvedDomain)
+        relatedProfiles
+            .filterNot { it.id == this@toResolvedDomain.id }
+            .forEach(::add)
+    }
+    val resolvedWeddingDate = profiles.firstNotNullOfOrNull { it.weddingDate.parseLocalDateOrNull() }
+    val resolvedUndecided = if (resolvedWeddingDate != null) {
+        false
+    } else {
+        profiles.any { it.isWeddingDateUndecided }
+    }
+
+    return MyProfile(
     id = id,
     email = email,
     nickname = name,
     role = role.parseRoleOrNull(),
     weddingId = weddingId,
-    weddingDate = weddingDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() },
-    isWeddingDateUndecided = isWeddingDateUndecided,
+    weddingDate = resolvedWeddingDate,
+    isWeddingDateUndecided = resolvedUndecided,
     inviteCode = inviteCode,
     onboardingCompleted = onboardingCompleted,
 )
+}
+
+private fun String?.parseLocalDateOrNull(): LocalDate? = this?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
 
 private fun String?.parseRoleOrNull(): UserRole? = when (this?.trim()?.uppercase()) {
     "GROOM" -> UserRole.Groom
