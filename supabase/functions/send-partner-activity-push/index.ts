@@ -16,17 +16,28 @@ type ActorProfile = {
   name: string | null;
 };
 
+type ActivityContext = {
+  actorUserId: string;
+  weddingId: string;
+  title: string;
+  body: string;
+};
+
 type ExpenseRow = {
   id: string;
   amount: number;
   category_id: string | null;
   budget_item_id: string | null;
+  created_by: string | null;
+  wedding_id: string | null;
 };
 
 type ScheduleRow = {
   id: string;
   title: string;
   event_date: string;
+  created_by: string | null;
+  wedding_id: string | null;
 };
 
 type NotificationInsertRow = {
@@ -49,28 +60,11 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
-  const authHeader = req.headers.get("Authorization")?.trim() ?? "";
-  if (!authHeader.startsWith("Bearer ")) {
-    return jsonResponse({ error: "Missing bearer token" }, 401);
-  }
-
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
     return jsonResponse({ error: "Missing Supabase environment" }, 500);
   }
 
-  const callerClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: authHeader } },
-  });
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-  const {
-    data: { user },
-    error: userError,
-  } = await callerClient.auth.getUser();
-
-  if (userError || !user) {
-    return jsonResponse({ error: "Unauthorized" }, 401);
-  }
 
   const body = (await req.json().catch(() => ({}))) as PartnerActivityRequest;
   const type = normalizeType(body.type);
@@ -79,21 +73,20 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Invalid request body" }, 400);
   }
 
-  const { data: actorProfile, error: actorError } = await adminClient
-    .from("profiles")
-    .select("id,wedding_id,role,name")
-    .eq("id", user.id)
-    .maybeSingle<ActorProfile>();
-
-  if (actorError || !actorProfile?.wedding_id) {
+  const activityContext = await resolveActivityContext({
+    adminClient,
+    type,
+    entityId,
+  });
+  if (!activityContext) {
     return jsonResponse({ recipients: 0, notifications: 0, push_sent: 0, push_skipped: true });
   }
 
   const { data: recipientProfiles, error: recipientError } = await adminClient
     .from("profiles")
     .select("id")
-    .eq("wedding_id", actorProfile.wedding_id)
-    .neq("id", user.id);
+    .eq("wedding_id", activityContext.weddingId)
+    .neq("id", activityContext.actorUserId);
 
   if (recipientError) {
     return jsonResponse({ error: recipientError.message }, 500);
@@ -107,25 +100,14 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ recipients: 0, notifications: 0, push_sent: 0, push_skipped: true });
   }
 
-  const content = await buildContent({
-    adminClient,
-    actorProfile,
-    type,
-    entityId,
-  });
-
-  if (!content) {
-    return jsonResponse({ error: "Entity not found" }, 404);
-  }
-
   const rows: NotificationInsertRow[] = recipientIds.map((targetUserId) => ({
-    wedding_id: actorProfile.wedding_id as string,
-    actor_user_id: user.id,
+    wedding_id: activityContext.weddingId,
+    actor_user_id: activityContext.actorUserId,
     target_user_id: targetUserId,
     type,
     entity_id: entityId,
-    title: content.title,
-    body: content.body,
+    title: activityContext.title,
+    body: activityContext.body,
   }));
 
   const { data: insertedNotifications, error: insertError } = await adminClient
@@ -204,8 +186,8 @@ Deno.serve(async (req: Request) => {
       accessToken,
       projectId,
       pushToken,
-      title: content.title,
-      body: content.body,
+      title: activityContext.title,
+      body: activityContext.body,
       type,
       entityId,
     });
@@ -232,26 +214,25 @@ Deno.serve(async (req: Request) => {
   });
 });
 
-async function buildContent({
+async function resolveActivityContext({
   adminClient,
-  actorProfile,
   type,
   entityId,
 }: {
   adminClient: ReturnType<typeof createClient>;
-  actorProfile: ActorProfile;
   type: ActivityType;
   entityId: string;
-}): Promise<{ title: string; body: string } | null> {
-  const actorLabel = roleToLabel(actorProfile.role, actorProfile.name);
-
+}): Promise<ActivityContext | null> {
   if (type === "expense_added") {
     const { data: expense } = await adminClient
       .from("expenses")
-      .select("id,amount,category_id,budget_item_id")
+      .select("id,amount,category_id,budget_item_id,created_by,wedding_id")
       .eq("id", entityId)
       .maybeSingle<ExpenseRow>();
-    if (!expense) return null;
+    if (!expense?.created_by || !expense.wedding_id) return null;
+
+    const actorProfile = await fetchActorProfile(adminClient, expense.created_by);
+    const actorLabel = roleToLabel(actorProfile?.role ?? null, actorProfile?.name ?? null);
 
     const [categoryName, budgetItemName] = await Promise.all([
       fetchNameById(adminClient, "categories", expense.category_id),
@@ -259,6 +240,8 @@ async function buildContent({
     ]);
     const parts = [categoryName, budgetItemName, formatKrw(expense.amount)].filter(Boolean);
     return {
+      actorUserId: expense.created_by,
+      weddingId: expense.wedding_id,
       title: `${actorLabel} 지출을 추가했어요`,
       body: parts.join(" · "),
     };
@@ -266,15 +249,32 @@ async function buildContent({
 
   const { data: schedule } = await adminClient
     .from("schedule_events")
-    .select("id,title,event_date")
+    .select("id,title,event_date,created_by,wedding_id")
     .eq("id", entityId)
     .maybeSingle<ScheduleRow>();
-  if (!schedule) return null;
+  if (!schedule?.created_by || !schedule.wedding_id) return null;
+
+  const actorProfile = await fetchActorProfile(adminClient, schedule.created_by);
+  const actorLabel = roleToLabel(actorProfile?.role ?? null, actorProfile?.name ?? null);
 
   return {
+    actorUserId: schedule.created_by,
+    weddingId: schedule.wedding_id,
     title: `${actorLabel} 일정을 추가했어요`,
     body: `${schedule.title} · ${formatDate(schedule.event_date)}`,
   };
+}
+
+async function fetchActorProfile(
+  adminClient: ReturnType<typeof createClient>,
+  actorUserId: string,
+): Promise<ActorProfile | null> {
+  const { data } = await adminClient
+    .from("profiles")
+    .select("id,wedding_id,role,name")
+    .eq("id", actorUserId)
+    .maybeSingle<ActorProfile>();
+  return data ?? null;
 }
 
 async function fetchNameById(

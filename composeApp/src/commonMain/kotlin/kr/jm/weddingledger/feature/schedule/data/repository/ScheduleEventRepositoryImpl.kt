@@ -7,9 +7,11 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.datetime.LocalDate
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.put
 import kr.jm.weddingledger.core.network.WeddingIdResolver
 import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
@@ -20,6 +22,7 @@ import kr.jm.weddingledger.feature.schedule.domain.model.ScheduleEvent
 import kr.jm.weddingledger.feature.schedule.domain.model.ScheduleResult
 import kr.jm.weddingledger.feature.schedule.domain.repository.ScheduleEventRepository
 import kr.jm.weddingledger.feature.notifications.domain.repository.PartnerActivityNotifier
+import kr.jm.weddingledger.core.platform.randomUuidString
 
 class ScheduleEventRepositoryImpl(
     private val supabaseClient: SupabaseClient,
@@ -39,9 +42,13 @@ class ScheduleEventRepositoryImpl(
                     order(column = "start_time", order = Order.ASCENDING)
                     order(column = "created_at", order = Order.ASCENDING)
                 }
-                .decodeList<ScheduleEventRowDto>()
+                .decodeList<JsonObject>()
 
-            ScheduleResult.Success(rows.mapNotNull { it.toDomainOrNull() })
+            ScheduleResult.Success(
+                rows
+                    .mapNotNull { it.toScheduleEventRowDtoOrNull() }
+                    .mapNotNull { it.toDomainOrNull() }
+            )
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseRepositoryThrowable(FEATURE_NAME, t)
@@ -131,23 +138,39 @@ class ScheduleEventRepositoryImpl(
         weddingId: String,
         event: NewScheduleEvent,
     ): ScheduleEventRowDto {
+        val eventId = randomUuidString()
         return try {
             supabaseClient
                 .from("schedule_events")
-                .insert(buildCreatePayload(weddingId = weddingId, event = event, preferRepeatColumn = true)) {
-                    select()
-                    single()
-                }
-                .decodeSingle<ScheduleEventRowDto>()
+                .insert(buildCreatePayload(eventId = eventId, weddingId = weddingId, event = event, preferRepeatColumn = true))
+            ScheduleEventRowDto(
+                id = eventId,
+                weddingId = weddingId,
+                title = event.title.trim(),
+                eventDate = event.eventDate.toString(),
+                startTime = event.startTime?.trim()?.takeIf { it.isNotEmpty() },
+                location = event.location?.trim()?.takeIf { it.isNotEmpty() },
+                repeatRule = event.repeatRule.toDbRepeatRuleOrNull(),
+                memo = event.memo?.trim()?.takeIf { it.isNotEmpty() },
+            )
         } catch (t: Throwable) {
             if (t is RestException && t.isMissingColumn(REPEAT_RULE_COLUMN)) {
                 supabaseClient
                     .from("schedule_events")
-                    .insert(buildCreatePayload(weddingId = weddingId, event = event, preferRepeatColumn = false)) {
-                        select()
-                        single()
-                    }
-                    .decodeSingle<ScheduleEventRowDto>()
+                    .insert(buildCreatePayload(eventId = eventId, weddingId = weddingId, event = event, preferRepeatColumn = false))
+                ScheduleEventRowDto(
+                    id = eventId,
+                    weddingId = weddingId,
+                    title = event.title.trim(),
+                    eventDate = event.eventDate.toString(),
+                    startTime = event.startTime?.trim()?.takeIf { it.isNotEmpty() },
+                    location = event.location?.trim()?.takeIf { it.isNotEmpty() },
+                    repeatRule = null,
+                    memo = encodeMemo(
+                        memo = event.memo?.trim()?.takeIf { it.isNotEmpty() },
+                        repeatRule = event.repeatRule,
+                    ),
+                )
             } else {
                 throw t
             }
@@ -156,10 +179,12 @@ class ScheduleEventRepositoryImpl(
 }
 
 private fun buildCreatePayload(
+    eventId: String,
     weddingId: String,
     event: NewScheduleEvent,
     preferRepeatColumn: Boolean,
 ) = buildJsonObject {
+    put("id", JsonPrimitive(eventId))
     put("wedding_id", JsonPrimitive(weddingId))
     put("title", JsonPrimitive(event.title.trim()))
     put("event_date", JsonPrimitive(event.eventDate.toString()))
@@ -218,6 +243,31 @@ private fun ScheduleEventRowDto.toDomainOrNull(): ScheduleEvent? {
         memo = memo,
         repeatRule = repeatRule,
     )
+}
+
+internal fun JsonObject.toScheduleEventRowDtoOrNull(): ScheduleEventRowDto? {
+    val id = stringValue("id") ?: return null
+    val weddingId = stringValue("wedding_id") ?: return null
+    val title = stringValue("title") ?: return null
+    val eventDate = stringValue("event_date") ?: return null
+
+    return ScheduleEventRowDto(
+        id = id,
+        weddingId = weddingId,
+        createdBy = stringValue("created_by"),
+        title = title,
+        eventDate = eventDate,
+        startTime = stringValue("start_time"),
+        location = stringValue("location"),
+        repeatRule = stringValue("repeat_rule"),
+        memo = stringValue("memo"),
+        createdAt = stringValue("created_at"),
+        updatedAt = stringValue("updated_at"),
+    )
+}
+
+private fun JsonObject.stringValue(key: String): String? {
+    return (this[key] as? JsonPrimitive)?.contentOrNull
 }
 
 private fun EventRepeatRule.toDbRepeatRuleOrNull(): String? {

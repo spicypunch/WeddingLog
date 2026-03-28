@@ -88,7 +88,6 @@ fun AddScheduleEventBottomSheet(
                     onValueChange = { onAction(AddScheduleEventAction.OnTitleChange(it)) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("일정 제목") },
-                    placeholder = { Text("예: 웨딩홀 미팅") },
                     singleLine = true,
                     leadingIcon = {
                         Icon(imageVector = Icons.Rounded.EventAvailable, contentDescription = null)
@@ -128,7 +127,6 @@ fun AddScheduleEventBottomSheet(
                     onValueChange = { onAction(AddScheduleEventAction.OnLocationChange(it)) },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("장소 (선택)") },
-                    placeholder = { Text("예: 강남구 ○○웨딩홀") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                     leadingIcon = { Icon(imageVector = Icons.Rounded.LocationOn, contentDescription = null) },

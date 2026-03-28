@@ -4,7 +4,6 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import io.ktor.client.HttpClient
-import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -36,9 +35,11 @@ class PartnerActivityNotifierImpl(
 
     override suspend fun syncCurrentDevicePushToken() {
         try {
-            val user = supabaseClient.auth.currentUserOrNull() ?: return
+            val user = supabaseClient.auth.currentUserOrNull()
+                ?: return logSupabaseWarning(FEATURE_NAME, "push_token_sync_skipped reason=no_user")
             val pushToken = fetchRemotePushTokenOrNull()?.trim().takeUnless { it.isNullOrEmpty() }
                 ?: run {
+                    logSupabaseWarning(FEATURE_NAME, "push_token_sync_skipped reason=no_remote_token platform=${currentPushPlatform().dbValue}")
                     deactivateCurrentDevicePushToken()
                     return
                 }
@@ -47,7 +48,22 @@ class PartnerActivityNotifierImpl(
 
             supabaseClient
                 .from("device_push_tokens")
-                .upsert(
+                .delete {
+                    filter {
+                        eq("user_id", user.id)
+                        eq("installation_id", installationId)
+                    }
+                }
+
+            supabaseClient
+                .from("device_push_tokens")
+                .delete {
+                    filter { eq("push_token", pushToken) }
+                }
+
+            supabaseClient
+                .from("device_push_tokens")
+                .insert(
                     DevicePushTokenUpsertDto(
                         userId = user.id,
                         installationId = installationId,
@@ -57,13 +73,11 @@ class PartnerActivityNotifierImpl(
                         lastSeenAt = now,
                         updatedAt = now,
                     ),
-                ) {
-                    onConflict = "user_id,installation_id"
-                }
+                )
 
             logSupabaseInfo(
                 featureName = FEATURE_NAME,
-                message = "push_token_synced platform=${currentPushPlatform().dbValue} user=${user.id}",
+                message = "push_token_synced platform=${currentPushPlatform().dbValue} user=${user.id} installationId=${installationId.take(8)} tokenSuffix=${pushToken.takeLast(8)}",
             )
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
@@ -73,7 +87,8 @@ class PartnerActivityNotifierImpl(
 
     override suspend fun deactivateCurrentDevicePushToken() {
         try {
-            val user = supabaseClient.auth.currentUserOrNull() ?: return
+            val user = supabaseClient.auth.currentUserOrNull()
+                ?: return logSupabaseWarning(FEATURE_NAME, "push_token_deactivate_skipped reason=no_user")
             val installationId = PushInstallationStorage.getOrCreateInstallationId()
             val now = Clock.System.now().toString()
             supabaseClient
@@ -89,6 +104,10 @@ class PartnerActivityNotifierImpl(
                         eq("installation_id", installationId)
                     }
                 }
+            logSupabaseInfo(
+                featureName = FEATURE_NAME,
+                message = "push_token_deactivated user=${user.id} installationId=${installationId.take(8)}",
+            )
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseRepositoryThrowable(FEATURE_NAME, t)
@@ -111,12 +130,13 @@ class PartnerActivityNotifierImpl(
         if (normalizedId.isBlank()) return
 
         try {
-            val accessToken = supabaseClient.auth.currentAccessTokenOrNull()
-                ?: return logSupabaseWarning(FEATURE_NAME, "partner_activity_dispatch_skipped reason=no_access_token type=$type")
             val weddingId = runCatching { weddingIdResolver.resolve() }.getOrNull().orEmpty()
+            logSupabaseInfo(
+                featureName = FEATURE_NAME,
+                message = "partner_activity_dispatch_start type=$type weddingId=$weddingId entityId=$normalizedId",
+            )
             val response = httpClient.post("${BuildConfig.SUPABASE_URL}/functions/v1/send-partner-activity-push") {
                 header("apikey", BuildConfig.SUPABASE_ANON_KEY)
-                bearerAuth(accessToken)
                 setBody(
                     PartnerActivityDispatchRequest(
                         type = type,

@@ -43,11 +43,12 @@ ENABLE_APPLE_LOGIN=false
 
 - `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
 - 파트너 활동 푸시까지 쓰려면 Android Firebase 앱의 `Application ID`, `Project ID`, `Web API Key`, `Sender ID`를 `local.properties`에 넣어야 합니다.
-- iOS 파트너 활동 푸시는 `iosApp/Configuration/Config.xcconfig`에 아래 값을 채워야 동작합니다.
+- iOS 파트너 활동 푸시는 `iosApp/Configuration/Config.local.xcconfig`에 아래 값을 채워야 동작합니다.
   - `FIREBASE_IOS_GOOGLE_APP_ID`
   - `FIREBASE_PROJECT_ID`
   - `FIREBASE_API_KEY`
   - `FIREBASE_GCM_SENDER_ID`
+- `iosApp/Configuration/Config.xcconfig`는 로컬 전용 `Config.local.xcconfig`를 include 하도록 정리되어 있습니다.
 - Supabase Edge Function `send-partner-activity-push`가 실제 OS push까지 보내려면 Supabase 프로젝트 secret `FCM_SERVICE_ACCOUNT_JSON`도 별도로 설정해야 합니다.
 - Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - iOS 카카오 로그인도 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
@@ -147,6 +148,23 @@ Supabase 대시보드 권장값:
   - `guest_settings.guaranteed_guest_count`
   - `expenses.created_by`, `schedule_events.created_by`
   - `device_push_tokens`, `partner_activity_notifications`
+
+## 최근 안정화/푸시 반영 (2026-03-29)
+
+- Android 파트너 활동 push
+  - 실기기에서 FCM 토큰 등록, Edge Function 발송, foreground 수신, 시스템 알림 표시까지 확인
+  - Android는 `WL_SUPABASE` 로그 태그로 다음 흐름을 추적할 수 있습니다.
+    - `remote_push_token_fetch_success`
+    - `push_token_synced`
+    - `partner_activity_dispatch_start/success`
+    - `onMessageReceived`
+    - `notification_displayed`
+- 일정 저장 안정화
+  - `schedule_events` insert 반환 형식 변화에 덜 민감하도록 client-generated UUID + 안전 파싱 방식으로 변경
+  - 일정 추가 시트의 제목/장소 placeholder 예시 제거
+- iOS 상태
+  - Firebase 값 반영 구조는 연결됨
+  - 다만 실제 iOS 원격 push와 Apple 로그인은 Apple Developer 계정/APNs capability 설정 후 마무리 가능
 
 ## QA
 

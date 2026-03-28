@@ -1,6 +1,6 @@
 # QA 체크리스트
 
-마지막 갱신: 2026-03-22
+마지막 갱신: 2026-03-29
 
 ## 0. 준비
 
@@ -12,7 +12,7 @@
     - [ ] `FIREBASE_PROJECT_ID`
     - [ ] `FIREBASE_API_KEY`
     - [ ] `FIREBASE_GCM_SENDER_ID`
-  - [ ] iOS `iosApp/Configuration/Config.xcconfig`
+  - [ ] iOS `iosApp/Configuration/Config.local.xcconfig`
     - [ ] `FIREBASE_IOS_GOOGLE_APP_ID`
     - [ ] `FIREBASE_PROJECT_ID`
     - [ ] `FIREBASE_API_KEY`
@@ -104,9 +104,11 @@
 
 ### 4-1. 일정
 - [ ] 일정 추가 / 수정 / 삭제 성공
+- [ ] 일정 추가 시 `JsonDecodingException` 없이 저장 성공
 - [ ] 반복 일정(`없음/매주/매월`) 저장 확인
 - [ ] 선택한 날짜 일정 섹션 표시 확인
 - [ ] 다가오는 일정이 날짜 선택과 무관하게 계속 보이는지 확인
+- [ ] 일정 제목 / 장소 입력창에 예시 placeholder가 보이지 않는지 확인
 
 ### 4-2. 체크리스트
 - [ ] 체크리스트 추가 / 수정 / 삭제 성공
@@ -159,12 +161,16 @@
 
 - [ ] 신랑 계정에서 지출 추가
   - [ ] 신부 계정 알림센터 `새 활동`에 기록 생성
-  - [ ] Firebase 설정 완료 환경이면 OS push 수신
+  - [ ] Android 수신 기기 foreground에서 `onMessageReceived` + `notification_displayed` 로그 확인
+  - [ ] Android에서 heads-up 또는 시스템 알림 표시 확인
 - [ ] 신부 계정에서 일정 추가
   - [ ] 신랑 계정 알림센터 `새 활동`에 기록 생성
-  - [ ] Firebase 설정 완료 환경이면 OS push 수신
+  - [ ] Android 수신 기기 foreground에서 `onMessageReceived` + `notification_displayed` 로그 확인
+  - [ ] Android에서 heads-up 또는 시스템 알림 표시 확인
 - [ ] 자기 자신에게는 같은 활동 알림이 오지 않음
 - [ ] 토큰이 없는 환경에서도 지출/일정 저장이 실패하지 않음
+- [ ] 동일 Android 기기에서 계정 전환 후 이전 계정 알림이 새지 않는지 확인
+- [ ] `device_push_tokens` 중복 충돌 없이 `push_token_synced`가 반복 성공하는지 확인
 
 ## 8. 회귀 체크
 
@@ -177,5 +183,15 @@
 
 - [ ] Apple 로그인
   - Apple Developer 계정/Provider 설정 완료 후 별도 검증 필요
+- [ ] iOS 원격 push
+  - Apple Developer 계정/APNs capability 준비 후 별도 검증 필요
 - [ ] `./gradlew :androidApp:connectedDebugAndroidTest`
   - 디바이스/에뮬레이터 연결 환경에서 1회 실행 필요
+
+## 10. 출시 전 리스크 확인
+
+- [ ] `join_wedding` RPC가 third-user 연결을 막는지 DB 함수/제약으로 검증
+- [ ] 소셜 로그인 경로에서 약관/개인정보 동의 강제 방식 확정
+- [ ] 지출/일정 저장 성공과 파트너 알림 실패를 분리할지 정책 결정
+- [ ] 알림센터 unread를 fetch 즉시 read 처리하는 정책 유지 여부 결정
+- [ ] 저장 실패 시 바텀시트 입력값 보존 UX 개선 여부 결정

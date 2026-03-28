@@ -1,6 +1,6 @@
 # Session Handover (2026-03-03) - Kakao Native Login + Auth Refactor
 
-업데이트: 2026-03-22
+업데이트: 2026-03-29
 
 ## 0) 최신 메모 (2026-03-22)
 
@@ -19,6 +19,26 @@
   - Android `local.properties` Firebase 값
   - iOS `iosApp/Configuration/Config.xcconfig` Firebase 값
   - Supabase secret `FCM_SERVICE_ACCOUNT_JSON`
+
+## 0-0) 추가 메모 (2026-03-29)
+
+- Android 파트너 활동 push는 실제 수신까지 확인함
+  - FCM 토큰 등록 성공
+  - Edge Function 발송 성공
+  - Android foreground `onMessageReceived` 확인
+  - 시스템 알림 `notification_displayed` 확인
+- Android push 디버깅은 `WL_SUPABASE` 태그 기준으로 본다
+  - `remote_push_token_fetch_success`
+  - `push_token_synced`
+  - `partner_activity_dispatch_start/success`
+  - `onMessageReceived`
+  - `notification_displayed`
+- `device_push_tokens` 중복 key 충돌 방지 로직 추가
+- `send-partner-activity-push`는 caller JWT 의존을 제거하고, `created_by` / `wedding_id` 기반으로 상대를 찾도록 변경 후 재배포함
+- 일정 저장은 client-generated UUID + 안전 파싱으로 바꿔 `JsonDecodingException` 재발을 줄임
+- 일정 추가 바텀시트의 제목/장소 placeholder 예시 문구 제거
+- iOS는 Firebase 값 반영 구조까지만 완료
+  - Apple Developer 계정 + APNs capability가 준비돼야 원격 push / Apple 로그인까지 완결 가능
 
 ## 0-1) 이전 메모 (2026-03-16)
 

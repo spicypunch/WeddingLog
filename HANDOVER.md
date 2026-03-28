@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-03-22  
+마지막 갱신: 2026-03-29  
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -34,8 +34,10 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - 단, 이메일 전송 rate limit은 데이터 삭제와 별개라 바로 초기화되지 않을 수 있다.
 6) 파트너 활동 푸시는 코드/DB/Edge Function까지 연결되어 있다.
    - Android는 `local.properties`의 Firebase 값이 필요하다.
-   - iOS는 `iosApp/Configuration/Config.xcconfig`의 Firebase 값이 필요하다.
+   - iOS는 `iosApp/Configuration/Config.local.xcconfig`에 Firebase 값을 두고, `Config.xcconfig`에서 로컬 include 한다.
    - 실제 OS push까지 보내려면 Supabase secret `FCM_SERVICE_ACCOUNT_JSON`도 설정해야 한다.
+   - Android는 실기기 foreground 수신 + 시스템 알림 표시까지 확인했다(2026-03-29).
+   - iOS는 Apple Developer 계정/APNs capability 전까지 원격 push 실수신은 아직 미완료다.
 
 ---
 
@@ -55,7 +57,8 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 6. 그 다음 일정/하객/알림센터 순서로 통합 QA 진행
 7. 파트너 계정 2개로 지출/일정 추가 후
    - 알림센터 `새 활동`에 상대방 활동이 뜨는지
-   - Firebase/FCM 설정이 채워진 환경이면 실제 push까지 오는지 확인
+   - Android는 실제 OS push까지 오는지 확인
+   - iOS는 Apple Developer/APNs 준비 후 별도 확인
 
 ---
 
@@ -209,8 +212,52 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -configuration Debug build -quiet` 성공
 - 남은 수동 설정
   - Android `local.properties` Firebase 값 입력
-  - iOS `Config.xcconfig` Firebase 값 입력
+  - iOS `Config.local.xcconfig` Firebase 값 입력
   - Supabase secret `FCM_SERVICE_ACCOUNT_JSON` 설정
+
+---
+
+## 1-4) 오늘 추가 변경 (2026-03-29)
+
+- Android 파트너 활동 push 실수신 확인
+  - FCM 토큰 fetch / Supabase 등록 / Edge Function 발송 / Android foreground 수신까지 확인
+  - Android `onMessageReceived()` 로그 추가
+  - foreground 상태에서도 시스템 알림이 뜨도록 `WeddingLedgerFirebaseMessagingService`에서 직접 로컬 notification 표시
+  - 채널을 `IMPORTANCE_HIGH`로 분리해 heads-up 가능성을 높임
+- Push 디버깅 로그 정리
+  - Android/공용 푸시 경로를 `WL_SUPABASE` 태그로 추적 가능
+  - 주요 확인 로그:
+    - `remote_push_token_fetch_success`
+    - `push_token_synced`
+    - `partner_activity_dispatch_start/success/failed`
+    - `onMessageReceived`
+    - `notification_displayed`
+- Supabase push 발송 경로 보강
+  - `device_push_tokens` 중복 토큰 충돌 방지 로직 추가
+  - Edge Function `send-partner-activity-push`를 caller JWT 의존에서 분리
+  - 함수가 `expenses.created_by` / `schedule_events.created_by`와 `wedding_id`를 기준으로 수신자를 계산하도록 변경
+  - `--no-verify-jwt`로 재배포 완료
+- 일정 저장 안정성 보강
+  - `schedule_events` insert 응답 파싱 의존 제거
+  - 앱에서 UUID를 먼저 생성한 뒤 insert하고, 반환 row는 안전 파싱으로 읽도록 변경
+  - `JsonDecodingException` 재현 케이스 회귀 테스트 추가
+- 일정 추가 바텀시트 문구 정리
+  - `일정 제목`, `장소 (선택)` 예시 placeholder 제거
+- iOS Firebase 설정 방식 정리
+  - `iosApp/Configuration/Config.local.xcconfig`를 로컬 전용 파일로 두고 `.gitignore` 처리
+  - `Config.xcconfig`는 로컬 include만 담당
+  - 현재 iOS는 Firebase 값 반영까지만 끝났고, APNs entitlement/Apple Developer 계정이 준비돼야 원격 push와 Apple 로그인을 완결할 수 있음
+
+## 1-5) 현재 남은 리스크 (2026-03-29 확인)
+
+- `join_wedding` RPC 제약은 이 저장소만으로 증명되지 않음
+  - 현재 코드에는 RPC 호출만 있고 DB 함수 본문/제약/회귀 테스트는 없음
+- 약관/개인정보 동의는 소셜 로그인 경로에서 아직 강제되지 않음
+- 지출 저장 / 일정 저장은 DB insert 뒤 파트너 알림 실패가 전체 실패처럼 보일 수 있음
+- 알림센터는 fetch 시 unread를 곧바로 read로 바꿈
+- 저장 바텀시트가 결과 전에 닫혀 실패 시 입력값을 잃음
+- 앱 시작 시 3초 최소 스플래시가 고정되어 있음
+- iOS 원격 push/Apple 로그인은 Apple Developer 계정 준비 전까지 미완료
 
 ---
 
