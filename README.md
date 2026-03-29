@@ -34,6 +34,8 @@ FIREBASE_PROJECT_ID=...
 FIREBASE_API_KEY=...
 FIREBASE_GCM_SENDER_ID=...
 KAKAO_NATIVE_APP_KEY=...
+TERMS_OF_SERVICE_URL=https://example.com/terms
+PRIVACY_POLICY_URL=https://example.com/privacy
 
 # 소셜 로그인 노출/활성 토글 (기본값: Kakao/Google=true, Apple=false)
 ENABLE_KAKAO_LOGIN=true
@@ -42,6 +44,8 @@ ENABLE_APPLE_LOGIN=false
 ```
 
 - `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
+- `TERMS_OF_SERVICE_URL`, `PRIVACY_POLICY_URL`은 로그인 화면에서 여는 실제 약관/개인정보 처리방침 문서 URL입니다.
+- 약관 동의는 로그인 화면에서 최초 1회만 받고, 현재 약관 버전 동의 상태를 DataStore에 저장합니다.
 - 파트너 활동 푸시까지 쓰려면 Android Firebase 앱의 `Application ID`, `Project ID`, `Web API Key`, `Sender ID`를 `local.properties`에 넣어야 합니다.
 - iOS 파트너 활동 푸시는 `iosApp/Configuration/Config.local.xcconfig`에 아래 값을 채워야 동작합니다.
   - `FIREBASE_IOS_GOOGLE_APP_ID`
@@ -148,6 +152,7 @@ Supabase 대시보드 권장값:
   - `guest_settings.guaranteed_guest_count`
   - `expenses.created_by`, `schedule_events.created_by`
   - `device_push_tokens`, `partner_activity_notifications`
+  - `join_wedding`는 원격 DB 함수에서 제3자 합류를 차단하도록 직접 보강
 
 ## 최근 안정화/푸시 반영 (2026-03-29)
 

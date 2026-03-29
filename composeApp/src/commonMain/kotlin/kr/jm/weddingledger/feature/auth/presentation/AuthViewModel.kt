@@ -3,10 +3,12 @@ package kr.jm.weddingledger.feature.auth.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
@@ -31,6 +33,8 @@ class AuthViewModel(
     private val verifyEmailOtpUseCase: VerifyEmailOtpUseCase,
     private val resetPasswordUseCase: ResetPasswordUseCase,
     private val resendSignUpVerificationEmailUseCase: ResendSignUpVerificationEmailUseCase,
+    private val termsOfServiceUrl: String = BuildConfig.TERMS_OF_SERVICE_URL,
+    private val privacyPolicyUrl: String = BuildConfig.PRIVACY_POLICY_URL,
 ) : ViewModel() {
     private val resendCooldownTotalSeconds = 60
     private val otpCooldownTotalSeconds = 60
@@ -45,6 +49,8 @@ class AuthViewModel(
         )
     )
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
+    private val _effect = Channel<AuthEffect>(capacity = Channel.BUFFERED)
+    val effect = _effect.receiveAsFlow()
 
     fun onAction(action: AuthAction) {
         when (action) {
@@ -74,6 +80,14 @@ class AuthViewModel(
             AuthAction.OnClickSignInWithKakao -> signInWithKakao()
             AuthAction.OnClickSignInWithGoogle -> signInWithGoogle()
             AuthAction.OnClickSignInWithApple -> signInWithApple()
+            AuthAction.OnClickTermsOfService -> openLegalDocument(
+                url = termsOfServiceUrl,
+                documentName = "이용약관",
+            )
+            AuthAction.OnClickPrivacyPolicy -> openLegalDocument(
+                url = privacyPolicyUrl,
+                documentName = "개인정보 처리방침",
+            )
             AuthAction.OnClickSendOtp -> sendOtp()
             AuthAction.OnClickVerifyOtp -> verifyOtp()
             AuthAction.OnClickResetPassword -> resetPassword()
@@ -152,6 +166,7 @@ class AuthViewModel(
             return
         }
         if (snapshot.isLoading || snapshot.isSendingOtp || snapshot.isVerifyingOtp || snapshot.isResendingVerificationEmail) return
+        if (!ensureSocialLoginConsent(snapshot)) return
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
@@ -185,6 +200,7 @@ class AuthViewModel(
             return
         }
         if (snapshot.isLoading || snapshot.isSendingOtp || snapshot.isVerifyingOtp || snapshot.isResendingVerificationEmail) return
+        if (!ensureSocialLoginConsent(snapshot)) return
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
@@ -218,6 +234,7 @@ class AuthViewModel(
             return
         }
         if (snapshot.isLoading || snapshot.isSendingOtp || snapshot.isVerifyingOtp || snapshot.isResendingVerificationEmail) return
+        if (!ensureSocialLoginConsent(snapshot)) return
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
@@ -278,6 +295,39 @@ class AuthViewModel(
                     }
                 }
             }
+        }
+    }
+
+    private fun ensureSocialLoginConsent(snapshot: AuthUiState): Boolean {
+        if (snapshot.isTermsAccepted) return true
+        _state.update {
+            it.copy(
+                message = AuthMessage.Info(
+                    "소셜 로그인 전에 이용약관과 개인정보 처리방침에 동의해주세요."
+                ),
+            )
+        }
+        return false
+    }
+
+    private fun openLegalDocument(
+        url: String,
+        documentName: String,
+    ) {
+        val normalizedUrl = url.trim()
+        if (normalizedUrl.isBlank()) {
+            _state.update {
+                it.copy(
+                    message = AuthMessage.Info(
+                        "$documentName 문서가 아직 연결되지 않았습니다. 설정에서 URL을 추가해주세요."
+                    ),
+                )
+            }
+            return
+        }
+
+        viewModelScope.launch {
+            _effect.send(AuthEffect.OpenExternalUrl(normalizedUrl))
         }
     }
 

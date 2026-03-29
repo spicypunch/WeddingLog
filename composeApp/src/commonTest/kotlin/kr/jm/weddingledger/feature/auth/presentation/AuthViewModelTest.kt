@@ -9,43 +9,22 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
-import kr.jm.weddingledger.feature.auth.domain.model.AuthUser
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResendSignUpVerificationEmailUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResetPasswordUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SendEmailOtpUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.SignInUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithAppleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithGoogleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithKakaoUseCase
-import kr.jm.weddingledger.feature.auth.domain.usecase.SignInUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.VerifyEmailOtpUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
 
 class AuthViewModelTest {
 
     @Test
-    fun `submit shows sign in disabled message`() = runMainDispatcherTest {
+    fun `toggle mode keeps sign in and shows info`() = runMainDispatcherTest {
         val repository = FakeAuthRepositoryForViewModel()
-        val viewModel = createViewModel(repository)
-
-        viewModel.onAction(AuthAction.OnEmailChange("user@weddinglog.app"))
-        viewModel.onAction(AuthAction.OnPasswordChange("password"))
-        viewModel.onAction(AuthAction.OnClickSubmit)
-        advanceUntilIdle()
-
-        val state = viewModel.state.value
-        assertIs<AuthMessage.Error>(state.message)
-        assertEquals(
-            "비밀번호 로그인은 현재 비활성화되어 있습니다.",
-            (state.message as AuthMessage.Error).text,
-        )
-    }
-
-    @Test
-    fun `toggle mode shows sign up disabled message`() = runMainDispatcherTest {
-        val repository = FakeAuthRepositoryForViewModel().apply {
-            signInResult = AuthResult.Success(Unit)
-        }
         val viewModel = createViewModel(repository)
 
         viewModel.onAction(AuthAction.OnClickToggleMode)
@@ -57,28 +36,46 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `reset password success shows info message`() = runMainDispatcherTest {
-        val repository = FakeAuthRepositoryForViewModel().apply {
-            resetPasswordResult = AuthResult.Success(Unit)
-        }
+    fun `google sign in without terms does not call repository`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel()
         val viewModel = createViewModel(repository)
 
-        viewModel.onAction(AuthAction.OnEmailChange("user@weddinglog.app"))
-        viewModel.onAction(AuthAction.OnClickResetPassword)
+        viewModel.onAction(AuthAction.OnClickSignInWithGoogle)
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(1, repository.resetPasswordCallCount)
+        assertEquals(0, repository.signInWithGoogleCallCount)
+        assertIs<AuthMessage.Info>(state.message)
+        assertEquals(
+            "소셜 로그인 전에 이용약관과 개인정보 처리방침에 동의해주세요.",
+            (state.message as AuthMessage.Info).text,
+        )
+    }
+
+    @Test
+    fun `google sign in with terms calls repository and shows info`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel().apply {
+            signInWithGoogleResult = AuthResult.Success(Unit)
+        }
+        val viewModel = createViewModel(repository)
+
+        viewModel.onAction(AuthAction.OnTermsAcceptedChange(true))
+        viewModel.onAction(AuthAction.OnClickSignInWithGoogle)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(1, repository.signInWithGoogleCallCount)
         assertIs<AuthMessage.Info>(state.message)
     }
 
     @Test
-    fun `kakao sign in success calls repository and shows info`() = runMainDispatcherTest {
+    fun `kakao sign in with terms calls repository and shows info`() = runMainDispatcherTest {
         val repository = FakeAuthRepositoryForViewModel().apply {
             signInWithKakaoResult = AuthResult.Success(Unit)
         }
         val viewModel = createViewModel(repository)
 
+        viewModel.onAction(AuthAction.OnTermsAcceptedChange(true))
         viewModel.onAction(AuthAction.OnClickSignInWithKakao)
         advanceUntilIdle()
 
@@ -88,18 +85,22 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `google sign in success calls repository and shows info`() = runMainDispatcherTest {
-        val repository = FakeAuthRepositoryForViewModel().apply {
-            signInWithGoogleResult = AuthResult.Success(Unit)
-        }
-        val viewModel = createViewModel(repository)
+    fun `open terms without configured url shows info`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel()
+        val viewModel = createViewModel(
+            repository = repository,
+            termsOfServiceUrl = "",
+        )
 
-        viewModel.onAction(AuthAction.OnClickSignInWithGoogle)
+        viewModel.onAction(AuthAction.OnClickTermsOfService)
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(1, repository.signInWithGoogleCallCount)
         assertIs<AuthMessage.Info>(state.message)
+        assertEquals(
+            "이용약관 문서가 아직 연결되지 않았습니다. 설정에서 URL을 추가해주세요.",
+            (state.message as AuthMessage.Info).text,
+        )
     }
 
     @Test
@@ -125,18 +126,39 @@ class AuthViewModelTest {
         assertIs<AuthMessage.Info>(state.message)
     }
 
+    @Test
+    fun `reset password success shows info message`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel().apply {
+            resetPasswordResult = AuthResult.Success(Unit)
+        }
+        val viewModel = createViewModel(repository)
+
+        viewModel.onAction(AuthAction.OnEmailChange("user@weddinglog.app"))
+        viewModel.onAction(AuthAction.OnClickResetPassword)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(1, repository.resetPasswordCallCount)
+        assertIs<AuthMessage.Info>(state.message)
+    }
 }
 
-    private fun createViewModel(repository: FakeAuthRepositoryForViewModel): AuthViewModel {
-        return AuthViewModel(
-            signInUseCase = SignInUseCase(repository),
-            signInWithKakaoUseCase = SignInWithKakaoUseCase(repository),
-            signInWithGoogleUseCase = SignInWithGoogleUseCase(repository),
-            signInWithAppleUseCase = SignInWithAppleUseCase(repository),
-            sendEmailOtpUseCase = SendEmailOtpUseCase(repository),
+private fun createViewModel(
+    repository: FakeAuthRepositoryForViewModel,
+    termsOfServiceUrl: String = "https://example.com/terms",
+    privacyPolicyUrl: String = "https://example.com/privacy",
+): AuthViewModel {
+    return AuthViewModel(
+        signInUseCase = SignInUseCase(repository),
+        signInWithKakaoUseCase = SignInWithKakaoUseCase(repository),
+        signInWithGoogleUseCase = SignInWithGoogleUseCase(repository),
+        signInWithAppleUseCase = SignInWithAppleUseCase(repository),
+        sendEmailOtpUseCase = SendEmailOtpUseCase(repository),
         verifyEmailOtpUseCase = VerifyEmailOtpUseCase(repository),
         resetPasswordUseCase = ResetPasswordUseCase(repository),
         resendSignUpVerificationEmailUseCase = ResendSignUpVerificationEmailUseCase(repository),
+        termsOfServiceUrl = termsOfServiceUrl,
+        privacyPolicyUrl = privacyPolicyUrl,
     )
 }
 

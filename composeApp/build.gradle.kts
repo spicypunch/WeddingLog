@@ -25,6 +25,8 @@ val firebaseProjectId: String = localProperties.getProperty("FIREBASE_PROJECT_ID
 val firebaseApiKey: String = localProperties.getProperty("FIREBASE_API_KEY") ?: ""
 val firebaseGcmSenderId: String = localProperties.getProperty("FIREBASE_GCM_SENDER_ID") ?: ""
 val kakaoNativeAppKey: String = localProperties.getProperty("KAKAO_NATIVE_APP_KEY")?.trim().orEmpty()
+val termsOfServiceUrl: String = localProperties.getProperty("TERMS_OF_SERVICE_URL")?.trim().orEmpty()
+val privacyPolicyUrl: String = localProperties.getProperty("PRIVACY_POLICY_URL")?.trim().orEmpty()
 val kakaoNativeAppKeySchemeSuffix: String = kakaoNativeAppKey.ifBlank { "disabled" }
 val enableKakaoLogin: Boolean = localProperties.getProperty("ENABLE_KAKAO_LOGIN")
     ?.trim()
@@ -173,6 +175,8 @@ val generateBuildConfig by tasks.registering(Sync::class) {
             const val FIREBASE_API_KEY = "$firebaseApiKey"
             const val FIREBASE_GCM_SENDER_ID = "$firebaseGcmSenderId"
             const val KAKAO_NATIVE_APP_KEY = "$kakaoNativeAppKey"
+            const val TERMS_OF_SERVICE_URL = "$termsOfServiceUrl"
+            const val PRIVACY_POLICY_URL = "$privacyPolicyUrl"
             const val ENABLE_KAKAO_LOGIN = $enableKakaoLogin
             const val ENABLE_GOOGLE_LOGIN = $enableGoogleLogin
             const val ENABLE_APPLE_LOGIN = $enableAppleLogin

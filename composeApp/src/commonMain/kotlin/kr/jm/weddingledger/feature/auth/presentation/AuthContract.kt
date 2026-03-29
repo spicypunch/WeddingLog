@@ -133,6 +133,8 @@ sealed interface AuthAction {
     data object OnClickSignInWithKakao : AuthAction
     data object OnClickSignInWithGoogle : AuthAction
     data object OnClickSignInWithApple : AuthAction
+    data object OnClickTermsOfService : AuthAction
+    data object OnClickPrivacyPolicy : AuthAction
     data object OnClickSendOtp : AuthAction
     data object OnClickVerifyOtp : AuthAction
     data object OnClickResetPassword : AuthAction
@@ -140,4 +142,8 @@ sealed interface AuthAction {
     data object OnDismissMessage : AuthAction
 
     data class OnShowMessage(val message: AuthMessage) : AuthAction
+}
+
+sealed interface AuthEffect {
+    data class OpenExternalUrl(val url: String) : AuthEffect
 }

@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -61,7 +63,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import kr.jm.weddingledger.getPlatform
 import kr.jm.weddingledger.core.ui.keyboard.keyboardAwareBottomPadding
 import kr.jm.weddingledger.core.ui.keyboard.rememberImeVisible
@@ -228,6 +229,16 @@ private fun SignInScreen(
                             }
                         }
                     }
+                }
+
+                if (!state.isTermsAccepted) {
+                    TermsAgreementRow(
+                        state = state,
+                        primary = primary,
+                        textColor = textMuted,
+                        checkboxColor = border,
+                        onAction = onAction,
+                    )
                 }
 
                 if (!state.hasAnySocialLoginAvailable) {
@@ -431,6 +442,93 @@ private enum class SocialProvider {
     Apple,
 }
 
+private const val TERMS_LINK_TAG = "terms_link"
+private const val PRIVACY_LINK_TAG = "privacy_link"
+
+@Composable
+private fun TermsAgreementRow(
+    state: AuthUiState,
+    primary: Color,
+    textColor: Color,
+    checkboxColor: Color,
+    onAction: (AuthAction) -> Unit,
+) {
+    val annotatedText = remember(primary, textColor) {
+        buildAnnotatedString {
+            withStyle(
+                SpanStyle(
+                    color = primary,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            ) {
+                append("(필수) ")
+            }
+
+            pushStringAnnotation(tag = TERMS_LINK_TAG, annotation = "terms")
+            withStyle(
+                SpanStyle(
+                    color = textColor,
+                    textDecoration = TextDecoration.Underline,
+                )
+            ) {
+                append("이용약관")
+            }
+            pop()
+
+            withStyle(SpanStyle(color = textColor)) {
+                append(" 및 ")
+            }
+
+            pushStringAnnotation(tag = PRIVACY_LINK_TAG, annotation = "privacy")
+            withStyle(
+                SpanStyle(
+                    color = textColor,
+                    textDecoration = TextDecoration.Underline,
+                )
+            ) {
+                append("개인정보 처리방침")
+            }
+            pop()
+
+            withStyle(SpanStyle(color = textColor)) {
+                append("에 동의합니다.")
+            }
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 2.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Checkbox(
+            checked = state.isTermsAccepted,
+            onCheckedChange = { onAction(AuthAction.OnTermsAcceptedChange(it)) },
+            enabled = !state.isLoading,
+            colors = CheckboxDefaults.colors(
+                checkedColor = primary,
+                checkmarkColor = Color.White,
+                uncheckedColor = checkboxColor,
+            ),
+        )
+        Spacer(modifier = Modifier.size(6.dp))
+        ClickableText(
+            text = annotatedText,
+            style = MaterialTheme.typography.bodySmall.copy(color = textColor),
+            modifier = Modifier
+                .weight(1f)
+                .padding(top = 12.dp),
+            onClick = { offset ->
+                when (annotatedText.getStringAnnotations(start = offset, end = offset).firstOrNull()?.tag) {
+                    TERMS_LINK_TAG -> onAction(AuthAction.OnClickTermsOfService)
+                    PRIVACY_LINK_TAG -> onAction(AuthAction.OnClickPrivacyPolicy)
+                }
+            },
+        )
+    }
+}
+
 @Composable
 private fun SignUpScreen(
     state: AuthUiState,
@@ -588,46 +686,13 @@ private fun SignUpScreen(
                     },
                 )
 
-                // Terms (required)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Checkbox(
-                        checked = state.isTermsAccepted,
-                        onCheckedChange = { onAction(AuthAction.OnTermsAcceptedChange(it)) },
-                        enabled = !state.isLoading,
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = primary,
-                            checkmarkColor = Color.White,
-                            uncheckedColor = fieldBorder,
-                        ),
-                    )
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text(
-                        text = buildAnnotatedString {
-                            withStyle(
-                                SpanStyle(
-                                    color = primary,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            ) {
-                                append("(필수) ")
-                            }
-                            withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                                append("이용약관")
-                            }
-                            append(" 및 ")
-                            withStyle(SpanStyle(textDecoration = TextDecoration.Underline)) {
-                                append("개인정보 처리방침")
-                            }
-                            append("에 동의합니다.")
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = textSub,
-                        modifier = Modifier.padding(top = 12.dp),
+                if (!state.isTermsAccepted) {
+                    TermsAgreementRow(
+                        state = state,
+                        primary = primary,
+                        textColor = textSub,
+                        checkboxColor = fieldBorder,
+                        onAction = onAction,
                     )
                 }
 

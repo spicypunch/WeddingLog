@@ -1,12 +1,12 @@
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
 FIREBASE_ANDROID_APPLICATION_ID=
 FIREBASE_PROJECT_ID=
 FIREBASE_API_KEY=
 FIREBASE_GCM_SENDER_ID=
 KAKAO_NATIVE_APP_KEY=
-
-# Social provider visibility flags in app UI
+TERMS_OF_SERVICE_URL=https://example.com/terms
+PRIVACY_POLICY_URL=https://example.com/privacy
 ENABLE_KAKAO_LOGIN=true
 ENABLE_GOOGLE_LOGIN=true
 ENABLE_APPLE_LOGIN=false

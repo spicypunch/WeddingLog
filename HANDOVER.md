@@ -60,6 +60,18 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - Android는 실제 OS push까지 오는지 확인
    - iOS는 Apple Developer/APNs 준비 후 별도 확인
 
+### Windows 컴퓨터에서 우선 진행할 작업
+
+1. 로그아웃/계정 전환 시 푸시 토큰 누수 방지
+2. 저장 바텀시트가 결과 전에 닫히는 UX 수정
+3. 알림센터 unread를 fetch 즉시 read 처리하는 정책 개선
+4. 3초 강제 스플래시 완화
+5. 약관 동의 UX 미세조정
+
+주의:
+- Windows에서는 Android/shared 작업 위주로 진행
+- iOS APNs, Apple 로그인, Xcode/entitlement 검증은 Mac에서 이어서 진행
+
 ---
 
 ## 1) 현재 상태 요약
@@ -247,13 +259,19 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - `iosApp/Configuration/Config.local.xcconfig`를 로컬 전용 파일로 두고 `.gitignore` 처리
   - `Config.xcconfig`는 로컬 include만 담당
   - 현재 iOS는 Firebase 값 반영까지만 끝났고, APNs entitlement/Apple Developer 계정이 준비돼야 원격 push와 Apple 로그인을 완결할 수 있음
+- 약관/개인정보 동의 흐름 정리
+  - 로그인 화면에 실제 약관/개인정보 링크 연결
+  - 소셜 로그인 전에 동의 체크를 강제
+  - 한 번 동의하면 현재 약관 버전 기준으로 로그인 화면에서 다시 보이지 않도록 DataStore에 저장
+  - 실제 문서 URL은 `local.properties`의 `TERMS_OF_SERVICE_URL`, `PRIVACY_POLICY_URL` 사용
+- `join_wedding` 제3자 연결 방지
+  - Supabase 원격 DB 함수 `public.join_wedding`를 직접 수정해, 이미 2명이 연결된 wedding에는 제3자 합류가 불가능하도록 변경
+  - 같은 변경을 repo SQL 파일로 남기지 않음
+  - 현재 프로젝트에는 SQL migration 파일을 유지하지 않는 정책으로 운영
 
 ## 1-5) 현재 남은 리스크 (2026-03-29 확인)
 
-- `join_wedding` RPC 제약은 이 저장소만으로 증명되지 않음
-  - 현재 코드에는 RPC 호출만 있고 DB 함수 본문/제약/회귀 테스트는 없음
-- 약관/개인정보 동의는 소셜 로그인 경로에서 아직 강제되지 않음
-- 지출 저장 / 일정 저장은 DB insert 뒤 파트너 알림 실패가 전체 실패처럼 보일 수 있음
+- 로그아웃/계정 전환 시 푸시 토큰 비활성화 실패가 묵살될 수 있음
 - 알림센터는 fetch 시 unread를 곧바로 read로 바꿈
 - 저장 바텀시트가 결과 전에 닫혀 실패 시 입력값을 잃음
 - 앱 시작 시 3초 최소 스플래시가 고정되어 있음

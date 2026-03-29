@@ -37,6 +37,12 @@
 - `send-partner-activity-push`는 caller JWT 의존을 제거하고, `created_by` / `wedding_id` 기반으로 상대를 찾도록 변경 후 재배포함
 - 일정 저장은 client-generated UUID + 안전 파싱으로 바꿔 `JsonDecodingException` 재발을 줄임
 - 일정 추가 바텀시트의 제목/장소 placeholder 예시 문구 제거
+- 로그인 화면 약관/개인정보 동의 흐름 보강
+  - 실제 Google Sites 문서 URL 연결
+  - 소셜 로그인 전 동의 체크 강제
+  - 동의 완료 시 현재 약관 버전을 DataStore에 저장해 로그인 화면에서 반복 노출되지 않도록 처리
+- `join_wedding`는 원격 DB 함수에서 제3자 합류가 불가능하도록 직접 수정함
+  - SQL 파일은 repo에 남기지 않고 원격 DB에만 반영
 - iOS는 Firebase 값 반영 구조까지만 완료
   - Apple Developer 계정 + APNs capability가 준비돼야 원격 push / Apple 로그인까지 완결 가능
 
