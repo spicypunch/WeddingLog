@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-03-29  
+마지막 갱신: 2026-03-31  
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -37,7 +37,11 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - iOS는 `iosApp/Configuration/Config.local.xcconfig`에 Firebase 값을 두고, `Config.xcconfig`에서 로컬 include 한다.
    - 실제 OS push까지 보내려면 Supabase secret `FCM_SERVICE_ACCOUNT_JSON`도 설정해야 한다.
    - Android는 실기기 foreground 수신 + 시스템 알림 표시까지 확인했다(2026-03-29).
-   - iOS는 Apple Developer 계정/APNs capability 전까지 원격 push 실수신은 아직 미완료다.
+   - iOS도 Apple Developer/APNs/Firebase 연동 후 실기기 push 수신까지 확인했다(2026-03-31).
+7) Apple 로그인은 iOS 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로로 전환해 실기기 성공까지 확인했다(2026-03-31).
+   - Supabase Apple Provider `Client IDs`에는 아래 두 값을 함께 넣어야 한다.
+   - `kr.jm.weddingledger.service`
+   - `kr.jm.weddingledger.WeddingLedger`
 
 ---
 
@@ -58,7 +62,7 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 7. 파트너 계정 2개로 지출/일정 추가 후
    - 알림센터 `새 활동`에 상대방 활동이 뜨는지
    - Android는 실제 OS push까지 오는지 확인
-   - iOS는 Apple Developer/APNs 준비 후 별도 확인
+   - iOS도 실제 OS push까지 오는지 교차 확인
 
 ### Windows 컴퓨터에서 우선 진행할 작업
 
@@ -70,7 +74,7 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 
 주의:
 - Windows에서는 Android/shared 작업 위주로 진행
-- iOS APNs, Apple 로그인, Xcode/entitlement 검증은 Mac에서 이어서 진행
+- iOS APNs/Apple 로그인/Xcode capability 검증은 Mac에서만 이어서 진행
 
 ---
 
@@ -258,6 +262,22 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 - iOS Firebase 설정 방식 정리
   - `iosApp/Configuration/Config.local.xcconfig`를 로컬 전용 파일로 두고 `.gitignore` 처리
   - `Config.xcconfig`는 로컬 include만 담당
+
+## 1-5) 오늘 추가 변경 (2026-03-31)
+
+- iOS 원격 push 실수신 확인
+  - Apple Developer App ID / APNs key / Firebase APNs 업로드 / Xcode capability 설정 후 실기기 push 수신 확인
+  - iOS도 `push_token_synced platform=ios`까지 정상 기록
+- Apple 로그인 구현 완료
+  - iOS는 브라우저 OAuth 대신 네이티브 `AuthenticationServices` 로그인으로 전환
+  - Supabase는 `signInWith(IDToken)` 경로를 사용
+  - Apple Provider `Client IDs`는 `kr.jm.weddingledger.service, kr.jm.weddingledger.WeddingLedger` 조합으로 설정해야 정상 동작
+- iOS 호스트 앱 보강
+  - `AppleNativeSignInCoordinator.swift` 추가
+  - `iosApp.entitlements`에 `com.apple.developer.applesignin` 추가
+  - `KakaoNativeSignInCoordinator`를 앱 시작 시 안전 초기화하고, Apple 콜백에서 Kakao URL 판별이 잘못 끼어들지 않도록 방어
+- 알려진 로그 메모
+  - iOS에서 Firebase `GoogleService-Info.plist` 관련 경고가 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실제 push 수신은 모두 동작 확인
   - 현재 iOS는 Firebase 값 반영까지만 끝났고, APNs entitlement/Apple Developer 계정이 준비돼야 원격 push와 Apple 로그인을 완결할 수 있음
 - 약관/개인정보 동의 흐름 정리
   - 로그인 화면에 실제 약관/개인정보 링크 연결

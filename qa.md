@@ -1,6 +1,6 @@
 # QA 체크리스트
 
-마지막 갱신: 2026-03-29
+마지막 갱신: 2026-03-31
 
 ## 0. 준비
 
@@ -38,6 +38,9 @@
 - [ ] 체크하지 않으면 소셜 로그인이 막히는지 확인
 - [ ] Android Google 로그인 성공
 - [ ] Android Kakao 로그인 성공
+- [ ] iOS Apple 로그인 성공
+  - [ ] Apple 인증 후 앱으로 정상 복귀
+  - [ ] 홈 진입 및 세션 생성 확인
 - [ ] iOS Google 로그인 성공
 - [ ] iOS Kakao 로그인 성공
 
@@ -166,14 +169,17 @@
   - [ ] 신부 계정 알림센터 `새 활동`에 기록 생성
   - [ ] Android 수신 기기 foreground에서 `onMessageReceived` + `notification_displayed` 로그 확인
   - [ ] Android에서 heads-up 또는 시스템 알림 표시 확인
+  - [ ] iPhone 수신 기기에서 시스템 push 표시 확인
 - [ ] 신부 계정에서 일정 추가
   - [ ] 신랑 계정 알림센터 `새 활동`에 기록 생성
   - [ ] Android 수신 기기 foreground에서 `onMessageReceived` + `notification_displayed` 로그 확인
   - [ ] Android에서 heads-up 또는 시스템 알림 표시 확인
+  - [ ] iPhone 수신 기기에서 시스템 push 표시 확인
 - [ ] 자기 자신에게는 같은 활동 알림이 오지 않음
 - [ ] 토큰이 없는 환경에서도 지출/일정 저장이 실패하지 않음
 - [ ] 동일 Android 기기에서 계정 전환 후 이전 계정 알림이 새지 않는지 확인
 - [ ] `device_push_tokens` 중복 충돌 없이 `push_token_synced`가 반복 성공하는지 확인
+- [ ] iOS 수신 기기에서도 `push_token_synced platform=ios` 이후 실제 수신이 유지되는지 확인
 
 ## 8. 회귀 체크
 
@@ -184,12 +190,11 @@
 
 ## 9. 미확인 / 보류
 
-- [ ] Apple 로그인
-  - Apple Developer 계정/Provider 설정 완료 후 별도 검증 필요
-- [ ] iOS 원격 push
-  - Apple Developer 계정/APNs capability 준비 후 별도 검증 필요
 - [ ] `./gradlew :androidApp:connectedDebugAndroidTest`
   - 디바이스/에뮬레이터 연결 환경에서 1회 실행 필요
+- [ ] iOS Firebase 초기화 경고 정리
+  - `The default Firebase app has not yet been configured`
+  - `Could not locate configuration file: 'GoogleService-Info.plist'`
 
 ## 10. 출시 전 리스크 확인
 

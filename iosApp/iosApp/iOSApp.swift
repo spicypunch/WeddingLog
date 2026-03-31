@@ -7,6 +7,8 @@ struct iOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
+        AppleNativeSignInCoordinator.shared.startObserving()
+        KakaoNativeSignInCoordinator.shared.initializeSdkIfPossible()
         KakaoNativeSignInCoordinator.shared.startObserving()
     }
 
@@ -14,7 +16,7 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onOpenURL { url in
-                    if AuthApi.isKakaoTalkLoginUrl(url) {
+                    if KakaoNativeSignInCoordinator.shared.canHandleOpenUrl(url) {
                         _ = AuthController.handleOpenUrl(url: url)
                         return
                     }

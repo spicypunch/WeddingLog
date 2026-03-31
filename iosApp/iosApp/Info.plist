@@ -23,15 +23,19 @@
 			</array>
 		</dict>
 	</array>
-	<key>KAKAO_NATIVE_APP_KEY</key>
-	<string>$(KAKAO_NATIVE_APP_KEY)</string>
-	<key>FIREBASE_IOS_GOOGLE_APP_ID</key>
-	<string>$(FIREBASE_IOS_GOOGLE_APP_ID)</string>
-	<key>FIREBASE_PROJECT_ID</key>
-	<string>$(FIREBASE_PROJECT_ID)</string>
 	<key>FIREBASE_API_KEY</key>
 	<string>$(FIREBASE_API_KEY)</string>
 	<key>FIREBASE_GCM_SENDER_ID</key>
 	<string>$(FIREBASE_GCM_SENDER_ID)</string>
+	<key>FIREBASE_IOS_GOOGLE_APP_ID</key>
+	<string>$(FIREBASE_IOS_GOOGLE_APP_ID)</string>
+	<key>FIREBASE_PROJECT_ID</key>
+	<string>$(FIREBASE_PROJECT_ID)</string>
+	<key>KAKAO_NATIVE_APP_KEY</key>
+	<string>$(KAKAO_NATIVE_APP_KEY)</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

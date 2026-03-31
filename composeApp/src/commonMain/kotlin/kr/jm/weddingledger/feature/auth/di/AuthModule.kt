@@ -1,6 +1,7 @@
 package kr.jm.weddingledger.feature.auth.di
 
 import kr.jm.weddingledger.feature.auth.data.repository.AuthRepositoryImpl
+import kr.jm.weddingledger.feature.auth.data.platform.createAppleNativeSignInClient
 import kr.jm.weddingledger.feature.auth.data.platform.createKakaoNativeSignInClient
 import kr.jm.weddingledger.feature.auth.domain.usecase.HandleAuthDeepLinkUseCase
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
@@ -21,8 +22,9 @@ import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val authModule = module {
+    single { createAppleNativeSignInClient() }
     single { createKakaoNativeSignInClient() }
-    single<AuthRepository> { AuthRepositoryImpl(get(), get()) }
+    single<AuthRepository> { AuthRepositoryImpl(get(), get(), get()) }
     
     factory { SignUpUseCase(get()) }
     factory { SignInUseCase(get()) }

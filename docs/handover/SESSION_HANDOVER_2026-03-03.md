@@ -1,8 +1,23 @@
 # Session Handover (2026-03-03) - Kakao Native Login + Auth Refactor
 
-업데이트: 2026-03-29
+업데이트: 2026-03-31
 
-## 0) 최신 메모 (2026-03-22)
+## 0) 최신 메모 (2026-03-31)
+
+- iOS 원격 push 실수신 확인
+  - Apple Developer App ID / APNs key / Firebase APNs 업로드 / Xcode capability 설정 후 iPhone 실기기에서 push 수신 확인
+  - `push_token_synced platform=ios` 이후 실제 시스템 알림 표시까지 확인
+- Apple 로그인 구현 완료
+  - iOS는 브라우저 OAuth code exchange 대신 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로 사용
+  - Supabase Apple Provider `Client IDs`는 `kr.jm.weddingledger.service, kr.jm.weddingledger.WeddingLedger` 조합으로 맞춰야 함
+  - `iosApp.entitlements`에 `com.apple.developer.applesignin` 추가
+- Kakao/iOS 호스트 안정화
+  - Apple 로그인 복귀 시 Kakao URL 판별이 잘못 끼어들지 않도록 방어
+  - Kakao SDK는 앱 시작 시 안전 초기화
+- 현재 남은 iOS 메모
+  - Firebase `GoogleService-Info.plist` 관련 경고 로그는 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실수신은 모두 성공
+
+## 0-0) 이전 메모 (2026-03-22)
 
 - 홈 결산 카드 정리
   - 큰 금액에서도 사용률 칩이 세로로 찌그러지지 않도록 금액 아래 행으로 이동
@@ -20,7 +35,7 @@
   - iOS `iosApp/Configuration/Config.xcconfig` Firebase 값
   - Supabase secret `FCM_SERVICE_ACCOUNT_JSON`
 
-## 0-0) 추가 메모 (2026-03-29)
+## 0-1) 추가 메모 (2026-03-29)
 
 - Android 파트너 활동 push는 실제 수신까지 확인함
   - FCM 토큰 등록 성공
@@ -46,7 +61,7 @@
 - iOS는 Firebase 값 반영 구조까지만 완료
   - Apple Developer 계정 + APNs capability가 준비돼야 원격 push / Apple 로그인까지 완결 가능
 
-## 0-1) 이전 메모 (2026-03-16)
+## 0-2) 이전 메모 (2026-03-16)
 
 - Android Studio 업데이트 후 IDE에서 `convertPbxprojToJson` / `plutil` 오류가 날 수 있었음.
   - 프로젝트 자체 문제는 아니었고, 터미널에서 Android Studio를 실행하면 정상 sync/실행됨.
@@ -112,9 +127,9 @@
 
 ## 3) 다음 세션에서 바로 할 일 (우선순위)
 
-1. Apple Developer 유료 계정 준비 후 Apple 로그인 provider 설정 진행
-2. Supabase Apple provider + iOS capability 설정 후 실기기 로그인 검증
-3. Kakao/Google/Apple 로그인 회귀 QA 1회
+1. 한 기기 계정 전환 시 push 토큰 누수 방지 로직 점검
+2. 저장 바텀시트가 결과 전에 닫히는 UX 개선
+3. Kakao/Google/Apple 로그인 + Android/iOS push 회귀 QA 1회
 
 ## 4) 필수 설정 체크리스트
 
@@ -140,7 +155,7 @@
   - `KAKAO_NATIVE_APP_KEY`
   - `ENABLE_KAKAO_LOGIN=true`
   - `ENABLE_GOOGLE_LOGIN=true`
-  - `ENABLE_APPLE_LOGIN=false`
+  - `ENABLE_APPLE_LOGIN=true` 또는 필요 시 기능 플래그에 맞는 값
 
 ## 5) 이번 세션 주요 코드 변경 포인트
 

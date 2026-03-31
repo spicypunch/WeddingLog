@@ -22,6 +22,8 @@ import kotlin.coroutines.cancellation.CancellationException
 import kr.jm.weddingledger.core.network.logSupabaseError
 import kr.jm.weddingledger.feature.auth.data.platform.KakaoNativeSignInClient
 import kr.jm.weddingledger.feature.auth.data.platform.KakaoNativeSignInResult
+import kr.jm.weddingledger.feature.auth.data.platform.AppleNativeSignInClient
+import kr.jm.weddingledger.feature.auth.data.platform.AppleNativeSignInResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthErrorType
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
@@ -31,6 +33,7 @@ import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 class AuthRepositoryImpl(
     private val supabaseClient: SupabaseClient,
     private val kakaoNativeSignInClient: KakaoNativeSignInClient,
+    private val appleNativeSignInClient: AppleNativeSignInClient,
 ) : AuthRepository {
 
     override val authState: Flow<AuthState> = supabaseClient.auth.sessionStatus
@@ -171,13 +174,39 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun signInWithApple(): AuthResult<Unit> {
+        return when (val nativeResult = appleNativeSignInClient.signIn()) {
+            is AppleNativeSignInResult.Success -> {
+                signInWithAppleIdToken(
+                    idToken = nativeResult.idToken,
+                    rawNonce = nativeResult.rawNonce,
+                )
+            }
+
+            is AppleNativeSignInResult.Unsupported -> {
+                AuthResult.Error(nativeResult.reason)
+            }
+
+            is AppleNativeSignInResult.Error -> {
+                AuthResult.Error(nativeResult.message)
+            }
+        }
+    }
+
+    private suspend fun signInWithAppleIdToken(
+        idToken: String,
+        rawNonce: String,
+    ): AuthResult<Unit> {
         return try {
-            supabaseClient.auth.signInWith(Apple)
+            supabaseClient.auth.signInWith(IDToken) {
+                this.idToken = idToken
+                provider = Apple
+                nonce = rawNonce
+            }
             AuthResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t
             logSupabaseThrowable(t)
-            t.toAuthError(defaultMessage = "Apple 로그인에 실패했습니다")
+            t.toAppleSignInError()
         }
     }
 
@@ -362,6 +391,54 @@ private fun RestException.toKakaoSignInMessage(): String {
         descriptionValue.isNotEmpty() ->
             "Kakao 로그인에 실패했습니다. ($descriptionValue$statusSuffix)"
         else -> "Kakao 로그인에 실패했습니다$statusSuffix"
+    }
+}
+
+private fun Throwable.toAppleSignInError(): AuthResult.Error {
+    return when (this) {
+        is AuthRestException -> when (errorCode) {
+            AuthErrorCode.BadOauthCallback,
+            AuthErrorCode.BadOauthState,
+            AuthErrorCode.OauthProviderNotSupported,
+            AuthErrorCode.ProviderDisabled -> {
+                AuthResult.Error("Supabase Apple 로그인 설정을 확인해주세요.")
+            }
+            AuthErrorCode.InvalidCredentials -> {
+                AuthResult.Error("Apple 로그인 토큰이 유효하지 않습니다. Apple 설정과 nonce 처리를 확인해주세요.")
+            }
+            null -> buildDetailedAppleFailureMessage(error = error, description = errorDescription)
+            else -> buildDetailedAppleFailureMessage(error = error, description = errorDescription)
+        }
+
+        is RestException -> {
+            val statusSuffix = " (status=$statusCode)"
+            val errorValue = error.trim()
+            val descriptionValue = description?.trim().orEmpty()
+            when {
+                errorValue.isNotEmpty() && descriptionValue.isNotEmpty() ->
+                    AuthResult.Error("Apple 로그인에 실패했습니다. ($errorValue: $descriptionValue$statusSuffix)")
+                errorValue.isNotEmpty() ->
+                    AuthResult.Error("Apple 로그인에 실패했습니다. ($errorValue$statusSuffix)")
+                descriptionValue.isNotEmpty() ->
+                    AuthResult.Error("Apple 로그인에 실패했습니다. ($descriptionValue$statusSuffix)")
+                else -> AuthResult.Error("Apple 로그인에 실패했습니다$statusSuffix")
+            }
+        }
+
+        else -> toAuthError(defaultMessage = "Apple 로그인에 실패했습니다")
+    }
+}
+
+private fun buildDetailedAppleFailureMessage(
+    error: String?,
+    description: String?,
+): AuthResult.Error {
+    val normalizedError = error?.trim().orEmpty().ifBlank { "unknown_error" }
+    val normalizedDescription = description?.trim().orEmpty().ifBlank { null }
+    return if (normalizedDescription != null) {
+        AuthResult.Error("Apple 로그인에 실패했습니다. ($normalizedError: $normalizedDescription)")
+    } else {
+        AuthResult.Error("Apple 로그인에 실패했습니다. ($normalizedError)")
     }
 }
 

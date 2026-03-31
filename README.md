@@ -57,7 +57,12 @@ ENABLE_APPLE_LOGIN=false
 - Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - iOS 카카오 로그인도 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - `ENABLE_APPLE_LOGIN=false`면 앱에서 Apple 로그인 버튼/동작이 비활성화됩니다.
-- Apple Developer 유료 계정 및 Supabase Apple Provider 설정이 끝나면 `true`로 바꿔 바로 활성화할 수 있습니다.
+- iOS Apple 로그인은 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로를 사용합니다.
+- Apple 로그인을 활성화하려면 Supabase Apple Provider `Client IDs`에 아래 두 값을 함께 넣어야 합니다.
+  - `kr.jm.weddingledger.service`
+  - `kr.jm.weddingledger.WeddingLedger`
+- iOS 타깃은 Xcode에서 `Sign In with Apple`, `Push Notifications`, `Background Modes > Remote notifications` capability가 켜져 있어야 합니다.
+- Apple Developer 유료 계정 / Supabase Apple Provider / Xcode capability 설정이 끝나면 `ENABLE_APPLE_LOGIN=true`로 바로 활성화할 수 있습니다.
 
 ## 빌드/테스트
 
@@ -154,7 +159,7 @@ Supabase 대시보드 권장값:
   - `device_push_tokens`, `partner_activity_notifications`
   - `join_wedding`는 원격 DB 함수에서 제3자 합류를 차단하도록 직접 보강
 
-## 최근 안정화/푸시 반영 (2026-03-29)
+## 최근 안정화/푸시 반영 (2026-03-31)
 
 - Android 파트너 활동 push
   - 실기기에서 FCM 토큰 등록, Edge Function 발송, foreground 수신, 시스템 알림 표시까지 확인
@@ -167,9 +172,14 @@ Supabase 대시보드 권장값:
 - 일정 저장 안정화
   - `schedule_events` insert 반환 형식 변화에 덜 민감하도록 client-generated UUID + 안전 파싱 방식으로 변경
   - 일정 추가 시트의 제목/장소 placeholder 예시 제거
-- iOS 상태
-  - Firebase 값 반영 구조는 연결됨
-  - 다만 실제 iOS 원격 push와 Apple 로그인은 Apple Developer 계정/APNs capability 설정 후 마무리 가능
+- iOS 파트너 활동 push
+  - Apple Developer App ID / APNs key / Firebase APNs 업로드 / Xcode capability 설정 후 실기기 push 수신까지 확인
+  - iOS도 `push_token_synced platform=ios` 이후 실제 시스템 알림 표시 확인
+- iOS Apple 로그인
+  - 브라우저 OAuth 교환 대신 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로로 마무리
+  - Kakao 딥링크 처리와 충돌하지 않도록 iOS 호스트의 URL 라우팅을 안전화
+- 참고
+  - iOS에서 Firebase `GoogleService-Info.plist` 관련 경고 로그가 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실제 push 수신은 정상 동작 확인
 
 ## QA
 

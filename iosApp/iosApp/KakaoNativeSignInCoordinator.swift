@@ -15,6 +15,28 @@ final class KakaoNativeSignInCoordinator {
     private init() {
     }
 
+    func initializeSdkIfPossible() {
+        guard !isKakaoSdkInitialized else { return }
+
+        let nativeAppKey = infoValue("KAKAO_NATIVE_APP_KEY")
+        guard !nativeAppKey.isEmpty else { return }
+
+        KakaoSDK.initSDK(appKey: nativeAppKey)
+        isKakaoSdkInitialized = true
+    }
+
+    func canHandleOpenUrl(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased() else { return false }
+
+        let kakaoScheme = infoValue("KAKAO_NATIVE_APP_KEY_SCHEME").lowercased()
+        guard !kakaoScheme.isEmpty, scheme == kakaoScheme else { return false }
+
+        initializeSdkIfPossible()
+        guard isKakaoSdkInitialized else { return false }
+
+        return AuthApi.isKakaoTalkLoginUrl(url)
+    }
+
     func startObserving() {
         guard observer == nil else { return }
 
@@ -102,18 +124,11 @@ final class KakaoNativeSignInCoordinator {
     }
 
     private func initializeKakaoSdkIfNeeded() -> Bool {
-        if isKakaoSdkInitialized {
-            return true
-        }
-
-        let nativeAppKey = infoValue("KAKAO_NATIVE_APP_KEY")
-        if nativeAppKey.isEmpty {
+        initializeSdkIfPossible()
+        if !isKakaoSdkInitialized {
             finish(idToken: nil, accessToken: nil, errorMessage: "KAKAO_NATIVE_APP_KEY가 비어 있습니다.")
             return false
         }
-
-        KakaoSDK.initSDK(appKey: nativeAppKey)
-        isKakaoSdkInitialized = true
         return true
     }
 
