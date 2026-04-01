@@ -18,12 +18,18 @@ import kr.jm.weddingledger.feature.auth.presentation.AuthScreen
 import kr.jm.weddingledger.feature.auth.presentation.AuthUiState
 import kr.jm.weddingledger.feature.guests.presentation.GuestsAction
 import kr.jm.weddingledger.feature.guests.presentation.GuestsScreen
+import kr.jm.weddingledger.feature.guests.presentation.GuestsTab
 import kr.jm.weddingledger.feature.guests.presentation.GuestsUiState
+import kr.jm.weddingledger.feature.guests.presentation.ExpectedGuestsUiState
+import kr.jm.weddingledger.feature.guests.presentation.GiftLedgerUiState
 import kr.jm.weddingledger.feature.home.presentation.HomeAction
 import kr.jm.weddingledger.feature.home.presentation.HomeScreen
 import kr.jm.weddingledger.feature.home.presentation.HomeUiState
+import kr.jm.weddingledger.feature.money.presentation.BudgetUiState
+import kr.jm.weddingledger.feature.money.presentation.ExpensesUiState
 import kr.jm.weddingledger.feature.money.presentation.MoneyAction
 import kr.jm.weddingledger.feature.money.presentation.MoneyScreen
+import kr.jm.weddingledger.feature.money.presentation.MoneyTab
 import kr.jm.weddingledger.feature.money.presentation.MoneyUiState
 import kr.jm.weddingledger.feature.notifications.domain.model.NotificationItemType
 import kr.jm.weddingledger.feature.notifications.presentation.NotificationCenterAction
@@ -36,6 +42,8 @@ import kr.jm.weddingledger.feature.onboarding.presentation.InviteJoinUiState
 import kr.jm.weddingledger.feature.onboarding.presentation.OnboardingAction
 import kr.jm.weddingledger.feature.onboarding.presentation.ProfileSetupScreen
 import kr.jm.weddingledger.feature.onboarding.presentation.ProfileSetupUiState
+import kr.jm.weddingledger.feature.schedule.presentation.CalendarUiState
+import kr.jm.weddingledger.feature.schedule.presentation.ChecklistUiState
 import kr.jm.weddingledger.feature.schedule.presentation.ScheduleAction
 import kr.jm.weddingledger.feature.schedule.presentation.ScheduleScreen
 import kr.jm.weddingledger.feature.schedule.presentation.ScheduleTab
@@ -87,7 +95,7 @@ class ScreenSmokeUiTest {
 
         setScreen {
             HomeScreen(
-                state = HomeUiState.sample(),
+                state = HomeUiState.empty(),
                 onAction = actions::add,
             )
         }
@@ -102,7 +110,34 @@ class ScreenSmokeUiTest {
 
         setScreen {
             GuestsScreen(
-                state = GuestsUiState.sample(),
+                state = GuestsUiState(
+                    selectedTab = GuestsTab.Expected,
+                    expected = ExpectedGuestsUiState(
+                        totalExpectedCountText = "0명",
+                        guaranteedGuestCountText = "0명",
+                        guaranteedDiffText = "보증 인원을 입력해보세요.",
+                        guaranteedDiffTone = kr.jm.weddingledger.feature.guests.presentation.SummaryTone.Neutral,
+                        sideSummaries = emptyList(),
+                        statusSummaries = emptyList(),
+                        searchQuery = "",
+                        sideFilters = emptyList(),
+                        statusFilters = emptyList(),
+                        sections = emptyList(),
+                        emptyText = "등록된 예상 하객이 없어요.",
+                    ),
+                    giftLedger = GiftLedgerUiState(
+                        totalGiftText = "₩0",
+                        actualAttendingCountText = "0명 참석",
+                        completedEntryCountText = "0명 입력 완료",
+                        pendingEntryCountText = "0명 미입력",
+                        sideSummaries = emptyList(),
+                        searchQuery = "",
+                        sideFilters = emptyList(),
+                        statusFilters = emptyList(),
+                        sections = emptyList(),
+                        emptyText = "축의대에 표시할 하객이 없어요.",
+                    ),
+                ),
                 onAction = actions::add,
             )
         }
@@ -117,7 +152,11 @@ class ScreenSmokeUiTest {
 
         setScreen {
             MoneyScreen(
-                state = MoneyUiState.sample(),
+                state = MoneyUiState(
+                    selectedTab = MoneyTab.Budget,
+                    expenses = ExpensesUiState.empty(),
+                    budget = BudgetUiState.empty(),
+                ),
                 onAction = actions::add,
             )
         }
@@ -133,7 +172,18 @@ class ScreenSmokeUiTest {
 
         setScreen {
             ScheduleScreen(
-                state = ScheduleUiState.sample(),
+                state = ScheduleUiState(
+                    selectedTab = ScheduleTab.Schedule,
+                    calendar = CalendarUiState(
+                        monthLabel = "2026년 4월",
+                        dayOfWeekLabels = listOf("일", "월", "화", "수", "목", "금", "토"),
+                        cells = emptyList(),
+                        upcoming = emptyList(),
+                        upcomingTitle = "다가오는 일정",
+                        upcomingEmptyText = "예정된 일정이 없어요.",
+                    ),
+                    checklist = ChecklistUiState.empty(),
+                ),
                 onAction = actions::add,
             )
         }
@@ -148,7 +198,13 @@ class ScreenSmokeUiTest {
 
         setScreen {
             SettingsScreen(
-                state = SettingsUiState.sample(WeddingLogThemeStyle.Minimal),
+                state = SettingsUiState(
+                    title = "설정",
+                    coupleName = "테스트 커플",
+                    email = "test@weddinglog.app",
+                    inviteCode = "123456",
+                    selectedTheme = WeddingLogThemeStyle.Minimal,
+                ),
                 onAction = actions::add,
             )
         }

@@ -21,7 +21,7 @@ data class AddScheduleEventUiState(
         get() = title.trim().isNotEmpty() && eventDate != null && startTimeErrorMessage == null
 
     companion object {
-        fun sample(): AddScheduleEventUiState = AddScheduleEventUiState(
+        fun empty(): AddScheduleEventUiState = AddScheduleEventUiState(
             title = "",
             eventDate = null,
             startTime = "",

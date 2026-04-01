@@ -4,20 +4,13 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class DevicePushTokenUpsertDto(
-    @SerialName("user_id")
-    val userId: String,
+data class DevicePushTokenSyncRequest(
+    val action: String,
     @SerialName("installation_id")
     val installationId: String,
-    val platform: String,
+    val platform: String? = null,
     @SerialName("push_token")
-    val pushToken: String,
-    @SerialName("is_active")
-    val isActive: Boolean,
-    @SerialName("last_seen_at")
-    val lastSeenAt: String,
-    @SerialName("updated_at")
-    val updatedAt: String,
+    val pushToken: String? = null,
 )
 
 @Serializable

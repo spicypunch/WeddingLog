@@ -61,13 +61,18 @@ fun AddExpenseBottomSheet(
     title: String,
     state: AddExpenseUiState,
     showDelete: Boolean,
+    isSubmitting: Boolean,
     onDismiss: () -> Unit,
     onAction: (AddExpenseAction) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isSubmitting) {
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { WeddingLogSheetHandle() },
@@ -80,6 +85,7 @@ fun AddExpenseBottomSheet(
             WeddingLogSheetHeader(
                 title = title,
                 onClose = { onAction(AddExpenseAction.OnClickClose) },
+                isCloseEnabled = !isSubmitting,
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
@@ -157,6 +163,7 @@ fun AddExpenseBottomSheet(
                 if (showDelete) {
                     OutlinedButton(
                         onClick = { onAction(AddExpenseAction.OnClickDelete) },
+                        enabled = !isSubmitting,
                         border = BorderStroke(
                             width = 1.dp,
                             color = MaterialTheme.colorScheme.error.copy(alpha = 0.55f),
@@ -180,7 +187,7 @@ fun AddExpenseBottomSheet(
 
                 Button(
                     onClick = { onAction(AddExpenseAction.OnClickSave) },
-                    enabled = state.isSaveEnabled,
+                    enabled = state.isSaveEnabled && !isSubmitting,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -191,7 +198,7 @@ fun AddExpenseBottomSheet(
                     shape = MaterialTheme.shapes.large
                 ) {
                     Text(
-                        text = "저장하기",
+                        text = if (isSubmitting) "저장 중..." else "저장하기",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

@@ -90,6 +90,7 @@ data class ExpenseRowDto(
 
 @Serializable
 data class ExpenseInsertDto(
+    val id: String? = null,
     @SerialName("wedding_id")
     val weddingId: String,
     @SerialName("created_by")

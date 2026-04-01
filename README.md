@@ -72,6 +72,9 @@ cd /Users/jm/StudioProjects/WeddingLedger
 # Android debug 빌드
 ./gradlew :androidApp:assembleDebug
 
+# Android instrumented test assemble
+./gradlew :composeApp:assembleAndroidTest
+
 # Android unit test
 ./gradlew :androidApp:testDebugUnitTest
 
@@ -159,7 +162,7 @@ Supabase 대시보드 권장값:
   - `device_push_tokens`, `partner_activity_notifications`
   - `join_wedding`는 원격 DB 함수에서 제3자 합류를 차단하도록 직접 보강
 
-## 최근 안정화/푸시 반영 (2026-03-31)
+## 최근 안정화/푸시 반영 (2026-04-01)
 
 - Android 파트너 활동 push
   - 실기기에서 FCM 토큰 등록, Edge Function 발송, foreground 수신, 시스템 알림 표시까지 확인
@@ -178,6 +181,23 @@ Supabase 대시보드 권장값:
 - iOS Apple 로그인
   - 브라우저 OAuth 교환 대신 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로로 마무리
   - Kakao 딥링크 처리와 충돌하지 않도록 iOS 호스트의 URL 라우팅을 안전화
+- Push 토큰 계정 전환 보강
+  - `manage-device-push-token` Edge Function을 추가해 `installation_id` 기준 stale row 정리 후 `sync/deactivate` 하도록 변경
+  - 남은 검증은 같은 기기에서 계정 A/B 전환 시 이전 계정 push가 새지 않는지 QA 확인입니다.
+- 저장 UX / 알림 읽음 처리 개선
+  - 가계부/일정/하객 저장 바텀시트는 저장 성공 시에만 닫히고, 실패 시 입력값을 그대로 유지합니다.
+  - 알림센터 `새 활동`은 fetch 시 자동 읽음 처리하지 않고, 사용자가 활동 카드를 눌렀을 때만 read 처리합니다.
+- 가계부 안정화 / 문구 정리
+  - `expenses`는 예산 항목을 선택하지 않은 지출도 저장 가능하도록 RLS를 조정했습니다.
+  - 지출 저장은 client-generated UUID + plain insert 방식으로 바꿔 `JsonDecodingException` 재발을 줄였습니다.
+  - 지출 필터 기본 기간을 `전체 기간`으로 변경했습니다.
+  - 예산 화면의 `목표` 문구를 `예산`으로 통일했습니다.
+- Tools / 샘플 데이터 정리
+  - `웨딩홀 비교`, `가치관 설문`은 현재 클릭 시 `준비 중인 기능이에요.` 안내를 보여줍니다.
+  - shared 공용 상태의 `sample()` 더미 데이터를 제거하고, smoke test는 실제 최소 상태 생성 방식으로 정리했습니다.
+- Build 메모
+  - clean 후 사라지던 `BuildConfig.kt` 생성 문제를 `composeApp/build.gradle.kts`에서 보강했습니다.
+  - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만 Android/iOS 빌드는 성공합니다.
 - 참고
   - iOS에서 Firebase `GoogleService-Info.plist` 관련 경고 로그가 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실제 push 수신은 정상 동작 확인
 

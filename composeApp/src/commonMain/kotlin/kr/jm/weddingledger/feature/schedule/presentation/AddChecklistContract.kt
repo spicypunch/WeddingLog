@@ -34,7 +34,7 @@ data class AddChecklistUiState(
         const val TITLE_MAX_LENGTH: Int = 40
         const val MEMO_MAX_LENGTH: Int = 120
 
-        fun sample(): AddChecklistUiState = AddChecklistUiState(
+        fun empty(): AddChecklistUiState = AddChecklistUiState(
             title = "",
             targetDate = null,
             dTagOptions = listOf("D-180", "D-100", "D-60", "D-30", "D-7"),

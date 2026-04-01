@@ -10,17 +10,7 @@ data class SettingsUiState(
     val selectedTheme: WeddingLogThemeStyle,
     val isLoading: Boolean = false,
     val message: String? = null,
-) {
-    companion object {
-        fun sample(selectedTheme: WeddingLogThemeStyle): SettingsUiState = SettingsUiState(
-            title = "설정",
-            coupleName = "신랑 김민수 & 신부 이나래",
-            email = "sample@weddinglog.app",
-            inviteCode = "123456",
-            selectedTheme = selectedTheme,
-        )
-    }
-}
+)
 
 sealed interface SettingsAction {
     data object OnClickBack : SettingsAction

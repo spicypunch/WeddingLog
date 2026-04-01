@@ -1,6 +1,6 @@
 # QA 체크리스트
 
-마지막 갱신: 2026-03-31
+마지막 갱신: 2026-04-01
 
 ## 0. 준비
 
@@ -22,6 +22,8 @@
   - [ ] `"/Applications/Android Studio.app/Contents/MacOS/studio" /Users/jm/StudioProjects/WeddingLedger`
 - [ ] Android debug 빌드 성공
   - [ ] `./gradlew :androidApp:assembleDebug`
+- [ ] Android instrumented test assemble 성공
+  - [ ] `./gradlew :composeApp:assembleAndroidTest`
 - [ ] iOS simulator 빌드 성공
   - [ ] `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build -quiet`
 - [ ] 테스트 계정 2개 준비
@@ -88,9 +90,11 @@
 
 ### 3-3. 지출 기록
 - [ ] `지출` 탭에서 기록 흐름이 자연스러운지 확인
+- [ ] 기본 기간 필터가 `전체 기간`인지 확인
 - [ ] 지출 추가 성공
 - [ ] 카테고리만 선택하고 예산 항목 없이 저장 가능
 - [ ] 카테고리 + 예산 항목까지 선택한 저장도 가능
+- [ ] 저장 실패 시 지출 추가 바텀시트가 닫히지 않고 입력값이 유지되는지 확인
 - [ ] 업체명 입력 반영 확인
 - [ ] 결제수단 `공동계좌` 선택 시 결제자 UI 숨김 확인
 - [ ] 기본 결제자가 현재 로그인 사용자 역할(`신랑/신부`)에 맞는지 확인
@@ -111,6 +115,7 @@
 ### 4-1. 일정
 - [ ] 일정 추가 / 수정 / 삭제 성공
 - [ ] 일정 추가 시 `JsonDecodingException` 없이 저장 성공
+- [ ] 일정 저장 실패 시 바텀시트가 닫히지 않고 입력값이 유지되는지 확인
 - [ ] 반복 일정(`없음/매주/매월`) 저장 확인
 - [ ] 선택한 날짜 일정 섹션 표시 확인
 - [ ] 다가오는 일정이 날짜 선택과 무관하게 계속 보이는지 확인
@@ -131,6 +136,7 @@
 - [ ] 탭 `예상 하객 | 축의대` 전환 동작 확인
 - [ ] 예상 총 하객 / 보증인원 / 차이 표시 확인
 - [ ] 보증인원 설정 바텀시트 저장 확인
+- [ ] 보증인원/하객 저장 실패 시 바텀시트가 닫히지 않고 입력값이 유지되는지 확인
 - [ ] 신랑측 / 신부측 / 공통 요약 확인
 - [ ] 상태별 요약(`꼭 옴/애매/안 옴`) 확인
 - [ ] 검색 동작 확인
@@ -160,7 +166,9 @@
 - [ ] 알림센터가 `새 활동 / 리마인더` 두 섹션으로 보이는지 확인
 - [ ] 일정/체크리스트/예산 초과 알림 피드 노출 확인
 - [ ] 파트너 활동(`지출 추가`, `일정 추가`)이 `새 활동` 섹션에 나타나는지 확인
-- [ ] unread 표시가 보이고, 알림센터 재진입 시 읽음 처리되는지 확인
+- [ ] `새 활동` unread 표시가 보이는지 확인
+- [ ] 알림센터에 들어오기만 해서는 unread가 사라지지 않는지 확인
+- [ ] `새 활동` 카드를 직접 눌렀을 때만 읽음 처리되는지 확인
 - [ ] OS 알림 설정 화면 이동 확인
 
 ## 7. 파트너 활동 푸시
@@ -179,6 +187,8 @@
 - [ ] 토큰이 없는 환경에서도 지출/일정 저장이 실패하지 않음
 - [ ] 동일 Android 기기에서 계정 전환 후 이전 계정 알림이 새지 않는지 확인
 - [ ] `device_push_tokens` 중복 충돌 없이 `push_token_synced`가 반복 성공하는지 확인
+- [ ] 로그아웃 시 `push_token_deactivated` 로그 확인
+- [ ] 새 로그인 시 `push_token_synced` 로그 확인
 - [ ] iOS 수신 기기에서도 `push_token_synced platform=ios` 이후 실제 수신이 유지되는지 확인
 
 ## 8. 회귀 체크
@@ -192,6 +202,7 @@
 
 - [ ] `./gradlew :androidApp:connectedDebugAndroidTest`
   - 디바이스/에뮬레이터 연결 환경에서 1회 실행 필요
+- [ ] `웨딩홀 비교`, `가치관 설문` 클릭 시 `준비 중인 기능이에요.` 안내 확인
 - [ ] iOS Firebase 초기화 경고 정리
   - `The default Firebase app has not yet been configured`
   - `Could not locate configuration file: 'GoogleService-Info.plist'`
@@ -199,6 +210,5 @@
 ## 10. 출시 전 리스크 확인
 
 - [ ] 로그아웃/계정 전환 시 이전 계정 push 토큰이 새지 않도록 처리됐는지 검증
-- [ ] 알림센터 unread를 fetch 즉시 read 처리하는 정책 유지 여부 결정
-- [ ] 저장 실패 시 바텀시트 입력값 보존 UX 개선 여부 결정
 - [ ] 3초 강제 스플래시 정책 유지 여부 결정
+- [ ] `generateBuildConfig` configuration cache 경고 정리 여부 결정

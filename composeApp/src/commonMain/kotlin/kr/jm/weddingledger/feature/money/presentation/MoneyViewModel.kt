@@ -13,7 +13,10 @@ import androidx.lifecycle.viewModelScope
 import kotlin.math.absoluteValue
 import kotlin.math.floor
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -64,7 +67,7 @@ class MoneyViewModel(
 
     private val expandedCategoryIds = linkedSetOf<String>()
     private var selectedExpenseFilterCategoryId: String? = null
-    private var selectedExpensePeriodFilter: ExpensePeriodFilterOption = ExpensePeriodFilterOption.ThisMonth
+    private var selectedExpensePeriodFilter: ExpensePeriodFilterOption = ExpensePeriodFilterOption.All
     private var selectedExpenseStatusFilter: ExpenseStatusFilterOption = ExpenseStatusFilterOption.All
     private val savedExpensePresets = mutableListOf<SavedExpensePreset>()
     private var selectedExpensePresetId: String? = null
@@ -83,6 +86,9 @@ class MoneyViewModel(
         )
     )
     val state: StateFlow<MoneyUiState> = _state.asStateFlow()
+
+    private val _effect = MutableSharedFlow<MoneyEffect>()
+    val effect: SharedFlow<MoneyEffect> = _effect.asSharedFlow()
 
     init {
         viewModelScope.launch {
@@ -352,8 +358,14 @@ class MoneyViewModel(
             )
 
             when (val result = addBudgetItemUseCase(item)) {
-                is MoneyResult.Success -> refresh(showLoading = false)
-                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                is MoneyResult.Success -> {
+                    refresh(showLoading = false)
+                    _effect.emit(MoneyEffect.BudgetItemSaved)
+                }
+                is MoneyResult.Error -> {
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                    _effect.emit(MoneyEffect.BudgetItemSaveFailed)
+                }
             }
         }
     }
@@ -395,8 +407,14 @@ class MoneyViewModel(
             )
 
             when (val result = addExpenseUseCase(expense)) {
-                is MoneyResult.Success -> refresh(showLoading = false)
-                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                is MoneyResult.Success -> {
+                    refresh(showLoading = false)
+                    _effect.emit(MoneyEffect.ExpenseSaved)
+                }
+                is MoneyResult.Error -> {
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                    _effect.emit(MoneyEffect.ExpenseSaveFailed)
+                }
             }
         }
     }
@@ -477,8 +495,14 @@ class MoneyViewModel(
             )
 
             when (val result = updateBudgetItemUseCase(action.id, item)) {
-                is MoneyResult.Success -> refresh(showLoading = false)
-                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                is MoneyResult.Success -> {
+                    refresh(showLoading = false)
+                    _effect.emit(MoneyEffect.BudgetItemSaved)
+                }
+                is MoneyResult.Error -> {
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                    _effect.emit(MoneyEffect.BudgetItemSaveFailed)
+                }
             }
         }
     }
@@ -499,8 +523,14 @@ class MoneyViewModel(
             )
 
             when (val result = updateExpenseUseCase(action.id, expense)) {
-                is MoneyResult.Success -> refresh(showLoading = false)
-                is MoneyResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                is MoneyResult.Success -> {
+                    refresh(showLoading = false)
+                    _effect.emit(MoneyEffect.ExpenseSaved)
+                }
+                is MoneyResult.Error -> {
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                    _effect.emit(MoneyEffect.ExpenseSaveFailed)
+                }
             }
         }
     }
@@ -802,7 +832,7 @@ private fun MoneySnapshot.toBudgetUiState(
                     dueDateText = item.dueDate?.toPendingDueDateText(),
                     amountText = formatRemainingText(remainingAmount),
                     paidText = if (spent <= 0) "₩0 지급" else "${formatKrw(spent)} 지급",
-                    targetText = "목표 ${formatKrw(item.targetAmount)}",
+                    targetText = "예산 ${formatKrw(item.targetAmount)}",
                     priorityText = item.dueDate.toDuePriorityText(today),
                 )
             }
@@ -868,7 +898,7 @@ private fun MoneySnapshot.toBudgetUiState(
             itemCountText = "${items.size}개 항목",
             expenseCountText = if (categoryExpenses.isEmpty()) "지출 기록 없음" else "지출 ${categoryExpenses.size}건",
             usedText = "${formatKrw(used)} 사용",
-            targetText = "${formatKrw(target)} 목표",
+            targetText = "예산 ${formatKrw(target)}",
             remainingText = formatRemainingText(target - used),
             progress = progress.coerceIn(0f, 1f),
             icon = visuals.icon,
@@ -888,7 +918,7 @@ private fun MoneySnapshot.toBudgetUiState(
                     targetAmount = item.targetAmount,
                     memo = item.memo,
                     spentText = if (spent <= 0) "미지출" else "${formatKrw(spent)} 사용",
-                    targetText = "목표 ${formatKrw(item.targetAmount)}",
+                    targetText = "예산 ${formatKrw(item.targetAmount)}",
                     remainingText = formatRemainingText(remainingAmount),
                     progress = itemProgress.coerceIn(0f, 1f),
                     isOverBudget = item.targetAmount > 0 && spent > item.targetAmount,
@@ -1050,7 +1080,7 @@ private fun formatNumber(value: Long): String = value
     .reversed()
 
 private fun String.toPeriodFilterOrDefault(): ExpensePeriodFilterOption {
-    return toPeriodFilterOrNull() ?: ExpensePeriodFilterOption.ThisMonth
+    return toPeriodFilterOrNull() ?: ExpensePeriodFilterOption.All
 }
 
 private fun String.toStatusFilterOrDefault(): ExpenseStatusFilterOption {

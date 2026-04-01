@@ -46,6 +46,7 @@ fun AddGuestBottomSheet(
     state: AddGuestUiState,
     onDismiss: () -> Unit,
     onAction: (AddGuestAction) -> Unit,
+    isSubmitting: Boolean = false,
     sheetTitle: String = state.mode.title,
     saveButtonText: String = state.mode.saveLabel,
     onClickDelete: (() -> Unit)? = null,
@@ -53,7 +54,11 @@ fun AddGuestBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isSubmitting) {
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { WeddingLogSheetHandle() },
@@ -65,7 +70,8 @@ fun AddGuestBottomSheet(
         ) {
             WeddingLogSheetHeader(
                 title = sheetTitle,
-                onClose = { onAction(AddGuestAction.OnClickClose) }
+                onClose = { onAction(AddGuestAction.OnClickClose) },
+                isCloseEnabled = !isSubmitting,
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
@@ -148,7 +154,7 @@ fun AddGuestBottomSheet(
             ) {
                 Button(
                     onClick = { onAction(AddGuestAction.OnClickSave) },
-                    enabled = state.isSaveEnabled,
+                    enabled = state.isSaveEnabled && !isSubmitting,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -161,7 +167,7 @@ fun AddGuestBottomSheet(
                     androidx.compose.material3.Icon(imageVector = Icons.Rounded.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = saveButtonText,
+                        text = if (isSubmitting) "저장 중..." else saveButtonText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
@@ -171,6 +177,7 @@ fun AddGuestBottomSheet(
                     Spacer(modifier = Modifier.height(10.dp))
                     Surface(
                         onClick = onClickDelete,
+                        enabled = !isSubmitting,
                         color = Color.Transparent,
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.45f)),
                         shape = MaterialTheme.shapes.large,

@@ -5,7 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlin.math.abs
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -58,6 +61,9 @@ class GuestsViewModel(
         )
     )
     val state: StateFlow<GuestsUiState> = _state.asStateFlow()
+
+    private val _effect = MutableSharedFlow<GuestsEffect>()
+    val effect: SharedFlow<GuestsEffect> = _effect.asSharedFlow()
 
     init {
         refresh(showLoading = true)
@@ -150,6 +156,7 @@ class GuestsViewModel(
         val name = action.name.trim()
         if (name.isEmpty()) {
             _state.update { it.copy(message = "이름을 입력해주세요.") }
+            viewModelScope.launch { _effect.emit(GuestsEffect.GuestSaveFailed) }
             return
         }
 
@@ -158,8 +165,14 @@ class GuestsViewModel(
         viewModelScope.launch {
             val guest = action.toNewGuest()
             when (val result = addGuestUseCase(guest)) {
-                is GuestsResult.Success -> refresh(showLoading = false)
-                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                is GuestsResult.Success -> {
+                    refresh(showLoading = false)
+                    _effect.emit(GuestsEffect.GuestSaved)
+                }
+                is GuestsResult.Error -> {
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                    _effect.emit(GuestsEffect.GuestSaveFailed)
+                }
             }
         }
     }
@@ -168,6 +181,7 @@ class GuestsViewModel(
         val name = action.name.trim()
         if (name.isEmpty()) {
             _state.update { it.copy(message = "이름을 입력해주세요.") }
+            viewModelScope.launch { _effect.emit(GuestsEffect.GuestSaveFailed) }
             return
         }
 
@@ -176,8 +190,14 @@ class GuestsViewModel(
         viewModelScope.launch {
             val guest = action.toNewGuest()
             when (val result = updateGuestUseCase(action.id, guest)) {
-                is GuestsResult.Success -> refresh(showLoading = false)
-                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                is GuestsResult.Success -> {
+                    refresh(showLoading = false)
+                    _effect.emit(GuestsEffect.GuestSaved)
+                }
+                is GuestsResult.Error -> {
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                    _effect.emit(GuestsEffect.GuestSaveFailed)
+                }
             }
         }
     }
@@ -212,8 +232,14 @@ class GuestsViewModel(
         _state.update { it.copy(isLoading = true, isRefreshing = false, message = null) }
         viewModelScope.launch {
             when (val result = updateGuestSettingsUseCase(value)) {
-                is GuestsResult.Success -> refresh(showLoading = false)
-                is GuestsResult.Error -> _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                is GuestsResult.Success -> {
+                    refresh(showLoading = false)
+                    _effect.emit(GuestsEffect.GuaranteedCountSaved)
+                }
+                is GuestsResult.Error -> {
+                    _state.update { it.copy(isLoading = false, isRefreshing = false, message = result.message) }
+                    _effect.emit(GuestsEffect.GuaranteedCountSaveFailed)
+                }
             }
         }
     }

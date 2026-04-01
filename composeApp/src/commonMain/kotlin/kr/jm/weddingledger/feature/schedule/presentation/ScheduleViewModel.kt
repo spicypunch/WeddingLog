@@ -3,7 +3,10 @@ package kr.jm.weddingledger.feature.schedule.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlin.math.absoluteValue
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -73,6 +76,9 @@ class ScheduleViewModel(
         )
     )
     val state: StateFlow<ScheduleUiState> = _state.asStateFlow()
+
+    private val _effect = MutableSharedFlow<ScheduleEffect>()
+    val effect: SharedFlow<ScheduleEffect> = _effect.asSharedFlow()
 
     init {
         refreshData(showLoading = true)
@@ -292,7 +298,10 @@ class ScheduleViewModel(
             )
 
             when (val result = addChecklistUseCase(task)) {
-                is ScheduleResult.Success -> refreshData(showLoading = false)
+                is ScheduleResult.Success -> {
+                    refreshData(showLoading = false)
+                    _effect.emit(ScheduleEffect.ChecklistSaved)
+                }
                 is ScheduleResult.Error -> {
                     _state.update { current ->
                         current.copy(
@@ -303,6 +312,7 @@ class ScheduleViewModel(
                             )
                         )
                     }
+                    _effect.emit(ScheduleEffect.ChecklistSaveFailed)
                 }
             }
         }
@@ -331,6 +341,7 @@ class ScheduleViewModel(
                 is ScheduleResult.Success -> {
                     cancelChecklistReminder(action.id)
                     refreshData(showLoading = false)
+                    _effect.emit(ScheduleEffect.ChecklistSaved)
                 }
                 is ScheduleResult.Error -> {
                     _state.update { current ->
@@ -342,6 +353,7 @@ class ScheduleViewModel(
                             )
                         )
                     }
+                    _effect.emit(ScheduleEffect.ChecklistSaveFailed)
                 }
             }
         }
@@ -366,7 +378,10 @@ class ScheduleViewModel(
             )
 
             when (val result = addScheduleEventUseCase(event)) {
-                is ScheduleResult.Success -> refreshData(showLoading = false)
+                is ScheduleResult.Success -> {
+                    refreshData(showLoading = false)
+                    _effect.emit(ScheduleEffect.ScheduleEventSaved)
+                }
                 is ScheduleResult.Error -> {
                     _state.update { current ->
                         current.copy(
@@ -374,6 +389,7 @@ class ScheduleViewModel(
                             calendar = current.calendar.copy(message = result.message)
                         )
                     }
+                    _effect.emit(ScheduleEffect.ScheduleEventSaveFailed)
                 }
             }
         }
@@ -401,6 +417,7 @@ class ScheduleViewModel(
                 is ScheduleResult.Success -> {
                     cancelScheduleEventReminder(action.id)
                     refreshData(showLoading = false)
+                    _effect.emit(ScheduleEffect.ScheduleEventSaved)
                 }
                 is ScheduleResult.Error -> {
                     _state.update { current ->
@@ -409,6 +426,7 @@ class ScheduleViewModel(
                             calendar = current.calendar.copy(message = result.message)
                         )
                     }
+                    _effect.emit(ScheduleEffect.ScheduleEventSaveFailed)
                 }
             }
         }

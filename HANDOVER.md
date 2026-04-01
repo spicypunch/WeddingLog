@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-03-31  
+마지막 갱신: 2026-04-01  
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -17,6 +17,7 @@ cd /Users/jm/StudioProjects/WeddingLedger
 ./gradlew :androidApp:assembleDebug
 ./gradlew :androidApp:testDebugUnitTest
 ./gradlew :composeApp:allTests
+./gradlew :composeApp:assembleAndroidTest
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator build -quiet
 # UI(instrumented) 테스트는 에뮬레이터/디바이스 연결 후 실행
@@ -51,25 +52,33 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 2. Android Studio는 필요 시 터미널 실행 방식으로 열기
 3. `local.properties` 값 확인
 4. 새 계정으로 회원가입/로그인부터 다시 시작
-5. **홈 + 가계부 탭을 제일 먼저 QA**
+5. **계정 전환 push QA를 먼저 확인**
+   - 같은 기기에서 계정 A 로그인
+   - 로그아웃
+   - 계정 B 로그인
+   - A 활동 push가 더 이상 새지 않는지 확인
+   - `push_token_deactivated`, `push_token_synced` 로그 확인
+6. **홈 + 가계부 탭을 제일 먼저 QA**
    - 홈에서 큰 금액이 들어가도 결산 카드 레이아웃이 안 깨지는지
    - 홈에서 중간 CTA 카드와 FAB가 제거되었는지
    - 첫 진입 시 `예산` 탭이 기본 선택되는지
+   - 지출 필터 기본 기간이 `전체 기간`인지
    - `예산 / 지출` 분리가 직관적인지
    - `예산 항목 추가` / `지출 추가` 흐름이 쉬운지
+   - 저장 실패 시 바텀시트가 닫히지 않고 입력값이 유지되는지
    - 아직도 복잡하면 어느 구간에서 막히는지 메모
-6. 그 다음 일정/하객/알림센터 순서로 통합 QA 진행
-7. 파트너 계정 2개로 지출/일정 추가 후
+7. 그 다음 일정/하객/알림센터 순서로 통합 QA 진행
+8. 파트너 계정 2개로 지출/일정 추가 후
    - 알림센터 `새 활동`에 상대방 활동이 뜨는지
    - Android는 실제 OS push까지 오는지 확인
    - iOS도 실제 OS push까지 오는지 교차 확인
 
 ### Windows 컴퓨터에서 우선 진행할 작업
 
-1. 로그아웃/계정 전환 시 푸시 토큰 누수 방지
-2. 저장 바텀시트가 결과 전에 닫히는 UX 수정
-3. 알림센터 unread를 fetch 즉시 read 처리하는 정책 개선
-4. 3초 강제 스플래시 완화
+1. 로그아웃/계정 전환 시 푸시 토큰 누수 QA
+2. 3초 강제 스플래시 완화
+3. iOS Firebase 초기화/`GoogleService-Info.plist` 경고 정리
+4. iOS foreground push UX polishing
 5. 약관 동의 UX 미세조정
 
 주의:
@@ -154,12 +163,15 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - 일정/체크리스트/예산 초과 기반 알림 피드 구성
   - 로컬 리마인더 예약(Android/iOS `expect/actual`) 구현
   - 일정/체크리스트 수정/삭제 및 체크 완료 시 기존 예약 리마인더 자동 해제
+  - `새 활동`은 fetch 시 자동 읽음 처리하지 않고, 사용자가 직접 눌렀을 때만 읽음 처리
 - Tools:
   - 웨딩홀 비교 결과 공유(Top 결과 텍스트 공유) 지원
   - 즐겨찾기 우선 정렬 + 추천 점수 규칙 강화
+  - `웨딩홀 비교`, `가치관 설문`은 현재 진입 시 `준비 중인 기능이에요.` 안내 후 대기
 - 테스트:
   - `commonTest` 대폭 확장 (도메인/usecase/flow + ViewModel 레이어)
   - `androidInstrumentedTest` UI smoke 테스트 유지(Auth/Home/Guests/Money/Schedule/Settings/Notifications/Onboarding/Tools)
+  - 공용 화면 상태의 `sample()` 더미 데이터 제거, smoke test는 실제 최소 상태 생성 방식으로 정리
 
 ---
 
@@ -218,22 +230,44 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - unread 표시 및 알림센터 진입 시 읽음 처리 반영
 - Push 인프라 추가
   - `device_push_tokens`, `partner_activity_notifications` 테이블/RLS/인덱스 직접 반영
-  - `expenses.created_by`, `schedule_events.created_by` 컬럼 직접 반영
-  - Supabase Edge Function `send-partner-activity-push` 배포 완료
-  - Android Firebase Messaging 토큰 업서트 연결
-  - iOS Swift 호스트 앱에서 Firebase Messaging/APNs 토큰 저장 및 shared 브리지 연결
-  - 로그아웃 시 현재 기기 토큰 비활성화
-- 빌드/테스트
-  - `./gradlew :composeApp:allTests :androidApp:assembleDebug :composeApp:compileKotlinIosSimulatorArm64` 성공
-  - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -configuration Debug build -quiet` 성공
-- 남은 수동 설정
-  - Android `local.properties` Firebase 값 입력
-  - iOS `Config.local.xcconfig` Firebase 값 입력
-  - Supabase secret `FCM_SERVICE_ACCOUNT_JSON` 설정
 
 ---
 
-## 1-4) 오늘 추가 변경 (2026-03-29)
+## 1-4) 오늘 추가 변경 (2026-04-01)
+
+- Push 토큰 계정 전환 보강
+  - `manage-device-push-token` Edge Function 추가/배포
+  - 클라이언트가 `device_push_tokens`를 직접 만지지 않고 서버에서 `installation_id` 기준 stale row 정리 후 `sync/deactivate`
+  - 남은 일은 실제 한 기기 계정 전환 QA 확인
+- 저장 바텀시트 UX 개선
+  - 가계부/일정/하객 저장 시트는 저장 성공 시에만 닫힘
+  - 실패하면 시트를 유지하고 입력값을 그대로 보존
+  - 저장 중에는 닫기/중복 저장을 막음
+- 알림센터 unread 정책 변경
+  - fetch 시 unread -> read 자동 업데이트 제거
+  - `새 활동` 카드를 직접 눌렀을 때만 읽음 처리
+  - 실패 시 optimistic update를 복구하도록 보강
+- 가계부 안정화
+  - `expenses` RLS를 `budget_item_id = null`인 지출도 허용하도록 조정
+  - 지출 저장은 client-generated UUID + plain insert 방식으로 바꿔 `JsonDecodingException` 재발을 줄임
+  - 새 지출은 `created_by`를 현재 로그인 사용자 ID로 채움
+  - 지출 필터 기본 기간을 `전체 기간`으로 변경
+  - 예산 화면의 `목표` 문구를 `예산`으로 통일
+- Tools/샘플 데이터 정리
+  - `웨딩홀 비교`, `가치관 설문`은 현재 준비 중 토스트만 노출
+  - shared 코드에 남아 있던 `sample()` 기반 더미 상태/가짜 입력값 제거
+  - Android smoke test도 실제 최소 상태 생성 방식으로 정리
+- Build/Gradle
+  - clean 후 `BuildConfig.kt`가 사라져 깨지던 문제를 `composeApp/build.gradle.kts`의 생성 태스크 수정으로 보강
+  - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만, Android debug / Android test assemble / iOS simulator compile은 모두 통과
+- 빌드/테스트
+  - `./gradlew :androidApp:assembleDebug` 성공
+  - `./gradlew :composeApp:assembleAndroidTest` 성공
+  - `./gradlew :composeApp:compileKotlinIosSimulatorArm64` 성공
+
+---
+
+## 1-5) 오늘 추가 변경 (2026-03-29)
 
 - Android 파트너 활동 push 실수신 확인
   - FCM 토큰 fetch / Supabase 등록 / Edge Function 발송 / Android foreground 수신까지 확인

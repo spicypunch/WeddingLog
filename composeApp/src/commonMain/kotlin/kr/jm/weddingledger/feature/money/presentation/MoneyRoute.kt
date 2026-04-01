@@ -45,17 +45,49 @@ fun MoneyRoute(
     val uiState by viewModel.state.collectAsState()
 
     var activeSheet by remember { mutableStateOf<MoneySheet?>(null) }
-    var addExpenseState by remember { mutableStateOf(AddExpenseUiState.sample()) }
-    var addBudgetItemState by remember { mutableStateOf(AddBudgetItemUiState.sample()) }
+    var addExpenseState by remember { mutableStateOf(AddExpenseUiState.empty()) }
+    var addBudgetItemState by remember { mutableStateOf(AddBudgetItemUiState.empty()) }
     var manageCategoriesState by remember { mutableStateOf(ManageCategoriesUiState.empty()) }
     var showExpenseDatePicker by remember { mutableStateOf(false) }
     var showBudgetDueDatePicker by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<DeleteTarget?>(null) }
+    var pendingSave by remember { mutableStateOf<MoneyPendingSave?>(null) }
 
     LaunchedEffect(activeSheet) {
         if (activeSheet == null) {
             showExpenseDatePicker = false
             showBudgetDueDatePicker = false
+            pendingSave = null
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                MoneyEffect.ExpenseSaved -> {
+                    pendingSave = null
+                    activeSheet = null
+                    showExpenseDatePicker = false
+                }
+
+                MoneyEffect.ExpenseSaveFailed -> {
+                    if (pendingSave == MoneyPendingSave.Expense) {
+                        pendingSave = null
+                    }
+                }
+
+                MoneyEffect.BudgetItemSaved -> {
+                    pendingSave = null
+                    activeSheet = null
+                    showBudgetDueDatePicker = false
+                }
+
+                MoneyEffect.BudgetItemSaveFailed -> {
+                    if (pendingSave == MoneyPendingSave.BudgetItem) {
+                        pendingSave = null
+                    }
+                }
+            }
         }
     }
 
@@ -133,19 +165,25 @@ fun MoneyRoute(
         is MoneySheet.EditExpense,
         -> {
             val editingId = (sheet as? MoneySheet.EditExpense)?.expenseId
+            val isSubmitting = pendingSave == MoneyPendingSave.Expense
             AddExpenseBottomSheet(
                 title = if (editingId == null) "지출 추가" else "지출 수정",
                 state = addExpenseState,
                 showDelete = editingId != null,
+                isSubmitting = isSubmitting,
                 onDismiss = {
-                    activeSheet = null
-                    showExpenseDatePicker = false
+                    if (!isSubmitting) {
+                        activeSheet = null
+                        showExpenseDatePicker = false
+                    }
                 },
                 onAction = { act ->
                     when (act) {
                         AddExpenseAction.OnClickClose -> {
-                            activeSheet = null
-                            showExpenseDatePicker = false
+                            if (!isSubmitting) {
+                                activeSheet = null
+                                showExpenseDatePicker = false
+                            }
                         }
                         AddExpenseAction.OnClickDelete -> {
                             val id = editingId ?: return@AddExpenseBottomSheet
@@ -187,12 +225,13 @@ fun MoneyRoute(
                                     )
                                 )
                             }
-
-                            activeSheet = null
-                            showExpenseDatePicker = false
-                            addExpenseState = newAddExpenseState(uiState)
+                            pendingSave = MoneyPendingSave.Expense
                         }
-                        AddExpenseAction.OnClickDate -> showExpenseDatePicker = true
+                        AddExpenseAction.OnClickDate -> {
+                            if (!isSubmitting) {
+                                showExpenseDatePicker = true
+                            }
+                        }
                         is AddExpenseAction.OnAmountChange -> addExpenseState = addExpenseState.copy(amount = act.value)
                         is AddExpenseAction.OnVendorNameChange -> addExpenseState = addExpenseState.copy(vendorName = act.value)
                         is AddExpenseAction.OnMemoChange -> addExpenseState = addExpenseState.copy(memo = act.value)
@@ -275,14 +314,24 @@ fun MoneyRoute(
         is MoneySheet.EditBudgetItem,
         -> {
             val editingId = (sheet as? MoneySheet.EditBudgetItem)?.budgetItemId
+            val isSubmitting = pendingSave == MoneyPendingSave.BudgetItem
             AddBudgetItemBottomSheet(
                 title = if (editingId == null) "예산 항목 추가" else "예산 항목 수정",
                 state = addBudgetItemState,
                 showDelete = editingId != null,
-                onDismiss = { activeSheet = null },
+                isSubmitting = isSubmitting,
+                onDismiss = {
+                    if (!isSubmitting) {
+                        activeSheet = null
+                    }
+                },
                 onAction = { act ->
                     when (act) {
-                        AddBudgetItemAction.OnClickClose -> activeSheet = null
+                        AddBudgetItemAction.OnClickClose -> {
+                            if (!isSubmitting) {
+                                activeSheet = null
+                            }
+                        }
                         AddBudgetItemAction.OnClickDelete -> {
                             val id = editingId ?: return@AddBudgetItemBottomSheet
                             deleteTarget = DeleteTarget.BudgetItem(id)
@@ -313,14 +362,13 @@ fun MoneyRoute(
                                     )
                                 )
                             }
-
-                            activeSheet = null
-                            addBudgetItemState = newAddBudgetItemState(
-                                uiState = uiState,
-                                preselectedCategoryId = uiState.budget.categories.firstOrNull()?.id,
-                            )
+                            pendingSave = MoneyPendingSave.BudgetItem
                         }
-                        AddBudgetItemAction.OnClickDueDate -> showBudgetDueDatePicker = true
+                        AddBudgetItemAction.OnClickDueDate -> {
+                            if (!isSubmitting) {
+                                showBudgetDueDatePicker = true
+                            }
+                        }
                         AddBudgetItemAction.OnClickClearDueDate -> {
                             addBudgetItemState = addBudgetItemState.copy(
                                 dueDate = null,
@@ -480,6 +528,11 @@ private sealed interface MoneySheet {
     data object AddBudgetItem : MoneySheet
     data class EditBudgetItem(val budgetItemId: String) : MoneySheet
     data object ManageCategories : MoneySheet
+}
+
+private enum class MoneyPendingSave {
+    Expense,
+    BudgetItem,
 }
 
 private sealed interface DeleteTarget {

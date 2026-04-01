@@ -93,6 +93,10 @@ private class InMemoryNotificationCenterRepository : NotificationCenterRepositor
         return NotificationCenterResult.Success(Unit)
     }
 
+    override suspend fun markActivityItemsRead(notificationIds: List<String>): NotificationCenterResult<Unit> {
+        return NotificationCenterResult.Success(Unit)
+    }
+
     override suspend fun cancelReminder(notificationId: String): NotificationCenterResult<Unit> {
         scheduledIds.remove(notificationId)
         return NotificationCenterResult.Success(Unit)

@@ -15,10 +15,16 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun ToolsRoute(
@@ -26,21 +32,41 @@ fun ToolsRoute(
     onOpenValuesSurvey: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
-    ToolsScreen(
-        onOpenVenueComparison = onOpenVenueComparison,
-        onOpenValuesSurvey = onOpenValuesSurvey,
-        onOpenSettings = onOpenSettings
-    )
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    fun showPreparingMessage() {
+        coroutineScope.launch {
+            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.showSnackbar("준비 중인 기능이에요.")
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+    ) { innerPadding ->
+        ToolsScreen(
+            modifier = Modifier.padding(innerPadding),
+            onOpenVenueComparison = {
+                showPreparingMessage()
+            },
+            onOpenValuesSurvey = {
+                showPreparingMessage()
+            },
+            onOpenSettings = onOpenSettings,
+        )
+    }
 }
 
 @Composable
 private fun ToolsScreen(
+    modifier: Modifier = Modifier,
     onOpenVenueComparison: () -> Unit,
     onOpenValuesSurvey: () -> Unit,
     onOpenSettings: () -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {

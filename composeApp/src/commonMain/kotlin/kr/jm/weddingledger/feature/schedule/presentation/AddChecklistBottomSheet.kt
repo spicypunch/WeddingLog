@@ -49,6 +49,7 @@ fun AddChecklistBottomSheet(
     state: AddChecklistUiState,
     onDismiss: () -> Unit,
     onAction: (AddChecklistAction) -> Unit,
+    isSubmitting: Boolean = false,
     sheetTitle: String = "새로운 할 일",
     saveButtonText: String = "체크리스트에 추가",
     onClickDelete: (() -> Unit)? = null,
@@ -57,7 +58,11 @@ fun AddChecklistBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isSubmitting) {
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { WeddingLogSheetHandle() },
@@ -69,7 +74,8 @@ fun AddChecklistBottomSheet(
         ) {
             WeddingLogSheetHeader(
                 title = sheetTitle,
-                onClose = { onAction(AddChecklistAction.OnClickClose) }
+                onClose = { onAction(AddChecklistAction.OnClickClose) },
+                isCloseEnabled = !isSubmitting,
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
@@ -135,7 +141,7 @@ fun AddChecklistBottomSheet(
 
                 Button(
                     onClick = { onAction(AddChecklistAction.OnClickSave) },
-                    enabled = state.isSaveEnabled,
+                    enabled = state.isSaveEnabled && !isSubmitting,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -148,7 +154,7 @@ fun AddChecklistBottomSheet(
                     Icon(imageVector = Icons.Rounded.AddTask, contentDescription = null)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = saveButtonText,
+                        text = if (isSubmitting) "저장 중..." else saveButtonText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -158,6 +164,7 @@ fun AddChecklistBottomSheet(
                     Spacer(modifier = Modifier.height(10.dp))
                     androidx.compose.material3.OutlinedButton(
                         onClick = onClickDelete,
+                        enabled = !isSubmitting,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),

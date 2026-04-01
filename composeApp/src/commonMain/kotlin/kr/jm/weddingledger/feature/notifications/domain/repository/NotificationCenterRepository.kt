@@ -6,6 +6,7 @@ import kr.jm.weddingledger.feature.notifications.domain.model.NotificationRemind
 
 interface NotificationCenterRepository {
     suspend fun fetchFeed(): NotificationCenterResult<List<NotificationFeedItem>>
+    suspend fun markActivityItemsRead(notificationIds: List<String>): NotificationCenterResult<Unit>
     suspend fun scheduleReminder(plan: NotificationReminderPlan): NotificationCenterResult<Unit>
     suspend fun cancelReminder(notificationId: String): NotificationCenterResult<Unit>
     suspend fun fetchScheduledReminderIds(): NotificationCenterResult<Set<String>>

@@ -15,6 +15,7 @@ import kr.jm.weddingledger.feature.notifications.domain.model.NotificationFeedSe
 import kr.jm.weddingledger.feature.notifications.domain.usecase.CancelReminderUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.FetchNotificationFeedUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.FetchScheduledReminderIdsUseCase
+import kr.jm.weddingledger.feature.notifications.domain.usecase.MarkActivityItemsReadUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.ScheduleReminderUseCase
 
 class NotificationCenterViewModel(
@@ -22,6 +23,7 @@ class NotificationCenterViewModel(
     private val fetchScheduledReminderIdsUseCase: FetchScheduledReminderIdsUseCase,
     private val scheduleReminderUseCase: ScheduleReminderUseCase,
     private val cancelReminderUseCase: CancelReminderUseCase,
+    private val markActivityItemsReadUseCase: MarkActivityItemsReadUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(NotificationCenterUiState.initial())
@@ -41,6 +43,7 @@ class NotificationCenterViewModel(
             NotificationCenterAction.OnDismissMessage -> {
                 _state.update { it.copy(message = null, showPermissionAction = false) }
             }
+            is NotificationCenterAction.OnClickActivityItem -> markActivityItemRead(action.itemId)
             is NotificationCenterAction.OnClickScheduleReminder -> scheduleReminder(action.itemId)
             is NotificationCenterAction.OnClickCancelReminder -> cancelReminder(action.itemId)
             NotificationCenterAction.OnClickRequestPermission -> Unit
@@ -142,6 +145,49 @@ class NotificationCenterViewModel(
             isReminderScheduled = reminderId != null && scheduledReminderIds.contains(reminderId),
             isUnread = item.isUnread,
         )
+    }
+
+    private fun markActivityItemRead(itemId: String) {
+        val target = feedItems.firstOrNull { it.id == itemId } ?: return
+        if (target.section != NotificationFeedSection.Activity || !target.isUnread) return
+
+        updateActivityUnread(itemId = itemId, isUnread = false)
+
+        viewModelScope.launch {
+            when (val result = markActivityItemsReadUseCase(listOf(itemId))) {
+                is NotificationCenterResult.Success -> Unit
+                is NotificationCenterResult.Error -> {
+                    updateActivityUnread(itemId = itemId, isUnread = true)
+                    _state.update {
+                        it.copy(
+                            message = result.message,
+                            showPermissionAction = false,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateActivityUnread(itemId: String, isUnread: Boolean) {
+        feedItems = feedItems.map { item ->
+            if (item.id == itemId) {
+                item.copy(isUnread = isUnread)
+            } else {
+                item
+            }
+        }
+        _state.update {
+            it.copy(
+                activityItems = it.activityItems.map { item ->
+                    if (item.id == itemId) {
+                        item.copy(isUnread = isUnread)
+                    } else {
+                        item
+                    }
+                }
+            )
+        }
     }
 
     private fun scheduleReminder(itemId: String) {

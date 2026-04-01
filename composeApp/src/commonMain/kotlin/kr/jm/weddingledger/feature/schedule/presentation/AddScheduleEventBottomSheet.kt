@@ -51,6 +51,7 @@ fun AddScheduleEventBottomSheet(
     state: AddScheduleEventUiState,
     onDismiss: () -> Unit,
     onAction: (AddScheduleEventAction) -> Unit,
+    isSubmitting: Boolean = false,
     sheetTitle: String = "새 일정",
     saveButtonText: String = "일정 저장",
     onClickDelete: (() -> Unit)? = null,
@@ -58,7 +59,11 @@ fun AddScheduleEventBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isSubmitting) {
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { WeddingLogSheetHandle() },
@@ -70,7 +75,8 @@ fun AddScheduleEventBottomSheet(
         ) {
             WeddingLogSheetHeader(
                 title = sheetTitle,
-                onClose = { onAction(AddScheduleEventAction.OnClickClose) }
+                onClose = { onAction(AddScheduleEventAction.OnClickClose) },
+                isCloseEnabled = !isSubmitting,
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
@@ -179,7 +185,7 @@ fun AddScheduleEventBottomSheet(
             ) {
                 Button(
                     onClick = { onAction(AddScheduleEventAction.OnClickSave) },
-                    enabled = state.isSaveEnabled,
+                    enabled = state.isSaveEnabled && !isSubmitting,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -192,7 +198,7 @@ fun AddScheduleEventBottomSheet(
                     Icon(imageVector = Icons.Rounded.CalendarMonth, contentDescription = null)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = saveButtonText,
+                        text = if (isSubmitting) "저장 중..." else saveButtonText,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -202,6 +208,7 @@ fun AddScheduleEventBottomSheet(
                     Spacer(modifier = Modifier.height(10.dp))
                     OutlinedButton(
                         onClick = onClickDelete,
+                        enabled = !isSubmitting,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),

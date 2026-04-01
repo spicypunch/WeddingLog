@@ -42,6 +42,7 @@ fun WeddingLogSheetHandle() {
 fun WeddingLogSheetHeader(
     title: String,
     onClose: () -> Unit,
+    isCloseEnabled: Boolean = true,
 ) {
     Row(
         modifier = Modifier
@@ -56,9 +57,11 @@ fun WeddingLogSheetHeader(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurface
         )
-        IconButton(onClick = onClose) {
+        IconButton(
+            onClick = onClose,
+            enabled = isCloseEnabled,
+        ) {
             Icon(imageVector = Icons.Rounded.Close, contentDescription = "닫기")
         }
     }
 }
-

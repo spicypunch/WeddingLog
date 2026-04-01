@@ -8,6 +8,7 @@ import kr.jm.weddingledger.feature.notifications.domain.repository.PartnerActivi
 import kr.jm.weddingledger.feature.notifications.domain.usecase.CancelReminderUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.FetchNotificationFeedUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.FetchScheduledReminderIdsUseCase
+import kr.jm.weddingledger.feature.notifications.domain.usecase.MarkActivityItemsReadUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.ScheduleReminderUseCase
 import kr.jm.weddingledger.feature.notifications.presentation.NotificationCenterViewModel
 import org.koin.core.module.dsl.viewModel
@@ -22,6 +23,7 @@ val notificationsModule = module {
     factory { ScheduleReminderUseCase(get()) }
     factory { CancelReminderUseCase(get()) }
     factory { FetchScheduledReminderIdsUseCase(get()) }
+    factory { MarkActivityItemsReadUseCase(get()) }
 
-    viewModel { NotificationCenterViewModel(get(), get(), get(), get()) }
+    viewModel { NotificationCenterViewModel(get(), get(), get(), get(), get()) }
 }

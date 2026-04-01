@@ -1,6 +1,7 @@
 package kr.jm.weddingledger.feature.money.data.repository
 
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
@@ -10,6 +11,7 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kr.jm.weddingledger.core.platform.randomUuidString
 import kr.jm.weddingledger.core.network.WeddingIdResolver
 import kr.jm.weddingledger.core.network.logSupabaseRepositoryThrowable
 import kr.jm.weddingledger.feature.money.data.dto.BudgetItemInsertDto
@@ -121,13 +123,17 @@ class MoneyRepositoryImpl(
 
     override suspend fun addExpense(expense: NewExpense): MoneyResult<Unit> {
         return try {
+            val currentUserId = supabaseClient.auth.currentUserOrNull()?.id
+                ?: return MoneyResult.Error("로그인 후 다시 시도해주세요.")
             val weddingId = weddingIdResolver.resolve()
-            val insertedExpense = supabaseClient
+            val expenseId = randomUuidString()
+            supabaseClient
                 .from("expenses")
                 .insert(
                     ExpenseInsertDto(
+                        id = expenseId,
                         weddingId = weddingId,
-                        createdBy = null,
+                        createdBy = currentUserId,
                         categoryId = expense.categoryId,
                         budgetItemId = expense.budgetItemId,
                         amount = expense.amount,
@@ -137,12 +143,8 @@ class MoneyRepositoryImpl(
                         vendorName = expense.vendorName?.trim()?.takeIf { it.isNotEmpty() },
                         memo = expense.memo?.trim()?.takeIf { it.isNotEmpty() },
                     )
-                ) {
-                    select()
-                    single()
-                }
-                .decodeSingle<ExpenseRowDto>()
-            partnerActivityNotifier.notifyExpenseAdded(insertedExpense.id)
+                )
+            partnerActivityNotifier.notifyExpenseAdded(expenseId)
             MoneyResult.Success(Unit)
         } catch (t: Throwable) {
             if (t is CancellationException) throw t

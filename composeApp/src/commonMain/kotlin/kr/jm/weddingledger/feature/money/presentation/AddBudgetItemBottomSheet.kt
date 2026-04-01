@@ -46,13 +46,18 @@ fun AddBudgetItemBottomSheet(
     title: String,
     state: AddBudgetItemUiState,
     showDelete: Boolean,
+    isSubmitting: Boolean,
     onDismiss: () -> Unit,
     onAction: (AddBudgetItemAction) -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isSubmitting) {
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { WeddingLogSheetHandle() },
@@ -64,7 +69,8 @@ fun AddBudgetItemBottomSheet(
         ) {
             WeddingLogSheetHeader(
                 title = title,
-                onClose = { onAction(AddBudgetItemAction.OnClickClose) }
+                onClose = { onAction(AddBudgetItemAction.OnClickClose) },
+                isCloseEnabled = !isSubmitting,
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
@@ -248,6 +254,7 @@ fun AddBudgetItemBottomSheet(
                 if (showDelete) {
                     OutlinedButton(
                         onClick = { onAction(AddBudgetItemAction.OnClickDelete) },
+                        enabled = !isSubmitting,
                         border = BorderStroke(
                             width = 1.dp,
                             color = MaterialTheme.colorScheme.error.copy(alpha = 0.55f),
@@ -271,7 +278,7 @@ fun AddBudgetItemBottomSheet(
 
                 Button(
                     onClick = { onAction(AddBudgetItemAction.OnClickSave) },
-                    enabled = state.isSaveEnabled,
+                    enabled = state.isSaveEnabled && !isSubmitting,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -282,7 +289,7 @@ fun AddBudgetItemBottomSheet(
                     shape = MaterialTheme.shapes.large
                 ) {
                     Text(
-                        text = "저장하기",
+                        text = if (isSubmitting) "저장 중..." else "저장하기",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )

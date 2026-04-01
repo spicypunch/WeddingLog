@@ -1,8 +1,34 @@
 # Session Handover (2026-03-03) - Kakao Native Login + Auth Refactor
 
-업데이트: 2026-03-31
+업데이트: 2026-04-01
 
-## 0) 최신 메모 (2026-03-31)
+## 0) 최신 메모 (2026-04-01)
+
+- push 토큰 계정 전환 보강
+  - 새 Edge Function `manage-device-push-token` 추가/배포
+  - 클라이언트가 `device_push_tokens`를 직접 수정하지 않고, 서버에서 `installation_id` 기준 stale row 정리 후 `sync/deactivate`
+  - 남은 일은 한 기기에서 계정 A/B 전환 QA 확인
+- 저장 바텀시트 UX 개선
+  - 가계부/일정/하객 저장 시트는 저장 성공 시에만 닫힘
+  - 실패 시 시트를 유지하고 입력값 보존
+- 알림센터 unread 정책 수정
+  - `새 활동`은 fetch 시 자동 읽음 처리하지 않음
+  - 활동 카드를 눌렀을 때만 read 처리
+  - 실패 시 optimistic update 복구
+- 가계부 안정화
+  - `expenses` RLS를 예산 항목 없는 지출도 허용하도록 조정
+  - 지출 저장을 client-generated UUID + plain insert로 바꿔 `JsonDecodingException` 재발을 줄임
+  - 지출 필터 기본 기간을 `전체 기간`으로 변경
+  - 예산 화면의 `목표` 문구를 `예산`으로 통일
+- Tools/더미 데이터 정리
+  - `웨딩홀 비교`, `가치관 설문`은 현재 `준비 중인 기능이에요.` 안내만 노출
+  - shared 공용 상태의 `sample()` 더미 데이터 제거
+  - Android smoke test를 실제 최소 상태 생성 방식으로 보강
+- Build 메모
+  - clean 후 `BuildConfig.kt`가 사라져 깨지던 문제를 Gradle 생성 태스크 수정으로 보강
+  - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만 Android debug / Android test assemble / iOS simulator compile은 통과
+
+## 0-1) 이전 메모 (2026-03-31)
 
 - iOS 원격 push 실수신 확인
   - Apple Developer App ID / APNs key / Firebase APNs 업로드 / Xcode capability 설정 후 iPhone 실기기에서 push 수신 확인
@@ -127,9 +153,10 @@
 
 ## 3) 다음 세션에서 바로 할 일 (우선순위)
 
-1. 한 기기 계정 전환 시 push 토큰 누수 방지 로직 점검
-2. 저장 바텀시트가 결과 전에 닫히는 UX 개선
+1. 한 기기 계정 전환 시 push 토큰 누수 QA
+2. 3초 강제 스플래시 완화
 3. Kakao/Google/Apple 로그인 + Android/iOS push 회귀 QA 1회
+4. iOS Firebase 경고(`GoogleService-Info.plist`, `FirebaseApp.configure`) 원인 정리
 
 ## 4) 필수 설정 체크리스트
 

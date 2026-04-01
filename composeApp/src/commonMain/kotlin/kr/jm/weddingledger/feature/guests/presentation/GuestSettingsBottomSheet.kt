@@ -36,11 +36,16 @@ fun GuestSettingsBottomSheet(
     onDismiss: () -> Unit,
     onGuaranteedGuestCountChange: (String) -> Unit,
     onSave: () -> Unit,
+    isSubmitting: Boolean = false,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = {
+            if (!isSubmitting) {
+                onDismiss()
+            }
+        },
         sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = { WeddingLogSheetHandle() },
@@ -53,6 +58,7 @@ fun GuestSettingsBottomSheet(
             WeddingLogSheetHeader(
                 title = "보증인원 설정",
                 onClose = onDismiss,
+                isCloseEnabled = !isSubmitting,
             )
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
@@ -91,6 +97,7 @@ fun GuestSettingsBottomSheet(
 
             Button(
                 onClick = onSave,
+                enabled = !isSubmitting,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -105,7 +112,7 @@ fun GuestSettingsBottomSheet(
                 androidx.compose.material3.Icon(imageVector = Icons.Rounded.Check, contentDescription = null)
                 Spacer(modifier = Modifier.height(0.dp))
                 Text(
-                    text = "보증인원 저장",
+                    text = if (isSubmitting) "저장 중..." else "보증인원 저장",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 10.dp),

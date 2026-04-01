@@ -15,6 +15,7 @@ import kr.jm.weddingledger.feature.notifications.domain.repository.NotificationC
 import kr.jm.weddingledger.feature.notifications.domain.usecase.CancelReminderUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.FetchNotificationFeedUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.FetchScheduledReminderIdsUseCase
+import kr.jm.weddingledger.feature.notifications.domain.usecase.MarkActivityItemsReadUseCase
 import kr.jm.weddingledger.feature.notifications.domain.usecase.ScheduleReminderUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
 
@@ -85,6 +86,68 @@ class NotificationCenterViewModelTest {
         assertEquals(false, state.reminderItems.first().isReminderScheduled)
         assertEquals("리마인더를 취소했습니다.", state.message)
     }
+
+    @Test
+    fun `activity item is marked read only after click`() = runMainDispatcherTest {
+        val repository = FakeNotificationRepositoryForViewModel(
+            feedItems = listOf(
+                NotificationFeedItem(
+                    id = "activity-1",
+                    type = NotificationItemType.PartnerExpenseAdded,
+                    section = NotificationFeedSection.Activity,
+                    title = "새 활동",
+                    subtitle = "방금 추가됨",
+                    detail = "지출이 등록됐어요",
+                    sortKeyEpochMillis = 1L,
+                    isUnread = true,
+                )
+            ),
+            scheduledIds = mutableSetOf(),
+        )
+
+        val viewModel = createViewModel(repository)
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.state.value.activityItems.first().isUnread)
+        assertEquals(emptyList(), repository.markedReadIds)
+
+        viewModel.onAction(NotificationCenterAction.OnClickActivityItem("activity-1"))
+        advanceUntilIdle()
+
+        assertEquals(false, viewModel.state.value.activityItems.first().isUnread)
+        assertEquals(listOf("activity-1"), repository.markedReadIds)
+    }
+
+    @Test
+    fun `mark read failure restores unread state and shows message`() = runMainDispatcherTest {
+        val repository = FakeNotificationRepositoryForViewModel(
+            feedItems = listOf(
+                NotificationFeedItem(
+                    id = "activity-1",
+                    type = NotificationItemType.PartnerExpenseAdded,
+                    section = NotificationFeedSection.Activity,
+                    title = "새 활동",
+                    subtitle = "방금 추가됨",
+                    detail = "지출이 등록됐어요",
+                    sortKeyEpochMillis = 1L,
+                    isUnread = true,
+                )
+            ),
+            scheduledIds = mutableSetOf(),
+        ).apply {
+            markReadResults += NotificationCenterResult.Error("읽음 처리에 실패했습니다.")
+        }
+
+        val viewModel = createViewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.onAction(NotificationCenterAction.OnClickActivityItem("activity-1"))
+        advanceUntilIdle()
+
+        assertEquals(true, viewModel.state.value.activityItems.first().isUnread)
+        assertEquals("읽음 처리에 실패했습니다.", viewModel.state.value.message)
+        assertEquals(listOf("activity-1"), repository.markedReadIds)
+    }
 }
 
 private fun createViewModel(repository: FakeNotificationRepositoryForViewModel): NotificationCenterViewModel {
@@ -93,6 +156,7 @@ private fun createViewModel(repository: FakeNotificationRepositoryForViewModel):
         fetchScheduledReminderIdsUseCase = FetchScheduledReminderIdsUseCase(repository),
         scheduleReminderUseCase = ScheduleReminderUseCase(repository),
         cancelReminderUseCase = CancelReminderUseCase(repository),
+        markActivityItemsReadUseCase = MarkActivityItemsReadUseCase(repository),
     )
 }
 
@@ -101,9 +165,16 @@ private class FakeNotificationRepositoryForViewModel(
     val scheduledIds: MutableSet<String>,
 ) : NotificationCenterRepository {
     val scheduleResults = mutableListOf<NotificationCenterResult<Unit>>()
+    val markReadResults = mutableListOf<NotificationCenterResult<Unit>>()
+    val markedReadIds = mutableListOf<String>()
 
     override suspend fun fetchFeed(): NotificationCenterResult<List<NotificationFeedItem>> {
         return NotificationCenterResult.Success(feedItems)
+    }
+
+    override suspend fun markActivityItemsRead(notificationIds: List<String>): NotificationCenterResult<Unit> {
+        markedReadIds += notificationIds
+        return markReadResults.removeFirstOrNull() ?: NotificationCenterResult.Success(Unit)
     }
 
     override suspend fun scheduleReminder(plan: NotificationReminderPlan): NotificationCenterResult<Unit> {

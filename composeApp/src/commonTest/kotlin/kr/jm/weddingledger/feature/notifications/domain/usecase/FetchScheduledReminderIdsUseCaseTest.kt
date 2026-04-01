@@ -35,6 +35,10 @@ private class FakeScheduledReminderIdsRepository(
         return NotificationCenterResult.Success(Unit)
     }
 
+    override suspend fun markActivityItemsRead(notificationIds: List<String>): NotificationCenterResult<Unit> {
+        return NotificationCenterResult.Success(Unit)
+    }
+
     override suspend fun cancelReminder(notificationId: String): NotificationCenterResult<Unit> {
         return NotificationCenterResult.Success(Unit)
     }

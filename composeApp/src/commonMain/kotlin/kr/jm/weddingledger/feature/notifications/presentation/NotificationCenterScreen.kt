@@ -1,5 +1,6 @@
 package kr.jm.weddingledger.feature.notifications.presentation
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -104,6 +105,7 @@ fun NotificationCenterScreen(
                 items(state.activityItems, key = { it.id }) { item ->
                     NotificationCard(
                         item = item,
+                        onClick = { onAction(NotificationCenterAction.OnClickActivityItem(item.id)) },
                         onClickScheduleReminder = {
                             onAction(NotificationCenterAction.OnClickScheduleReminder(item.id))
                         },
@@ -121,6 +123,7 @@ fun NotificationCenterScreen(
                 items(state.reminderItems, key = { it.id }) { item ->
                     NotificationCard(
                         item = item,
+                        onClick = null,
                         onClickScheduleReminder = {
                             onAction(NotificationCenterAction.OnClickScheduleReminder(item.id))
                         },
@@ -265,6 +268,7 @@ private fun EmptyState(
 @Composable
 private fun NotificationCard(
     item: NotificationItemUi,
+    onClick: (() -> Unit)?,
     onClickScheduleReminder: () -> Unit,
     onClickCancelReminder: () -> Unit,
 ) {
@@ -274,7 +278,12 @@ private fun NotificationCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         shape = MaterialTheme.shapes.extraLarge,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                enabled = onClick != null,
+                onClick = { onClick?.invoke() },
+            ),
     ) {
         Column(
             modifier = Modifier

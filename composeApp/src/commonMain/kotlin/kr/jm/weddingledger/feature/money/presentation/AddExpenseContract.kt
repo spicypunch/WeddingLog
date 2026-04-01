@@ -1,6 +1,9 @@
 package kr.jm.weddingledger.feature.money.presentation
 
 import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.todayIn
+import kotlin.time.Clock
 import kr.jm.weddingledger.feature.money.domain.model.Payer
 import kr.jm.weddingledger.feature.money.domain.model.PaymentMethod
 import kr.jm.weddingledger.feature.onboarding.domain.model.UserRole
@@ -33,25 +36,22 @@ data class AddExpenseUiState(
         get() = amount.trim().isNotEmpty() && selectedCategoryId != null
 
     companion object {
-        fun sample(): AddExpenseUiState = AddExpenseUiState(
-            amount = "",
-            date = LocalDate.parse("2023-10-25"),
-            dateText = "2023.10.25 (수)",
-            categoryOptions = listOf(
-                CategoryOption(id = "cat-1", label = "웨딩홀"),
-                CategoryOption(id = "cat-2", label = "스드메"),
-            ),
-            selectedCategoryId = "cat-1",
-            budgetItemOptions = listOf(
-                BudgetItemOption(id = "budget-1", categoryId = "cat-1", label = "대관료"),
-                BudgetItemOption(id = "budget-2", categoryId = "cat-2", label = "드레스"),
-            ),
-            selectedBudgetItemId = null,
-            paymentMethod = PaymentMethod.Card,
-            payer = Payer.Joint,
-            vendorName = "",
-            memo = "",
-        )
+        fun empty(): AddExpenseUiState {
+            val today = Clock.System.todayIn(TimeZone.currentSystemDefault())
+            return AddExpenseUiState(
+                amount = "",
+                date = today,
+                dateText = today.toString().replace('-', '.'),
+                categoryOptions = emptyList(),
+                selectedCategoryId = null,
+                budgetItemOptions = emptyList(),
+                selectedBudgetItemId = null,
+                paymentMethod = PaymentMethod.Card,
+                payer = Payer.Joint,
+                vendorName = "",
+                memo = "",
+            )
+        }
     }
 }
 

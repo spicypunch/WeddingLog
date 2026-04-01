@@ -4,6 +4,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +28,41 @@ fun GuestsRoute(
     var guestEditorState by remember { mutableStateOf(AddGuestUiState.expectedSample()) }
     var guaranteedGuestCountInput by remember { mutableStateOf("") }
     var pendingDeleteGuestId by remember { mutableStateOf<String?>(null) }
+    var pendingSave by remember { mutableStateOf<GuestsPendingSave?>(null) }
+
+    LaunchedEffect(activeSheet) {
+        if (activeSheet == null) {
+            pendingSave = null
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                GuestsEffect.GuestSaved -> {
+                    pendingSave = null
+                    activeSheet = null
+                }
+
+                GuestsEffect.GuestSaveFailed -> {
+                    if (pendingSave == GuestsPendingSave.Guest) {
+                        pendingSave = null
+                    }
+                }
+
+                GuestsEffect.GuaranteedCountSaved -> {
+                    pendingSave = null
+                    activeSheet = null
+                }
+
+                GuestsEffect.GuaranteedCountSaveFailed -> {
+                    if (pendingSave == GuestsPendingSave.GuaranteedCount) {
+                        pendingSave = null
+                    }
+                }
+            }
+        }
+    }
 
     GuestsScreen(
         state = uiState,
@@ -86,9 +122,15 @@ fun GuestsRoute(
         is GuestsSheet.EditExpected,
         is GuestsSheet.EditGiftLedger,
         -> {
+            val isSubmitting = pendingSave == GuestsPendingSave.Guest
             AddGuestBottomSheet(
                 state = guestEditorState,
-                onDismiss = { activeSheet = null },
+                onDismiss = {
+                    if (!isSubmitting) {
+                        activeSheet = null
+                    }
+                },
+                isSubmitting = isSubmitting,
                 onClickDelete = when (sheet) {
                     is GuestsSheet.EditExpected -> { { pendingDeleteGuestId = sheet.guestId } }
                     is GuestsSheet.EditGiftLedger -> { { pendingDeleteGuestId = sheet.guestId } }
@@ -96,7 +138,11 @@ fun GuestsRoute(
                 },
                 onAction = { act ->
                     when (act) {
-                        AddGuestAction.OnClickClose -> activeSheet = null
+                        AddGuestAction.OnClickClose -> {
+                            if (!isSubmitting) {
+                                activeSheet = null
+                            }
+                        }
                         AddGuestAction.OnClickSave -> {
                             when (sheet) {
                                 GuestsSheet.CreateExpected,
@@ -146,7 +192,7 @@ fun GuestsRoute(
                                     )
                                 }
                             }
-                            activeSheet = null
+                            pendingSave = GuestsPendingSave.Guest
                         }
 
                         is AddGuestAction.OnNameChange -> guestEditorState = guestEditorState.copy(name = act.value)
@@ -163,9 +209,14 @@ fun GuestsRoute(
         }
 
         GuestsSheet.EditGuaranteedCount -> {
+            val isSubmitting = pendingSave == GuestsPendingSave.GuaranteedCount
             GuestSettingsBottomSheet(
                 guaranteedGuestCount = guaranteedGuestCountInput,
-                onDismiss = { activeSheet = null },
+                onDismiss = {
+                    if (!isSubmitting) {
+                        activeSheet = null
+                    }
+                },
                 onGuaranteedGuestCountChange = { guaranteedGuestCountInput = it },
                 onSave = {
                     viewModel.onAction(
@@ -173,8 +224,9 @@ fun GuestsRoute(
                             guaranteedGuestCountInput.toIntOrNull() ?: 0,
                         )
                     )
-                    activeSheet = null
+                    pendingSave = GuestsPendingSave.GuaranteedCount
                 },
+                isSubmitting = isSubmitting,
             )
         }
     }
@@ -202,6 +254,11 @@ fun GuestsRoute(
             },
         )
     }
+}
+
+private enum class GuestsPendingSave {
+    Guest,
+    GuaranteedCount,
 }
 
 private sealed interface GuestsSheet {

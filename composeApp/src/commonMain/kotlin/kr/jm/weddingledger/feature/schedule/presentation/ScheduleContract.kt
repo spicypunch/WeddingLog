@@ -13,15 +13,7 @@ data class ScheduleUiState(
     val calendar: CalendarUiState,
     val checklist: ChecklistUiState,
     val isRefreshing: Boolean = false,
-) {
-    companion object {
-        fun sample(): ScheduleUiState = ScheduleUiState(
-            selectedTab = ScheduleTab.Schedule,
-            calendar = CalendarUiState.sample(),
-            checklist = ChecklistUiState.sample(),
-        )
-    }
-}
+)
 
 data class CalendarUiState(
     val monthLabel: String,
@@ -40,153 +32,7 @@ data class CalendarUiState(
     val searchQuery: String = "",
     val sortType: UpcomingSortType = UpcomingSortType.DateAsc,
     val message: String? = null,
-) {
-    companion object {
-        fun sample(): CalendarUiState = CalendarUiState(
-            monthLabel = "2023년 10월",
-            dayOfWeekLabels = listOf("일", "월", "화", "수", "목", "금", "토"),
-            cells = listOf(
-                CalendarDayCell(id = "p-28", day = 28, inMonth = false, textTone = CalendarDayTextTone.Muted),
-                CalendarDayCell(id = "p-29", day = 29, inMonth = false, textTone = CalendarDayTextTone.Muted),
-                CalendarDayCell(id = "p-30", day = 30, inMonth = false, textTone = CalendarDayTextTone.Muted),
-
-                CalendarDayCell(id = "d-1", day = 1, inMonth = true),
-                CalendarDayCell(id = "d-2", day = 2, inMonth = true),
-                CalendarDayCell(
-                    id = "d-3",
-                    day = 3,
-                    inMonth = true,
-                    textTone = CalendarDayTextTone.Primary,
-                    dotStyle = CalendarDotStyle.Primary,
-                ),
-                CalendarDayCell(id = "d-4", day = 4, inMonth = true),
-                CalendarDayCell(id = "d-5", day = 5, inMonth = true),
-                CalendarDayCell(id = "d-6", day = 6, inMonth = true),
-                CalendarDayCell(id = "d-7", day = 7, inMonth = true),
-                CalendarDayCell(id = "d-8", day = 8, inMonth = true),
-                CalendarDayCell(
-                    id = "d-9",
-                    day = 9,
-                    inMonth = true,
-                    isSelected = true,
-                    textTone = CalendarDayTextTone.Primary,
-                    backgroundTone = CalendarDayBackgroundTone.SoftPrimary,
-                    dotStyle = CalendarDotStyle.Primary,
-                ),
-                CalendarDayCell(id = "d-10", day = 10, inMonth = true),
-                CalendarDayCell(id = "d-11", day = 11, inMonth = true),
-                CalendarDayCell(id = "d-12", day = 12, inMonth = true),
-                CalendarDayCell(id = "d-13", day = 13, inMonth = true),
-                CalendarDayCell(
-                    id = "d-14",
-                    day = 14,
-                    inMonth = true,
-                    dotStyle = CalendarDotStyle.Neutral,
-                ),
-                CalendarDayCell(id = "d-15", day = 15, inMonth = true),
-                CalendarDayCell(id = "d-16", day = 16, inMonth = true),
-                CalendarDayCell(id = "d-17", day = 17, inMonth = true),
-                CalendarDayCell(id = "d-18", day = 18, inMonth = true),
-                CalendarDayCell(id = "d-19", day = 19, inMonth = true),
-                CalendarDayCell(id = "d-20", day = 20, inMonth = true),
-                CalendarDayCell(id = "d-21", day = 21, inMonth = true),
-                CalendarDayCell(id = "d-22", day = 22, inMonth = true),
-                CalendarDayCell(id = "d-23", day = 23, inMonth = true),
-                CalendarDayCell(
-                    id = "d-24",
-                    day = 24,
-                    inMonth = true,
-                    isDDay = true,
-                    dDayLabel = "D-DAY",
-                    textTone = CalendarDayTextTone.OnPrimary,
-                    backgroundTone = CalendarDayBackgroundTone.SolidPrimary,
-                ),
-                CalendarDayCell(id = "d-25", day = 25, inMonth = true),
-                CalendarDayCell(id = "d-26", day = 26, inMonth = true),
-                CalendarDayCell(id = "d-27", day = 27, inMonth = true),
-                CalendarDayCell(id = "d-28", day = 28, inMonth = true),
-                CalendarDayCell(id = "d-29", day = 29, inMonth = true),
-                CalendarDayCell(id = "d-30", day = 30, inMonth = true),
-                CalendarDayCell(id = "d-31", day = 31, inMonth = true),
-            ),
-            upcoming = listOf(
-                UpcomingScheduleItem(
-                    id = "up-1",
-                    source = UpcomingSource.Event,
-                    sourceEntityId = "up-1",
-                    date = LocalDate(2023, 10, 14),
-                    monthAbbr = "OCT",
-                    dayOfMonth = "14",
-                    title = "스튜디오 촬영",
-                    subtitle = "강남구 루브르 스튜디오 · 오후 2:00",
-                    dTagText = "D-10",
-                    tagTone = UpcomingTagTone.Primary,
-                    isCompleted = false,
-                    eventStartTime = "14:00",
-                    eventLocation = "강남구 루브르 스튜디오",
-                ),
-                UpcomingScheduleItem(
-                    id = "up-2",
-                    source = UpcomingSource.Event,
-                    sourceEntityId = "up-2",
-                    date = LocalDate(2023, 10, 9),
-                    monthAbbr = "OCT",
-                    dayOfMonth = "09",
-                    title = "청첩장 모임",
-                    subtitle = "홍대입구역 3번 출구 · 오후 7:00",
-                    dTagText = "D-15",
-                    tagTone = UpcomingTagTone.Primary,
-                    isCompleted = false,
-                    eventStartTime = "19:00",
-                    eventLocation = "홍대입구역 3번 출구",
-                ),
-            ),
-            upcomingTitle = "다가오는 일정",
-            upcomingEmptyText = "예정된 일정이 없어요.",
-            selectedDayTitle = "2023.10.09 일정 (D-15)",
-            selectedDayItems = listOf(
-                UpcomingScheduleItem(
-                    id = "up-2",
-                    source = UpcomingSource.Event,
-                    sourceEntityId = "up-2",
-                    date = LocalDate(2023, 10, 9),
-                    monthAbbr = "10월",
-                    dayOfMonth = "09",
-                    title = "청첩장 모임",
-                    subtitle = "홍대입구역 3번 출구 · 오후 7:00",
-                    dTagText = "D-15",
-                    tagTone = UpcomingTagTone.Primary,
-                    isCompleted = false,
-                    eventStartTime = "19:00",
-                    eventLocation = "홍대입구역 3번 출구",
-                ),
-            ),
-            checklistFocusItems = listOf(
-                ChecklistItem(
-                    id = "focus-1",
-                    dTag = "D-7",
-                    title = "본식 최종 확인 전화",
-                    targetDate = LocalDate(2023, 10, 17),
-                    memo = "웨딩홀 담당자에게 리허설 시간 확인",
-                    subtitle = "D-3 · 2023.10.17 · 마지막 점검",
-                    subtitleTone = ChecklistItemSubtitleTone.Primary,
-                    isDone = false,
-                ),
-                ChecklistItem(
-                    id = "focus-2",
-                    dTag = "D-30",
-                    title = "축가 MR 전달",
-                    targetDate = LocalDate(2023, 10, 24),
-                    memo = null,
-                    subtitle = "D-10 · 2023.10.24 · 본식 준비",
-                    subtitleTone = ChecklistItemSubtitleTone.Muted,
-                    isDone = false,
-                ),
-            ),
-            selectedDayId = "2023-10-09",
-        )
-    }
-}
+)
 
 enum class CalendarDayTextTone {
     Normal,
@@ -275,98 +121,6 @@ data class ChecklistUiState(
 
     companion object {
         fun empty(): ChecklistUiState = ChecklistUiState(groups = emptyList())
-
-        fun sample(): ChecklistUiState = ChecklistUiState(
-            groups = listOf(
-                ChecklistGroup(
-                    id = "d180",
-                    dTag = "D-180",
-                    title = "상견례 및 웨딩홀",
-                    tagStyle = DTagStyle.Primary,
-                    items = listOf(
-                        ChecklistItem(
-                            id = "d180-1",
-                            title = "양가 상견례 일정 조율",
-                            subtitle = "2023.10.15 완료",
-                            subtitleTone = ChecklistItemSubtitleTone.Muted,
-                            isDone = true,
-                        ),
-                        ChecklistItem(
-                            id = "d180-2",
-                            title = "웨딩홀 투어 및 예약",
-                            subtitle = "2023.11.01 완료 · 아펠가모",
-                            subtitleTone = ChecklistItemSubtitleTone.Muted,
-                            isDone = true,
-                        ),
-                    )
-                ),
-                ChecklistGroup(
-                    id = "d100",
-                    dTag = "D-100",
-                    title = "스튜디오 촬영",
-                    tagStyle = DTagStyle.Neutral,
-                    items = listOf(
-                        ChecklistItem(
-                            id = "d100-1",
-                            title = "촬영용 드레스 가봉",
-                            subtitle = "이번 주말 예정",
-                            subtitleTone = ChecklistItemSubtitleTone.Primary,
-                            isDone = false,
-                        ),
-                        ChecklistItem(
-                            id = "d100-2",
-                            title = "헤어 & 메이크업 상담",
-                            subtitle = "청담동 샵 예약 필요",
-                            subtitleTone = ChecklistItemSubtitleTone.Muted,
-                            isDone = false,
-                        ),
-                        ChecklistItem(
-                            id = "d100-3",
-                            title = "스튜디오 예약금 입금",
-                            subtitle = "완료",
-                            subtitleTone = ChecklistItemSubtitleTone.Muted,
-                            isDone = true,
-                        ),
-                    )
-                ),
-                ChecklistGroup(
-                    id = "d30",
-                    dTag = "D-30",
-                    title = "본식 준비",
-                    tagStyle = DTagStyle.Neutral,
-                    items = listOf(
-                        ChecklistItem(
-                            id = "d30-1",
-                            title = "청첩장 모임 시작",
-                            subtitle = "친구 리스트 정리하기",
-                            subtitleTone = ChecklistItemSubtitleTone.Muted,
-                            isDone = false,
-                        ),
-                        ChecklistItem(
-                            id = "d30-2",
-                            title = "부케 선정 및 예약",
-                            subtitle = null,
-                            subtitleTone = ChecklistItemSubtitleTone.Muted,
-                            isDone = false,
-                        ),
-                        ChecklistItem(
-                            id = "d30-3",
-                            title = "축가/사회자 최종 확정",
-                            subtitle = null,
-                            subtitleTone = ChecklistItemSubtitleTone.Muted,
-                            isDone = false,
-                        ),
-                        ChecklistItem(
-                            id = "d30-4",
-                            title = "본식 리허설 일정 확인",
-                            subtitle = null,
-                            subtitleTone = ChecklistItemSubtitleTone.Muted,
-                            isDone = false,
-                        ),
-                    )
-                ),
-            )
-        )
     }
 }
 
@@ -459,4 +213,11 @@ sealed interface ScheduleAction {
     ) : ScheduleAction
     data class OnDeleteScheduleEvent(val id: String) : ScheduleAction
     data class OnDeleteChecklist(val id: String) : ScheduleAction
+}
+
+sealed interface ScheduleEffect {
+    data object ChecklistSaved : ScheduleEffect
+    data object ChecklistSaveFailed : ScheduleEffect
+    data object ScheduleEventSaved : ScheduleEffect
+    data object ScheduleEventSaveFailed : ScheduleEffect
 }

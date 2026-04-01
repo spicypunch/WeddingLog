@@ -160,34 +160,38 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
-val generateBuildConfig by tasks.registering(Sync::class) {
-    val outputDir = layout.buildDirectory.dir("generated/buildconfig/kr/jm/weddingledger/core/config")
-    
-    from(resources.text.fromString(
-        """
-        package kr.jm.weddingledger.core.config
-        
-        object BuildConfig {
-            const val SUPABASE_URL = "$supabaseUrl"
-            const val SUPABASE_ANON_KEY = "$supabaseAnonKey"
-            const val FIREBASE_ANDROID_APPLICATION_ID = "$firebaseAndroidApplicationId"
-            const val FIREBASE_PROJECT_ID = "$firebaseProjectId"
-            const val FIREBASE_API_KEY = "$firebaseApiKey"
-            const val FIREBASE_GCM_SENDER_ID = "$firebaseGcmSenderId"
-            const val KAKAO_NATIVE_APP_KEY = "$kakaoNativeAppKey"
-            const val TERMS_OF_SERVICE_URL = "$termsOfServiceUrl"
-            const val PRIVACY_POLICY_URL = "$privacyPolicyUrl"
-            const val ENABLE_KAKAO_LOGIN = $enableKakaoLogin
-            const val ENABLE_GOOGLE_LOGIN = $enableGoogleLogin
-            const val ENABLE_APPLE_LOGIN = $enableAppleLogin
-            const val APP_VERSION_NAME = "$appVersionName"
-            const val APP_VERSION_CODE = $appVersionCode
-        }
-        """.trimIndent()
-    )) {
-        rename { "BuildConfig.kt" }
+val generateBuildConfig by tasks.registering {
+    val outputFile = layout.buildDirectory.file("generated/buildconfig/kr/jm/weddingledger/core/config/BuildConfig.kt")
+
+    outputs.file(outputFile)
+    notCompatibleWithConfigurationCache("BuildConfig is generated from local.properties at execution time.")
+
+    doLast {
+        val buildConfigFile = outputFile.get().asFile
+        buildConfigFile.parentFile.mkdirs()
+        buildConfigFile.writeText(
+            """
+            package kr.jm.weddingledger.core.config
+
+            object BuildConfig {
+                const val SUPABASE_URL = "$supabaseUrl"
+                const val SUPABASE_ANON_KEY = "$supabaseAnonKey"
+                const val FIREBASE_ANDROID_APPLICATION_ID = "$firebaseAndroidApplicationId"
+                const val FIREBASE_PROJECT_ID = "$firebaseProjectId"
+                const val FIREBASE_API_KEY = "$firebaseApiKey"
+                const val FIREBASE_GCM_SENDER_ID = "$firebaseGcmSenderId"
+                const val KAKAO_NATIVE_APP_KEY = "$kakaoNativeAppKey"
+                const val TERMS_OF_SERVICE_URL = "$termsOfServiceUrl"
+                const val PRIVACY_POLICY_URL = "$privacyPolicyUrl"
+                const val ENABLE_KAKAO_LOGIN = $enableKakaoLogin
+                const val ENABLE_GOOGLE_LOGIN = $enableGoogleLogin
+                const val ENABLE_APPLE_LOGIN = $enableAppleLogin
+                const val APP_VERSION_NAME = "$appVersionName"
+                const val APP_VERSION_CODE = $appVersionCode
+            }
+            """.trimIndent()
+        )
     }
-    into(outputDir)
 }
 
 kotlin.sourceSets.commonMain {

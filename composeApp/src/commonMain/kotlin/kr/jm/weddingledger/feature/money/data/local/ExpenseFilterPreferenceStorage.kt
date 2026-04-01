@@ -45,7 +45,7 @@ object ExpenseFilterPreferenceStorage {
 @Serializable
 data class ExpenseFilterPreferenceLocalState(
     val selectedCategoryId: String? = null,
-    val selectedPeriodFilterName: String = "ThisMonth",
+    val selectedPeriodFilterName: String = "All",
     val selectedStatusFilterName: String = "All",
     val selectedPresetId: String? = null,
     val presetSeed: Int = 1,

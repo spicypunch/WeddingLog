@@ -37,18 +37,51 @@ fun ScheduleRoute(
     val uiState by viewModel.state.collectAsState()
 
     var activeSheet by remember { mutableStateOf<ScheduleSheet?>(null) }
-    var addChecklistState by remember { mutableStateOf(AddChecklistUiState.sample()) }
+    var addChecklistState by remember { mutableStateOf(AddChecklistUiState.empty()) }
     var addChecklistValidationMessage by remember { mutableStateOf<String?>(null) }
-    var addScheduleEventState by remember { mutableStateOf(AddScheduleEventUiState.sample()) }
+    var addScheduleEventState by remember { mutableStateOf(AddScheduleEventUiState.empty()) }
     var selectedEventDetail by remember { mutableStateOf<UpcomingScheduleItem?>(null) }
     var pendingDeleteChecklistId by remember { mutableStateOf<String?>(null) }
     var pendingDeleteScheduleEventId by remember { mutableStateOf<String?>(null) }
     var activeDatePickerTarget by remember { mutableStateOf<DatePickerTarget?>(null) }
+    var pendingSave by remember { mutableStateOf<SchedulePendingSave?>(null) }
 
     LaunchedEffect(activeSheet) {
         if (activeSheet == null) {
             activeDatePickerTarget = null
             addChecklistValidationMessage = null
+            pendingSave = null
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.effect.collect { effect ->
+            when (effect) {
+                ScheduleEffect.ChecklistSaved -> {
+                    pendingSave = null
+                    activeSheet = null
+                    addChecklistValidationMessage = null
+                    activeDatePickerTarget = null
+                }
+
+                ScheduleEffect.ChecklistSaveFailed -> {
+                    if (pendingSave == SchedulePendingSave.Checklist) {
+                        pendingSave = null
+                    }
+                }
+
+                ScheduleEffect.ScheduleEventSaved -> {
+                    pendingSave = null
+                    activeSheet = null
+                    activeDatePickerTarget = null
+                }
+
+                ScheduleEffect.ScheduleEventSaveFailed -> {
+                    if (pendingSave == SchedulePendingSave.ScheduleEvent) {
+                        pendingSave = null
+                    }
+                }
+            }
         }
     }
 
@@ -62,7 +95,7 @@ fun ScheduleRoute(
                     when (uiState.selectedTab) {
                         ScheduleTab.Schedule -> {
                             activeSheet = ScheduleSheet.AddScheduleEventCreate
-                            addScheduleEventState = AddScheduleEventUiState.sample().copy(
+                            addScheduleEventState = AddScheduleEventUiState.empty().copy(
                                 eventDate = selectedDate ?: Clock.System.todayIn(TimeZone.currentSystemDefault()),
                             )
                         }
@@ -70,9 +103,9 @@ fun ScheduleRoute(
                         ScheduleTab.Checklist -> {
                             activeSheet = ScheduleSheet.AddChecklist
                             addChecklistState = if (selectedDate != null) {
-                                AddChecklistUiState.sample().copy(targetDate = selectedDate)
+                                AddChecklistUiState.empty().copy(targetDate = selectedDate)
                             } else {
-                                AddChecklistUiState.sample()
+                                AddChecklistUiState.empty()
                             }
                             addChecklistValidationMessage = null
                         }
@@ -119,15 +152,25 @@ fun ScheduleRoute(
     when (val sheet = activeSheet) {
         null -> Unit
         ScheduleSheet.AddChecklist -> {
+            val isSubmitting = pendingSave == SchedulePendingSave.Checklist
             AddChecklistBottomSheet(
                 state = addChecklistState,
-                onDismiss = { activeSheet = null },
+                onDismiss = {
+                    if (!isSubmitting) {
+                        activeSheet = null
+                    }
+                },
+                isSubmitting = isSubmitting,
                 sheetTitle = "새 할 일",
                 saveButtonText = "체크리스트에 추가",
                 validationMessage = addChecklistValidationMessage,
                 onAction = { act ->
                     when (act) {
-                        AddChecklistAction.OnClickClose -> activeSheet = null
+                        AddChecklistAction.OnClickClose -> {
+                            if (!isSubmitting) {
+                                activeSheet = null
+                            }
+                        }
                         AddChecklistAction.OnClickSave -> {
                             val validationError = validateChecklistInput(addChecklistState)
                             if (validationError != null) {
@@ -143,14 +186,14 @@ fun ScheduleRoute(
                                     memo = addChecklistState.memo,
                                 )
                             )
-                            activeSheet = null
-                            addChecklistState = AddChecklistUiState.sample()
-                            addChecklistValidationMessage = null
+                            pendingSave = SchedulePendingSave.Checklist
                         }
 
                         AddChecklistAction.OnClickTargetDate -> {
-                            activeDatePickerTarget = DatePickerTarget.ChecklistTargetDate
-                            addChecklistValidationMessage = null
+                            if (!isSubmitting) {
+                                activeDatePickerTarget = DatePickerTarget.ChecklistTargetDate
+                                addChecklistValidationMessage = null
+                            }
                         }
 
                         AddChecklistAction.OnClickClearTargetDate -> {
@@ -193,9 +236,15 @@ fun ScheduleRoute(
 
         is ScheduleSheet.EditChecklist -> {
             val editingId = sheet.checklistId
+            val isSubmitting = pendingSave == SchedulePendingSave.Checklist
             AddChecklistBottomSheet(
                 state = addChecklistState,
-                onDismiss = { activeSheet = null },
+                onDismiss = {
+                    if (!isSubmitting) {
+                        activeSheet = null
+                    }
+                },
+                isSubmitting = isSubmitting,
                 sheetTitle = "할 일 수정",
                 saveButtonText = "수정 저장",
                 onClickDelete = {
@@ -204,7 +253,11 @@ fun ScheduleRoute(
                 validationMessage = addChecklistValidationMessage,
                 onAction = { act ->
                     when (act) {
-                        AddChecklistAction.OnClickClose -> activeSheet = null
+                        AddChecklistAction.OnClickClose -> {
+                            if (!isSubmitting) {
+                                activeSheet = null
+                            }
+                        }
                         AddChecklistAction.OnClickSave -> {
                             val validationError = validateChecklistInput(addChecklistState)
                             if (validationError != null) {
@@ -221,14 +274,14 @@ fun ScheduleRoute(
                                     memo = addChecklistState.memo,
                                 )
                             )
-                            activeSheet = null
-                            addChecklistState = AddChecklistUiState.sample()
-                            addChecklistValidationMessage = null
+                            pendingSave = SchedulePendingSave.Checklist
                         }
 
                         AddChecklistAction.OnClickTargetDate -> {
-                            activeDatePickerTarget = DatePickerTarget.ChecklistTargetDate
-                            addChecklistValidationMessage = null
+                            if (!isSubmitting) {
+                                activeDatePickerTarget = DatePickerTarget.ChecklistTargetDate
+                                addChecklistValidationMessage = null
+                            }
                         }
 
                         AddChecklistAction.OnClickClearTargetDate -> {
@@ -270,14 +323,24 @@ fun ScheduleRoute(
         }
 
         ScheduleSheet.AddScheduleEventCreate -> {
+            val isSubmitting = pendingSave == SchedulePendingSave.ScheduleEvent
             AddScheduleEventBottomSheet(
                 state = addScheduleEventState,
-                onDismiss = { activeSheet = null },
+                onDismiss = {
+                    if (!isSubmitting) {
+                        activeSheet = null
+                    }
+                },
+                isSubmitting = isSubmitting,
                 sheetTitle = "새 일정",
                 saveButtonText = "일정 저장",
                 onAction = { act ->
                     when (act) {
-                        AddScheduleEventAction.OnClickClose -> activeSheet = null
+                        AddScheduleEventAction.OnClickClose -> {
+                            if (!isSubmitting) {
+                                activeSheet = null
+                            }
+                        }
                         AddScheduleEventAction.OnClickSave -> {
                             val eventDate = addScheduleEventState.eventDate
                             if (eventDate == null) return@AddScheduleEventBottomSheet
@@ -291,12 +354,13 @@ fun ScheduleRoute(
                                     repeatRule = addScheduleEventState.repeatRule,
                                 )
                             )
-                            activeSheet = null
-                            addScheduleEventState = AddScheduleEventUiState.sample()
+                            pendingSave = SchedulePendingSave.ScheduleEvent
                         }
 
                         AddScheduleEventAction.OnClickEventDate -> {
-                            activeDatePickerTarget = DatePickerTarget.EventDate
+                            if (!isSubmitting) {
+                                activeDatePickerTarget = DatePickerTarget.EventDate
+                            }
                         }
 
                         is AddScheduleEventAction.OnTitleChange -> {
@@ -327,9 +391,15 @@ fun ScheduleRoute(
 
         is ScheduleSheet.EditScheduleEvent -> {
             val editingId = sheet.eventId
+            val isSubmitting = pendingSave == SchedulePendingSave.ScheduleEvent
             AddScheduleEventBottomSheet(
                 state = addScheduleEventState,
-                onDismiss = { activeSheet = null },
+                onDismiss = {
+                    if (!isSubmitting) {
+                        activeSheet = null
+                    }
+                },
+                isSubmitting = isSubmitting,
                 sheetTitle = "일정 수정",
                 saveButtonText = "수정 저장",
                 onClickDelete = {
@@ -337,7 +407,11 @@ fun ScheduleRoute(
                 },
                 onAction = { act ->
                     when (act) {
-                        AddScheduleEventAction.OnClickClose -> activeSheet = null
+                        AddScheduleEventAction.OnClickClose -> {
+                            if (!isSubmitting) {
+                                activeSheet = null
+                            }
+                        }
                         AddScheduleEventAction.OnClickSave -> {
                             val eventDate = addScheduleEventState.eventDate
                             if (eventDate == null) return@AddScheduleEventBottomSheet
@@ -352,12 +426,13 @@ fun ScheduleRoute(
                                     repeatRule = addScheduleEventState.repeatRule,
                                 )
                             )
-                            activeSheet = null
-                            addScheduleEventState = AddScheduleEventUiState.sample()
+                            pendingSave = SchedulePendingSave.ScheduleEvent
                         }
 
                         AddScheduleEventAction.OnClickEventDate -> {
-                            activeDatePickerTarget = DatePickerTarget.EventDate
+                            if (!isSubmitting) {
+                                activeDatePickerTarget = DatePickerTarget.EventDate
+                            }
                         }
 
                         is AddScheduleEventAction.OnTitleChange -> {
@@ -509,10 +584,15 @@ private enum class DatePickerTarget {
     EventDate,
 }
 
+private enum class SchedulePendingSave {
+    Checklist,
+    ScheduleEvent,
+}
+
 private fun parseDateOrNull(value: String): LocalDate? = runCatching { LocalDate.parse(value) }.getOrNull()
 
 private fun UpcomingScheduleItem.toEditState(): AddScheduleEventUiState {
-    return AddScheduleEventUiState.sample().copy(
+    return AddScheduleEventUiState.empty().copy(
         title = title,
         eventDate = date,
         startTime = eventStartTime.orEmpty(),
@@ -523,10 +603,10 @@ private fun UpcomingScheduleItem.toEditState(): AddScheduleEventUiState {
 }
 
 private fun ChecklistItem.toEditState(): AddChecklistUiState {
-    return AddChecklistUiState.sample().copy(
+    return AddChecklistUiState.empty().copy(
         title = title,
         targetDate = targetDate,
-        selectedDTag = dTag?.takeIf { it.isNotBlank() } ?: AddChecklistUiState.sample().selectedDTag,
+        selectedDTag = dTag?.takeIf { it.isNotBlank() } ?: AddChecklistUiState.empty().selectedDTag,
         isCompleted = isDone,
         memo = memo.orEmpty(),
     )

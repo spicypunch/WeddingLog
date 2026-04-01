@@ -35,6 +35,7 @@ data class NotificationItemUi(
 
 sealed interface NotificationCenterAction {
     data object OnRefresh : NotificationCenterAction
+    data class OnClickActivityItem(val itemId: String) : NotificationCenterAction
     data class OnClickScheduleReminder(val itemId: String) : NotificationCenterAction
     data class OnClickCancelReminder(val itemId: String) : NotificationCenterAction
     data object OnClickRequestPermission : NotificationCenterAction

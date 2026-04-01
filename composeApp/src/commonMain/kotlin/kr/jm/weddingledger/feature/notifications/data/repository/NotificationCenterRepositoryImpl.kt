@@ -64,6 +64,35 @@ class NotificationCenterRepositoryImpl(
         return NotificationCenterResult.Success(activityItems + reminderItems)
     }
 
+    override suspend fun markActivityItemsRead(
+        notificationIds: List<String>,
+    ): NotificationCenterResult<Unit> {
+        val user = supabaseClient.auth.currentUserOrNull()
+            ?: return NotificationCenterResult.Error("로그인 후 다시 시도해주세요.")
+        val sanitizedIds = notificationIds.map(String::trim).filter(String::isNotEmpty).distinct()
+        if (sanitizedIds.isEmpty()) {
+            return NotificationCenterResult.Success(Unit)
+        }
+
+        return runCatching {
+            supabaseClient
+                .from("partner_activity_notifications")
+                .update(
+                    buildJsonObject {
+                        put("is_read", JsonPrimitive(true))
+                    }
+                ) {
+                    filter {
+                        eq("target_user_id", user.id)
+                        isIn("id", sanitizedIds)
+                    }
+                }
+            NotificationCenterResult.Success(Unit)
+        }.getOrElse {
+            NotificationCenterResult.Error("읽음 처리에 실패했습니다.")
+        }
+    }
+
     override suspend fun scheduleReminder(
         plan: NotificationReminderPlan,
     ): NotificationCenterResult<Unit> {
@@ -131,24 +160,6 @@ class NotificationCenterRepositoryImpl(
                 .decodeList<PartnerActivityNotificationRowDto>()
         }.getOrElse {
             return emptyList()
-        }
-
-        val unreadIds = rows.filter { !it.isRead }.map { it.id }
-        if (unreadIds.isNotEmpty()) {
-            runCatching {
-                supabaseClient
-                    .from("partner_activity_notifications")
-                    .update(
-                        buildJsonObject {
-                            put("is_read", JsonPrimitive(true))
-                        }
-                    ) {
-                        filter {
-                            eq("target_user_id", user.id)
-                            isIn("id", unreadIds)
-                        }
-                    }
-            }
         }
 
         return rows.mapNotNull { it.toFeedItemOrNull() }
