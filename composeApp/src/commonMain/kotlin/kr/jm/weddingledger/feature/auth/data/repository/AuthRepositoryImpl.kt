@@ -297,11 +297,6 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun deleteAccount(request: DeleteAccountRequest): AuthResult<Unit> {
-        val accessToken = supabaseClient.auth.currentAccessTokenOrNull()
-            ?.trim()
-            .takeUnless { it.isNullOrEmpty() }
-            ?: return AuthResult.Error("로그인이 만료되었습니다. 다시 로그인 후 시도해주세요.")
-
         val provider = request.provider.takeUnless { it == AuthProvider.Unknown }
             ?: getCurrentAuthProvider()
             ?: AuthProvider.Unknown
@@ -314,7 +309,7 @@ class AuthRepositoryImpl(
         }
 
         return try {
-            val response = httpClient.post("${BuildConfig.SUPABASE_URL}/functions/v1/delete-account") {
+            suspend fun executeDeleteRequest(accessToken: String) = httpClient.post("${BuildConfig.SUPABASE_URL}/functions/v1/delete-account") {
                 header("apikey", BuildConfig.SUPABASE_ANON_KEY)
                 header("Authorization", "Bearer $accessToken")
                 setBody(
@@ -325,13 +320,29 @@ class AuthRepositoryImpl(
                 )
             }
 
-            if (response.status != HttpStatusCode.OK) {
-                val body = response.bodyAsText()
-                AuthResult.Error(
-                    parseDeleteAccountErrorMessage(body)
-                        ?: "회원탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요."
+            suspend fun resolveCurrentAccessToken(): String {
+                return supabaseClient.auth.currentAccessTokenOrNull()
+                    ?.trim()
+                    .takeUnless { it.isNullOrEmpty() }
+                    ?: throw IllegalStateException("로그인이 만료되었습니다. 다시 로그인 후 시도해주세요.")
+            }
+
+            var accessToken = resolveCurrentAccessToken()
+            var response = executeDeleteRequest(accessToken)
+            var body = response.bodyAsText()
+
+            if (response.status == HttpStatusCode.Unauthorized && body.contains("Invalid JWT", ignoreCase = true)) {
+                logSupabaseError(
+                    featureName = AUTH_LOG_FEATURE_NAME,
+                    message = "delete_account_invalid_jwt retrying_with_refresh",
                 )
-            } else {
+                supabaseClient.auth.refreshCurrentSession()
+                accessToken = resolveCurrentAccessToken()
+                response = executeDeleteRequest(accessToken)
+                body = response.bodyAsText()
+            }
+
+            if (response.status == HttpStatusCode.OK) {
                 runCatching {
                     supabaseClient.auth.signOut(scope = SignOutScope.LOCAL)
                 }.onFailure { t ->
@@ -339,6 +350,15 @@ class AuthRepositoryImpl(
                     logSupabaseThrowable(t)
                 }
                 AuthResult.Success(Unit)
+            } else {
+                logSupabaseError(
+                    featureName = AUTH_LOG_FEATURE_NAME,
+                    message = "delete_account_failed status=${response.status.value} body=${body.take(200)}",
+                )
+                AuthResult.Error(
+                    parseDeleteAccountErrorMessage(body)
+                        ?: "회원탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요."
+                )
             }
         } catch (t: Throwable) {
             if (t is CancellationException) throw t

@@ -216,6 +216,8 @@ Supabase 대시보드 권장값:
   - 일반 계정은 즉시 탈퇴를 요청하고, Apple 계정은 탈퇴 직전에 네이티브 재인증으로 `authorizationCode`를 다시 받아 서버에 전달합니다.
   - Supabase Edge Function `delete-account`가 `device_push_tokens`, `partner_activity_notifications`, `profiles`, `auth.users`를 순차 삭제합니다.
   - Apple 계정은 서버에서 사용자 provider를 직접 판별해 revoke를 강제하고, `auth.users` 삭제 실패 시 public row를 복구하도록 보강했습니다.
+  - Android에서 Edge Function 게이트웨이의 `Invalid JWT` 응답이 재현되어, 현재 `delete-account`는 `--no-verify-jwt`로 배포하고 함수 내부 `auth.getUser(jwt)` 검증을 사용합니다.
+  - 클라이언트는 `401 Invalid JWT` 응답을 받으면 `refreshCurrentSession()` 후 한 번 자동 재시도합니다.
 - Build 메모
   - clean 후 사라지던 `BuildConfig.kt` 생성 문제를 `composeApp/build.gradle.kts`에서 보강했습니다.
   - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만 Android/iOS 빌드는 성공합니다.

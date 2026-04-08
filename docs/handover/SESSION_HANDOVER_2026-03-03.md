@@ -10,6 +10,10 @@
   - 새 Edge Function `delete-account` 추가/배포 완료
   - 함수는 `device_push_tokens`, `partner_activity_notifications`, `profiles`, `auth.users`를 순차 삭제
   - Apple provider는 서버에서 사용자 정보로 직접 판별하고, `auth.admin.deleteUser()` 실패 시 public row 복구까지 수행
+  - 공용 데이터는 유지하되 `expenses.created_by`, `schedule_events.created_by` 참조는 먼저 `null`로 정리
+  - Android에서 Edge Function 게이트웨이의 `Invalid JWT`가 재현되어 `delete-account`를 `--no-verify-jwt`로 재배포
+  - 함수 내부에서는 그대로 `Authorization` 헤더 + `auth.getUser(jwt)`로 사용자 검증 유지
+  - 클라이언트는 탈퇴 시 `401 Invalid JWT` 응답을 받으면 `refreshCurrentSession()` 후 한 번 자동 재시도
 - iOS AdMob 배너 연결
   - iOS 호스트 앱에 Google Mobile Ads SDK + User Messaging Platform SPM 추가
   - Android/iOS 모두 메인 탭 하단 공통 배너 슬롯 사용

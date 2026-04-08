@@ -216,6 +216,7 @@
   - [ ] `device_push_tokens`에서 탈퇴 사용자 row 삭제
   - [ ] `partner_activity_notifications`에서 `actor_user_id` / `target_user_id` 관련 row 삭제
   - [ ] `auth.users`에서 탈퇴 사용자 삭제
+  - [ ] 탈퇴 사용자가 생성한 `expenses.created_by`, `schedule_events.created_by`가 남은 경우 `null` 처리되는지 확인
 
 ## 9. 미확인 / 보류
 
@@ -226,6 +227,9 @@
 - [ ] iOS Firebase 초기화 경고 정리
   - `The default Firebase app has not yet been configured`
   - `Could not locate configuration file: 'GoogleService-Info.plist'`
+- [ ] `delete-account` 운영 메모 확인
+  - [ ] 현재 함수는 `--no-verify-jwt` 배포 상태이며 함수 내부 `auth.getUser(jwt)`로 인증 검증
+  - [ ] Android에서 탈퇴 시 `401 Invalid JWT` 재현 여부와 자동 refresh 재시도 로그 확인
 
 ## 10. 출시 전 리스크 확인
 

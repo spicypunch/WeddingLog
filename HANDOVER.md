@@ -284,6 +284,9 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - 함수는 `device_push_tokens`, `partner_activity_notifications`, `profiles`, `auth.users`를 순차 삭제
   - Apple 계정 여부는 request body가 아니라 서버의 사용자 정보에서 직접 판별하도록 보강
   - `auth.admin.deleteUser()` 실패 시 먼저 지운 public row를 복구하도록 보강
+  - 공용 데이터는 유지하되 탈퇴 사용자가 남긴 `expenses.created_by`, `schedule_events.created_by` 참조는 먼저 `null`로 끊도록 보강
+  - Android에서 Edge Function 게이트웨이의 `Invalid JWT`가 재현돼 `delete-account`는 현재 `--no-verify-jwt` 배포 상태이며, 함수 내부 `auth.getUser(jwt)`로 인증을 검증
+  - 클라이언트는 탈퇴 요청 시 `401 Invalid JWT`를 받으면 `refreshCurrentSession()` 후 한 번 자동 재시도
 - AdMob 배너 iOS 적용
   - iOS 호스트 앱에 Google Mobile Ads SDK를 연결해 Android와 같은 공통 배너 슬롯이 실제로 표시되도록 구현
   - debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID 사용
