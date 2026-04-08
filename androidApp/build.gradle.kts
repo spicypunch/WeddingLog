@@ -17,6 +17,10 @@ val localProperties = Properties().apply {
 
 val kakaoNativeAppKey: String = localProperties.getProperty("KAKAO_NATIVE_APP_KEY")?.trim().orEmpty()
 val kakaoNativeAppKeySchemeSuffix: String = kakaoNativeAppKey.ifBlank { "disabled" }
+val admobAndroidAppId: String = localProperties.getProperty("ADMOB_ANDROID_APP_ID")
+    ?.trim()
+    .orEmpty()
+    .ifBlank { "ca-app-pub-3940256099942544~3347511713" }
 val appVersionCode: Int = 1
 val appVersionName: String = "1.0.0"
 
@@ -35,8 +39,12 @@ android {
     }
 
     buildTypes {
+        getByName("debug") {
+            manifestPlaceholders["admobApplicationId"] = "ca-app-pub-3940256099942544~3347511713"
+        }
         getByName("release") {
             isMinifyEnabled = false
+            manifestPlaceholders["admobApplicationId"] = admobAndroidAppId
         }
     }
 
@@ -68,6 +76,7 @@ dependencies {
     implementation(project(":composeApp"))
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation(libs.google.mobile.ads)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.koin.android)

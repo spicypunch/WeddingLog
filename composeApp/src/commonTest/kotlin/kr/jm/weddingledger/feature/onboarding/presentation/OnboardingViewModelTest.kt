@@ -7,8 +7,10 @@ import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kr.jm.weddingledger.feature.auth.domain.model.AuthProvider
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
+import kr.jm.weddingledger.feature.auth.domain.model.DeleteAccountRequest
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.onboarding.domain.model.MyProfile
@@ -285,6 +287,10 @@ private class FakeAuthRepositoryForViewModel : AuthRepository {
     }
 
     override suspend fun resetPassword(email: String): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override suspend fun deleteAccount(request: DeleteAccountRequest): AuthResult<Unit> = AuthResult.Error("unused")
+
+    override fun getCurrentAuthProvider(): AuthProvider = AuthProvider.Unknown
 
     override fun isLoggedIn(): Boolean = true
 }

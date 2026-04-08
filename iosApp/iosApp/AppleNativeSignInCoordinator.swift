@@ -36,7 +36,7 @@ final class AppleNativeSignInCoordinator: NSObject {
 
     private func startAppleSignIn() {
         guard !isInProgress else {
-            finish(idToken: nil, rawNonce: nil, errorMessage: "Apple 로그인이 이미 진행 중입니다.")
+            finish(idToken: nil, rawNonce: nil, authorizationCode: nil, errorMessage: "Apple 로그인이 이미 진행 중입니다.")
             return
         }
 
@@ -54,13 +54,14 @@ final class AppleNativeSignInCoordinator: NSObject {
         controller.performRequests()
     }
 
-    private func finish(idToken: String?, rawNonce: String?, errorMessage: String?) {
+    private func finish(idToken: String?, rawNonce: String?, authorizationCode: String?, errorMessage: String?) {
         isInProgress = false
         currentNonce = nil
         DispatchQueue.main.async {
             IosAppleNativeSignInBridgeKt.completeIosAppleNativeSignIn(
                 idToken: idToken,
                 rawNonce: rawNonce,
+                authorizationCode: authorizationCode,
                 errorMessage: errorMessage
             )
         }
@@ -124,7 +125,7 @@ extension AppleNativeSignInCoordinator: ASAuthorizationControllerDelegate {
         didCompleteWithAuthorization authorization: ASAuthorization
     ) {
         guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-            finish(idToken: nil, rawNonce: nil, errorMessage: "Apple 로그인 자격 증명을 확인하지 못했습니다.")
+            finish(idToken: nil, rawNonce: nil, authorizationCode: nil, errorMessage: "Apple 로그인 자격 증명을 확인하지 못했습니다.")
             return
         }
 
@@ -133,23 +134,24 @@ extension AppleNativeSignInCoordinator: ASAuthorizationControllerDelegate {
             let identityToken = String(data: identityTokenData, encoding: .utf8),
             !identityToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else {
-            finish(idToken: nil, rawNonce: nil, errorMessage: "Apple ID 토큰이 비어 있습니다.")
+            finish(idToken: nil, rawNonce: nil, authorizationCode: nil, errorMessage: "Apple ID 토큰이 비어 있습니다.")
             return
         }
 
         guard let nonce = currentNonce, !nonce.isEmpty else {
-            finish(idToken: nil, rawNonce: nil, errorMessage: "Apple 로그인 nonce를 확인하지 못했습니다.")
+            finish(idToken: nil, rawNonce: nil, authorizationCode: nil, errorMessage: "Apple 로그인 nonce를 확인하지 못했습니다.")
             return
         }
 
-        finish(idToken: identityToken, rawNonce: nonce, errorMessage: nil)
+        let authorizationCode = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
+        finish(idToken: identityToken, rawNonce: nonce, authorizationCode: authorizationCode, errorMessage: nil)
     }
 
     func authorizationController(
         controller: ASAuthorizationController,
         didCompleteWithError error: Error
     ) {
-        finish(idToken: nil, rawNonce: nil, errorMessage: userMessage(for: error))
+        finish(idToken: nil, rawNonce: nil, authorizationCode: nil, errorMessage: userMessage(for: error))
     }
 }
 

@@ -103,6 +103,9 @@ fun App() {
                             signOutUseCase()
                         }
                     },
+                    onAccountDeleted = {
+                        authInitialMessage = AuthMessage.Info("회원탈퇴가 완료되었습니다.")
+                    },
                 )
             }
         }

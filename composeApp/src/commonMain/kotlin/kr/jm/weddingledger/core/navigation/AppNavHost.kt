@@ -24,6 +24,7 @@ fun AppNavHost(
     themeStyle: WeddingLogThemeStyle,
     onThemeStyleChange: (WeddingLogThemeStyle) -> Unit,
     onLogout: () -> Unit,
+    onAccountDeleted: () -> Unit,
 ) {
     NavHost(
         navController = navController,
@@ -121,6 +122,7 @@ fun AppNavHost(
                 email = email,
                 onBack = { navController.popBackStack() },
                 onLogout = onLogout,
+                onAccountDeleted = onAccountDeleted,
             )
         }
         composable(AppRoutes.AppInfo) {

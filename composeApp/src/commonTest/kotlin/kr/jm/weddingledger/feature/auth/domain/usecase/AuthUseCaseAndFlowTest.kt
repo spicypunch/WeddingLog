@@ -8,9 +8,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kr.jm.weddingledger.feature.auth.domain.model.AuthProvider
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 import kr.jm.weddingledger.feature.auth.domain.model.AuthUser
+import kr.jm.weddingledger.feature.auth.domain.model.DeleteAccountRequest
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 
 class AuthUseCaseAndFlowTest {
@@ -154,6 +156,10 @@ private class FakeAuthRepository : AuthRepository {
         lastResetPasswordEmail = email
         return AuthResult.Success(Unit)
     }
+
+    override suspend fun deleteAccount(request: DeleteAccountRequest): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override fun getCurrentAuthProvider(): AuthProvider = AuthProvider.Unknown
 
     override fun isLoggedIn(): Boolean = authStateFlow.value is AuthState.Authenticated
 }

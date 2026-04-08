@@ -6,10 +6,12 @@ import kr.jm.weddingledger.feature.auth.data.platform.createKakaoNativeSignInCli
 import kr.jm.weddingledger.feature.auth.domain.usecase.HandleAuthDeepLinkUseCase
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 import kr.jm.weddingledger.feature.auth.domain.usecase.GetCurrentUserUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.GetCurrentAuthProviderUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ObserveAuthStateUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResendSignUpVerificationEmailUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResetPasswordUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SendEmailOtpUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.DeleteAccountUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithAppleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithGoogleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithKakaoUseCase
@@ -24,7 +26,7 @@ import org.koin.dsl.module
 val authModule = module {
     single { createAppleNativeSignInClient() }
     single { createKakaoNativeSignInClient() }
-    single<AuthRepository> { AuthRepositoryImpl(get(), get(), get()) }
+    single<AuthRepository> { AuthRepositoryImpl(get(), get(), get(), get()) }
     
     factory { SignUpUseCase(get()) }
     factory { SignInUseCase(get()) }
@@ -38,7 +40,9 @@ val authModule = module {
     factory { SendEmailOtpUseCase(get()) }
     factory { VerifyEmailOtpUseCase(get()) }
     factory { GetCurrentUserUseCase(get()) }
+    factory { GetCurrentAuthProviderUseCase(get()) }
     factory { ObserveAuthStateUseCase(get()) }
+    factory { DeleteAccountUseCase(get()) }
 
     viewModel {
         AuthViewModel(

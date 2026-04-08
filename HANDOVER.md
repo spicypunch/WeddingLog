@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-04-01  
+마지막 갱신: 2026-04-08  
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -72,6 +72,12 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - 알림센터 `새 활동`에 상대방 활동이 뜨는지
    - Android는 실제 OS push까지 오는지 확인
    - iOS도 실제 OS push까지 오는지 교차 확인
+9. **회원탈퇴 QA**
+   - Android에서 Google/Kakao 계정 회원탈퇴
+   - iOS에서 Apple 계정 회원탈퇴
+   - 탈퇴 후 로그인 화면으로 복귀하는지
+   - 탈퇴한 계정 세션으로 재진입되지 않는지
+   - `profiles`, `device_push_tokens`, `partner_activity_notifications`, `auth.users` 정리 확인
 
 ### Windows 컴퓨터에서 우선 진행할 작업
 
@@ -154,6 +160,9 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - 프로필/초대코드 실데이터 로드
   - 초대코드 복사 동작
   - 프로필 수정/계정 관리/앱 정보 화면 연결
+  - 계정 관리 화면에서 회원탈퇴 v1 지원
+    - 일반 계정은 바로 삭제 요청
+    - Apple 계정은 탈퇴 직전에 네이티브 재인증 후 `authorizationCode`를 서버에 전달
   - 알림 설정 항목에서 OS 앱 알림 설정 화면 바로 열기(실패 시 알림센터 폴백)
   - 앱 버전 표기 BuildConfig 동적화(`APP_VERSION_NAME`, `APP_VERSION_CODE`)
   - 테마 영속화(DataStore) 유지
@@ -168,6 +177,10 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - 웨딩홀 비교 결과 공유(Top 결과 텍스트 공유) 지원
   - 즐겨찾기 우선 정렬 + 추천 점수 규칙 강화
   - `웨딩홀 비교`, `가치관 설문`은 현재 진입 시 `준비 중인 기능이에요.` 안내 후 대기
+- Ads:
+  - Android/iOS 메인 탭 하단에 공통 AdMob 배너 슬롯 연결
+  - debug 빌드는 테스트 광고 ID, release 빌드는 실제 광고 ID 사용
+  - iOS 호스트 앱에도 Google Mobile Ads + User Messaging Platform SPM 연결 완료
 - 테스트:
   - `commonTest` 대폭 확장 (도메인/usecase/flow + ViewModel 레이어)
   - `androidInstrumentedTest` UI smoke 테스트 유지(Auth/Home/Guests/Money/Schedule/Settings/Notifications/Onboarding/Tools)
@@ -260,6 +273,26 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 - Build/Gradle
   - clean 후 `BuildConfig.kt`가 사라져 깨지던 문제를 `composeApp/build.gradle.kts`의 생성 태스크 수정으로 보강
   - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만, Android debug / Android test assemble / iOS simulator compile은 모두 통과
+
+## 1-5) 오늘 추가 변경 (2026-04-08)
+
+- 회원탈퇴 v1 구현/배포
+  - `설정 > 계정 관리`에 파괴적 `회원탈퇴` 섹션 추가
+  - 1차 경고 다이얼로그 후 최종 탈퇴 요청 구조 적용
+  - Apple 계정은 탈퇴 직전에 네이티브 `AuthenticationServices` 재인증으로 `authorizationCode`를 다시 받아 서버에 전달
+  - 새 Supabase Edge Function `delete-account` 추가/배포 완료
+  - 함수는 `device_push_tokens`, `partner_activity_notifications`, `profiles`, `auth.users`를 순차 삭제
+  - Apple 계정 여부는 request body가 아니라 서버의 사용자 정보에서 직접 판별하도록 보강
+  - `auth.admin.deleteUser()` 실패 시 먼저 지운 public row를 복구하도록 보강
+- AdMob 배너 iOS 적용
+  - iOS 호스트 앱에 Google Mobile Ads SDK를 연결해 Android와 같은 공통 배너 슬롯이 실제로 표시되도록 구현
+  - debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID 사용
+  - 현재 메인 탭에서만 배너가 보이고 입력/설정/온보딩 화면은 제외
+- 검증
+  - `./gradlew :composeApp:allTests` 성공
+  - `./gradlew :androidApp:assembleDebug` 성공
+  - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO build` 성공
+  - 주의: `embedAndSignAppleFrameworkForXcode`는 Xcode 환경 밖에서 단독 실행하면 `Could not infer iOS target architectures`로 실패할 수 있음
 - 빌드/테스트
   - `./gradlew :androidApp:assembleDebug` 성공
   - `./gradlew :composeApp:assembleAndroidTest` 성공

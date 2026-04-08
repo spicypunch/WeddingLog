@@ -1,8 +1,24 @@
 # Session Handover (2026-03-03) - Kakao Native Login + Auth Refactor
 
-업데이트: 2026-04-01
+업데이트: 2026-04-08
 
-## 0) 최신 메모 (2026-04-01)
+## 0) 최신 메모 (2026-04-08)
+
+- 회원탈퇴 v1 구현/배포
+  - `설정 > 계정 관리`에서 회원탈퇴를 시작할 수 있도록 UI/VM 추가
+  - Apple 계정은 탈퇴 직전에 네이티브 재인증으로 `authorizationCode`를 다시 받아 서버에 전달
+  - 새 Edge Function `delete-account` 추가/배포 완료
+  - 함수는 `device_push_tokens`, `partner_activity_notifications`, `profiles`, `auth.users`를 순차 삭제
+  - Apple provider는 서버에서 사용자 정보로 직접 판별하고, `auth.admin.deleteUser()` 실패 시 public row 복구까지 수행
+- iOS AdMob 배너 연결
+  - iOS 호스트 앱에 Google Mobile Ads SDK + User Messaging Platform SPM 추가
+  - Android/iOS 모두 메인 탭 하단 공통 배너 슬롯 사용
+  - debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID 사용
+- 빌드 메모
+  - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO build` 성공
+  - `embedAndSignAppleFrameworkForXcode`는 Xcode 환경 밖에서 단독 실행하면 `Could not infer iOS target architectures`로 실패할 수 있음
+
+## 0-1) 이전 메모 (2026-04-01)
 
 - push 토큰 계정 전환 보강
   - 새 Edge Function `manage-device-push-token` 추가/배포
@@ -28,7 +44,7 @@
   - clean 후 `BuildConfig.kt`가 사라져 깨지던 문제를 Gradle 생성 태스크 수정으로 보강
   - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만 Android debug / Android test assemble / iOS simulator compile은 통과
 
-## 0-1) 이전 메모 (2026-03-31)
+## 0-2) 이전 메모 (2026-03-31)
 
 - iOS 원격 push 실수신 확인
   - Apple Developer App ID / APNs key / Firebase APNs 업로드 / Xcode capability 설정 후 iPhone 실기기에서 push 수신 확인
@@ -43,7 +59,7 @@
 - 현재 남은 iOS 메모
   - Firebase `GoogleService-Info.plist` 관련 경고 로그는 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실수신은 모두 성공
 
-## 0-0) 이전 메모 (2026-03-22)
+## 0-3) 이전 메모 (2026-03-22)
 
 - 홈 결산 카드 정리
   - 큰 금액에서도 사용률 칩이 세로로 찌그러지지 않도록 금액 아래 행으로 이동
@@ -61,7 +77,7 @@
   - iOS `iosApp/Configuration/Config.xcconfig` Firebase 값
   - Supabase secret `FCM_SERVICE_ACCOUNT_JSON`
 
-## 0-1) 추가 메모 (2026-03-29)
+## 0-4) 추가 메모 (2026-03-29)
 
 - Android 파트너 활동 push는 실제 수신까지 확인함
   - FCM 토큰 등록 성공
@@ -87,7 +103,7 @@
 - iOS는 Firebase 값 반영 구조까지만 완료
   - Apple Developer 계정 + APNs capability가 준비돼야 원격 push / Apple 로그인까지 완결 가능
 
-## 0-2) 이전 메모 (2026-03-16)
+## 0-5) 이전 메모 (2026-03-16)
 
 - Android Studio 업데이트 후 IDE에서 `convertPbxprojToJson` / `plutil` 오류가 날 수 있었음.
   - 프로젝트 자체 문제는 아니었고, 터미널에서 Android Studio를 실행하면 정상 sync/실행됨.

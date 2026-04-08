@@ -6,8 +6,10 @@ import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kr.jm.weddingledger.feature.auth.domain.model.AuthProvider
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
+import kr.jm.weddingledger.feature.auth.domain.model.DeleteAccountRequest
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 
 class ResendSignUpVerificationEmailUseCaseTest {
@@ -80,6 +82,10 @@ private class FakeAuthRepositoryForResend : AuthRepository {
     override suspend fun signOut(): AuthResult<Unit> = AuthResult.Success(Unit)
 
     override suspend fun resetPassword(email: String): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override suspend fun deleteAccount(request: DeleteAccountRequest): AuthResult<Unit> = AuthResult.Success(Unit)
+
+    override fun getCurrentAuthProvider(): AuthProvider = AuthProvider.Unknown
 
     override fun isLoggedIn(): Boolean = false
 }

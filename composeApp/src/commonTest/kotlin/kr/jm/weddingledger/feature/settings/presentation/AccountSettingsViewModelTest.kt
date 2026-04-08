@@ -5,9 +5,14 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kr.jm.weddingledger.feature.auth.domain.model.AuthProvider
+import kr.jm.weddingledger.feature.auth.domain.model.DeleteAccountRequest
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
+import kr.jm.weddingledger.feature.auth.domain.usecase.DeleteAccountUseCase
+import kr.jm.weddingledger.feature.auth.domain.usecase.GetCurrentAuthProviderUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResendSignUpVerificationEmailUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResetPasswordUseCase
 import kr.jm.weddingledger.test.runMainDispatcherTest
@@ -51,6 +56,47 @@ class AccountSettingsViewModelTest {
         assertEquals(1, repository.resendCallCount)
         assertEquals("인증 메일을 다시 보냈습니다. 메일함을 확인해주세요.", viewModel.state.value.message)
     }
+
+    @Test
+    fun `click delete account opens confirm dialog`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForAccountSettings()
+        val viewModel = createViewModel(email = "user@weddinglog.app", repository = repository)
+
+        viewModel.onAction(AccountSettingsAction.OnClickDeleteAccount)
+
+        assertTrue(viewModel.state.value.showDeleteConfirm)
+    }
+
+    @Test
+    fun `delete account success emits deleted effect`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForAccountSettings().apply {
+            authProvider = AuthProvider.Google
+            deleteAccountResult = AuthResult.Success(Unit)
+        }
+        val viewModel = createViewModel(email = "user@weddinglog.app", repository = repository)
+        viewModel.onAction(AccountSettingsAction.OnConfirmDeleteAccount)
+        advanceUntilIdle()
+
+        assertEquals(1, repository.deleteAccountCallCount)
+        assertEquals(AuthProvider.Google, repository.deleteAccountRequests.single().provider)
+        assertEquals(false, viewModel.state.value.isDeleting)
+        assertEquals(false, viewModel.state.value.showDeleteConfirm)
+        assertEquals(null, viewModel.state.value.message)
+    }
+
+    @Test
+    fun `delete account failure shows message and keeps user signed in`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForAccountSettings().apply {
+            deleteAccountResult = AuthResult.Error("회원탈퇴에 실패했습니다.")
+        }
+        val viewModel = createViewModel(email = "user@weddinglog.app", repository = repository)
+
+        viewModel.onAction(AccountSettingsAction.OnConfirmDeleteAccount)
+        advanceUntilIdle()
+
+        assertEquals("회원탈퇴에 실패했습니다.", viewModel.state.value.message)
+        assertEquals(false, viewModel.state.value.isDeleting)
+    }
 }
 
 private fun createViewModel(
@@ -61,6 +107,8 @@ private fun createViewModel(
         email = email,
         resetPasswordUseCase = ResetPasswordUseCase(repository),
         resendSignUpVerificationEmailUseCase = ResendSignUpVerificationEmailUseCase(repository),
+        getCurrentAuthProviderUseCase = GetCurrentAuthProviderUseCase(repository),
+        deleteAccountUseCase = DeleteAccountUseCase(repository),
     )
 }
 
@@ -69,9 +117,13 @@ private class FakeAuthRepositoryForAccountSettings : AuthRepository {
 
     var resetPasswordResult: AuthResult<Unit> = AuthResult.Success(Unit)
     var resendResult: AuthResult<Unit> = AuthResult.Success(Unit)
+    var deleteAccountResult: AuthResult<Unit> = AuthResult.Success(Unit)
+    var authProvider: AuthProvider = AuthProvider.Unknown
 
     var resetPasswordCallCount: Int = 0
     var resendCallCount: Int = 0
+    var deleteAccountCallCount: Int = 0
+    val deleteAccountRequests = mutableListOf<DeleteAccountRequest>()
 
     override suspend fun handleAuthDeepLink(url: String): AuthResult<Unit> = AuthResult.Success(Unit)
 
@@ -100,6 +152,14 @@ private class FakeAuthRepositoryForAccountSettings : AuthRepository {
         resetPasswordCallCount += 1
         return resetPasswordResult
     }
+
+    override suspend fun deleteAccount(request: DeleteAccountRequest): AuthResult<Unit> {
+        deleteAccountCallCount += 1
+        deleteAccountRequests += request
+        return deleteAccountResult
+    }
+
+    override fun getCurrentAuthProvider(): AuthProvider = authProvider
 
     override fun isLoggedIn(): Boolean = false
 }

@@ -14,6 +14,8 @@ val settingsModule = module {
             email = email,
             resetPasswordUseCase = get(),
             resendSignUpVerificationEmailUseCase = get(),
+            getCurrentAuthProviderUseCase = get(),
+            deleteAccountUseCase = get(),
         )
     }
 }

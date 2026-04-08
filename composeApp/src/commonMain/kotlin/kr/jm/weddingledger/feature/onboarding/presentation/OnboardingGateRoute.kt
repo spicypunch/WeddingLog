@@ -1,16 +1,22 @@
 package kr.jm.weddingledger.feature.onboarding.presentation
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import kr.jm.weddingledger.core.ads.TestBannerAd
+import kr.jm.weddingledger.core.ads.shouldShowTestBanner
+import kr.jm.weddingledger.core.ads.syncHostBannerVisibility
 import kr.jm.weddingledger.core.designsystem.WeddingLogThemeStyle
 import kr.jm.weddingledger.core.navigation.AppBottomBar
 import kr.jm.weddingledger.core.navigation.AppNavHost
@@ -24,6 +30,7 @@ fun OnboardingGateRoute(
     holdSplash: Boolean,
     onThemeStyleChange: (WeddingLogThemeStyle) -> Unit,
     onLogout: () -> Unit,
+    onAccountDeleted: () -> Unit,
 ) {
     val viewModel: OnboardingViewModel = koinViewModel()
     val uiState by viewModel.state.collectAsState()
@@ -35,6 +42,7 @@ fun OnboardingGateRoute(
                 themeStyle = themeStyle,
                 onThemeStyleChange = onThemeStyleChange,
                 onLogout = onLogout,
+                onAccountDeleted = onAccountDeleted,
             )
             OnboardingStep.EntryChoice,
             OnboardingStep.ProfileSetup,
@@ -51,9 +59,21 @@ private fun MainAppScaffold(
     themeStyle: WeddingLogThemeStyle,
     onThemeStyleChange: (WeddingLogThemeStyle) -> Unit,
     onLogout: () -> Unit,
+    onAccountDeleted: () -> Unit,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
+    val shouldShowBanner = shouldShowTestBanner(backStackEntry?.destination?.route)
+
+    LaunchedEffect(shouldShowBanner) {
+        syncHostBannerVisibility(shouldShowBanner)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            syncHostBannerVisibility(false)
+        }
+    }
 
     // Avoid recreating lambda in bottom bar recompositions.
     val onNavigate: (kr.jm.weddingledger.core.navigation.TopLevelDestination) -> Unit = remember(navController) {
@@ -71,10 +91,15 @@ private fun MainAppScaffold(
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         bottomBar = {
-            AppBottomBar(
-                currentRoute = backStackEntry?.destination?.route,
-                onNavigate = onNavigate,
-            )
+            Column {
+                if (shouldShowBanner) {
+                    TestBannerAd()
+                }
+                AppBottomBar(
+                    currentRoute = backStackEntry?.destination?.route,
+                    onNavigate = onNavigate,
+                )
+            }
         }
     ) { innerPadding ->
         Box(
@@ -87,6 +112,7 @@ private fun MainAppScaffold(
                 themeStyle = themeStyle,
                 onThemeStyleChange = onThemeStyleChange,
                 onLogout = onLogout,
+                onAccountDeleted = onAccountDeleted,
             )
         }
     }

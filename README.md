@@ -36,14 +36,23 @@ FIREBASE_GCM_SENDER_ID=...
 KAKAO_NATIVE_APP_KEY=...
 TERMS_OF_SERVICE_URL=https://example.com/terms
 PRIVACY_POLICY_URL=https://example.com/privacy
+ADMOB_ANDROID_APP_ID=ca-app-pub-3940256099942544~3347511713
+ADMOB_ANDROID_BANNER_UNIT_ID=ca-app-pub-3940256099942544/9214589741
+ADMOB_IOS_APP_ID=ca-app-pub-3940256099942544~1458002511
+ADMOB_IOS_BANNER_UNIT_ID=ca-app-pub-3940256099942544/2435281174
 
 # 소셜 로그인 노출/활성 토글 (기본값: Kakao/Google=true, Apple=false)
 ENABLE_KAKAO_LOGIN=true
 ENABLE_GOOGLE_LOGIN=true
 ENABLE_APPLE_LOGIN=false
+ENABLE_TEST_AD_BANNER=false
 ```
 
 - `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
+- `ADMOB_ANDROID_APP_ID`는 Android release 빌드용 AdMob App ID입니다. debug 빌드는 공식 테스트 App ID를 사용합니다.
+- `ADMOB_ANDROID_BANNER_UNIT_ID`는 Android release 빌드용 배너 광고 단위 ID입니다. debug 빌드는 공식 테스트 배너 unit ID를 사용합니다.
+- `ADMOB_IOS_APP_ID`는 iOS release 빌드용 AdMob App ID입니다. debug 빌드는 공식 테스트 App ID를 사용합니다.
+- `ADMOB_IOS_BANNER_UNIT_ID`는 iOS release 빌드용 배너 광고 단위 ID입니다. debug 빌드는 공식 테스트 배너 unit ID를 사용합니다.
 - `TERMS_OF_SERVICE_URL`, `PRIVACY_POLICY_URL`은 로그인 화면에서 여는 실제 약관/개인정보 처리방침 문서 URL입니다.
 - 약관 동의는 로그인 화면에서 최초 1회만 받고, 현재 약관 버전 동의 상태를 DataStore에 저장합니다.
 - 파트너 활동 푸시까지 쓰려면 Android Firebase 앱의 `Application ID`, `Project ID`, `Web API Key`, `Sender ID`를 `local.properties`에 넣어야 합니다.
@@ -57,12 +66,15 @@ ENABLE_APPLE_LOGIN=false
 - Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - iOS 카카오 로그인도 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - `ENABLE_APPLE_LOGIN=false`면 앱에서 Apple 로그인 버튼/동작이 비활성화됩니다.
+- `ENABLE_TEST_AD_BANNER=true`면 Android/iOS 메인 탭 화면 하단에 배너를 표시합니다. debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID를 사용합니다.
 - iOS Apple 로그인은 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로를 사용합니다.
 - Apple 로그인을 활성화하려면 Supabase Apple Provider `Client IDs`에 아래 두 값을 함께 넣어야 합니다.
   - `kr.jm.weddingledger.service`
   - `kr.jm.weddingledger.WeddingLedger`
 - iOS 타깃은 Xcode에서 `Sign In with Apple`, `Push Notifications`, `Background Modes > Remote notifications` capability가 켜져 있어야 합니다.
 - Apple Developer 유료 계정 / Supabase Apple Provider / Xcode capability 설정이 끝나면 `ENABLE_APPLE_LOGIN=true`로 바로 활성화할 수 있습니다.
+- 회원탈퇴 v1은 새 Supabase Edge Function `delete-account`를 사용합니다.
+  - Apple 계정 revoke까지 포함하려면 Supabase secret `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_CLIENT_ID`, `APPLE_PRIVATE_KEY`가 설정돼 있어야 합니다.
 
 ## 빌드/테스트
 
@@ -162,7 +174,7 @@ Supabase 대시보드 권장값:
   - `device_push_tokens`, `partner_activity_notifications`
   - `join_wedding`는 원격 DB 함수에서 제3자 합류를 차단하도록 직접 보강
 
-## 최근 안정화/푸시 반영 (2026-04-01)
+## 최근 안정화/푸시 반영 (2026-04-08)
 
 - Android 파트너 활동 push
   - 실기기에서 FCM 토큰 등록, Edge Function 발송, foreground 수신, 시스템 알림 표시까지 확인
@@ -195,6 +207,15 @@ Supabase 대시보드 권장값:
 - Tools / 샘플 데이터 정리
   - `웨딩홀 비교`, `가치관 설문`은 현재 클릭 시 `준비 중인 기능이에요.` 안내를 보여줍니다.
   - shared 공용 상태의 `sample()` 더미 데이터를 제거하고, smoke test는 실제 최소 상태 생성 방식으로 정리했습니다.
+- AdMob 배너 1차 구현
+  - Android/iOS 메인 탭 하단에 공통 배너 슬롯을 추가했습니다.
+  - debug 빌드는 공식 테스트 App ID / 배너 unit ID를 사용합니다.
+  - release 빌드는 `local.properties`와 `iosApp/Configuration/Config.local.xcconfig`의 실제 광고 ID를 사용합니다.
+- 회원탈퇴 v1
+  - `설정 > 계정 관리`에서 회원탈퇴를 시작할 수 있습니다.
+  - 일반 계정은 즉시 탈퇴를 요청하고, Apple 계정은 탈퇴 직전에 네이티브 재인증으로 `authorizationCode`를 다시 받아 서버에 전달합니다.
+  - Supabase Edge Function `delete-account`가 `device_push_tokens`, `partner_activity_notifications`, `profiles`, `auth.users`를 순차 삭제합니다.
+  - Apple 계정은 서버에서 사용자 provider를 직접 판별해 revoke를 강제하고, `auth.users` 삭제 실패 시 public row를 복구하도록 보강했습니다.
 - Build 메모
   - clean 후 사라지던 `BuildConfig.kt` 생성 문제를 `composeApp/build.gradle.kts`에서 보강했습니다.
   - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만 Android/iOS 빌드는 성공합니다.

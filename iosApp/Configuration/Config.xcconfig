@@ -13,6 +13,8 @@ FIREBASE_IOS_GOOGLE_APP_ID=
 FIREBASE_PROJECT_ID=
 FIREBASE_API_KEY=
 FIREBASE_GCM_SENDER_ID=
+ADMOB_IOS_APP_ID_RELEASE=
+ADMOB_IOS_BANNER_UNIT_ID_RELEASE=
 
 // Local-only overrides for secrets. This file is ignored by git.
 // Use Config.local.xcconfig on each machine to keep Firebase values out of commits.

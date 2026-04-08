@@ -1,6 +1,6 @@
 # QA 체크리스트
 
-마지막 갱신: 2026-04-01
+마지막 갱신: 2026-04-08
 
 ## 0. 준비
 
@@ -26,6 +26,9 @@
   - [ ] `./gradlew :composeApp:assembleAndroidTest`
 - [ ] iOS simulator 빌드 성공
   - [ ] `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' build -quiet`
+- [ ] AdMob 테스트/실광고 설정값 확인
+  - [ ] Android `ADMOB_ANDROID_APP_ID`, `ADMOB_ANDROID_BANNER_UNIT_ID`
+  - [ ] iOS `Config.local.xcconfig`의 `ADMOB_IOS_APP_ID_RELEASE`, `ADMOB_IOS_BANNER_UNIT_ID_RELEASE`
 - [ ] 테스트 계정 2개 준비
   - [ ] 신랑측 계정 1개
   - [ ] 신부측 계정 1개
@@ -45,6 +48,16 @@
   - [ ] 홈 진입 및 세션 생성 확인
 - [ ] iOS Google 로그인 성공
 - [ ] iOS Kakao 로그인 성공
+
+### 1-4. 회원탈퇴
+- [ ] Android Google 계정 회원탈퇴 성공
+- [ ] Android Kakao 계정 회원탈퇴 성공
+- [ ] iOS Apple 계정 회원탈퇴 성공
+  - [ ] Apple 재인증 시트가 다시 뜨는지 확인
+  - [ ] 재인증 완료 후 탈퇴가 마무리되는지 확인
+- [ ] 탈퇴 성공 후 로그인 화면으로 복귀하는지 확인
+- [ ] 탈퇴한 계정 세션으로 앱 재실행 시 자동 로그인되지 않는지 확인
+- [ ] 탈퇴 실패 시 로그인 상태가 유지되고 오류 메시지가 보이는지 확인
 
 ### 1-2. 이메일 OTP
 - [ ] 이메일 OTP 로그인 요청 성공
@@ -161,6 +174,7 @@
 
 - [ ] 프로필 수정 저장 확인
 - [ ] 계정 관리 화면 진입 확인
+- [ ] 계정 관리 화면에서 `회원탈퇴` 섹션 노출 확인
 - [ ] 앱 정보 화면 진입 확인
 - [ ] 알림센터 진입 확인
 - [ ] 알림센터가 `새 활동 / 리마인더` 두 섹션으로 보이는지 확인
@@ -197,12 +211,18 @@
 - [ ] 신랑/신부 계정 각각 동일 wedding 데이터 조회 확인
 - [ ] 앱 재실행 후 가계부 필터/상태 복원 확인
 - [ ] 하객/가계부/일정 변경 후 홈 요약이 최신 상태로 반영되는지 확인
+- [ ] 회원탈퇴 후 DB 정리 확인
+  - [ ] `profiles`에서 탈퇴 사용자 row 삭제
+  - [ ] `device_push_tokens`에서 탈퇴 사용자 row 삭제
+  - [ ] `partner_activity_notifications`에서 `actor_user_id` / `target_user_id` 관련 row 삭제
+  - [ ] `auth.users`에서 탈퇴 사용자 삭제
 
 ## 9. 미확인 / 보류
 
 - [ ] `./gradlew :androidApp:connectedDebugAndroidTest`
   - 디바이스/에뮬레이터 연결 환경에서 1회 실행 필요
 - [ ] `웨딩홀 비교`, `가치관 설문` 클릭 시 `준비 중인 기능이에요.` 안내 확인
+- [ ] Android/iOS 메인 탭 하단 테스트 배너 표시 확인
 - [ ] iOS Firebase 초기화 경고 정리
   - `The default Firebase app has not yet been configured`
   - `Could not locate configuration file: 'GoogleService-Info.plist'`

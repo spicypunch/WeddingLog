@@ -20,6 +20,7 @@ internal fun beginIosAppleNativeSignIn(): CompletableDeferred<AppleNativeSignInR
 fun completeIosAppleNativeSignIn(
     idToken: String?,
     rawNonce: String?,
+    authorizationCode: String?,
     errorMessage: String?,
 ) {
     when {
@@ -32,6 +33,7 @@ fun completeIosAppleNativeSignIn(
                 AppleNativeSignInResult.Success(
                     idToken = idToken.trim(),
                     rawNonce = rawNonce.trim(),
+                    authorizationCode = authorizationCode?.trim()?.takeIf { it.isNotEmpty() },
                 )
             )
         }

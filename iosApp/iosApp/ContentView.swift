@@ -2,6 +2,9 @@ import UIKit
 import SwiftUI
 import ComposeApp
 
+private let showHostBannerNotification = Notification.Name("WeddingLedgerShowHostBanner")
+private let hideHostBannerNotification = Notification.Name("WeddingLedgerHideHostBanner")
+
 struct ComposeView: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -65,8 +68,28 @@ struct ComposeView: UIViewControllerRepresentable {
 }
 
 struct ContentView: View {
+    @State private var isBannerVisible = false
+
     var body: some View {
-        ComposeView()
-            .ignoresSafeArea(.keyboard, edges: .bottom)
+        VStack(spacing: 0) {
+            ComposeView()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            if isBannerVisible {
+                AdMobBannerContainerView()
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .onReceive(NotificationCenter.default.publisher(for: showHostBannerNotification)) { _ in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isBannerVisible = true
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: hideHostBannerNotification)) { _ in
+            withAnimation(.easeInOut(duration: 0.2)) {
+                isBannerVisible = false
+            }
+        }
     }
 }

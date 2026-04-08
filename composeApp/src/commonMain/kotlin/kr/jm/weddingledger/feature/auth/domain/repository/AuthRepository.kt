@@ -1,6 +1,8 @@
 package kr.jm.weddingledger.feature.auth.domain.repository
 
 import kotlinx.coroutines.flow.Flow
+import kr.jm.weddingledger.feature.auth.domain.model.AuthProvider
+import kr.jm.weddingledger.feature.auth.domain.model.DeleteAccountRequest
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 
@@ -18,5 +20,7 @@ interface AuthRepository {
     suspend fun resendSignUpVerificationEmail(email: String): AuthResult<Unit>
     suspend fun signOut(): AuthResult<Unit>
     suspend fun resetPassword(email: String): AuthResult<Unit>
+    suspend fun deleteAccount(request: DeleteAccountRequest): AuthResult<Unit>
+    fun getCurrentAuthProvider(): AuthProvider?
     fun isLoggedIn(): Boolean
 }

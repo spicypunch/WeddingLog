@@ -3,9 +3,11 @@ package kr.jm.weddingledger.feature.auth.data.repository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.exception.AuthErrorCode
 import io.github.jan.supabase.auth.exception.AuthRestException
 import io.github.jan.supabase.auth.parseSessionFromUrl
+import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.auth.providers.Apple
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.Kakao
@@ -13,18 +15,32 @@ import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.exceptions.RestException
+import io.ktor.client.HttpClient
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.decodeURLQueryComponent
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.coroutines.cancellation.CancellationException
+import kr.jm.weddingledger.core.config.BuildConfig
 import kr.jm.weddingledger.core.network.logSupabaseError
+import kr.jm.weddingledger.feature.auth.data.dto.DeleteAccountRequestDto
 import kr.jm.weddingledger.feature.auth.data.platform.KakaoNativeSignInClient
 import kr.jm.weddingledger.feature.auth.data.platform.KakaoNativeSignInResult
 import kr.jm.weddingledger.feature.auth.data.platform.AppleNativeSignInClient
 import kr.jm.weddingledger.feature.auth.data.platform.AppleNativeSignInResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthErrorType
+import kr.jm.weddingledger.feature.auth.domain.model.AuthProvider
+import kr.jm.weddingledger.feature.auth.domain.model.DeleteAccountRequest
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.model.AuthState
 import kr.jm.weddingledger.feature.auth.domain.model.AuthUser
@@ -34,6 +50,7 @@ class AuthRepositoryImpl(
     private val supabaseClient: SupabaseClient,
     private val kakaoNativeSignInClient: KakaoNativeSignInClient,
     private val appleNativeSignInClient: AppleNativeSignInClient,
+    private val httpClient: HttpClient,
 ) : AuthRepository {
 
     override val authState: Flow<AuthState> = supabaseClient.auth.sessionStatus
@@ -279,9 +296,118 @@ class AuthRepositoryImpl(
         }
     }
 
+    override suspend fun deleteAccount(request: DeleteAccountRequest): AuthResult<Unit> {
+        val accessToken = supabaseClient.auth.currentAccessTokenOrNull()
+            ?.trim()
+            .takeUnless { it.isNullOrEmpty() }
+            ?: return AuthResult.Error("로그인이 만료되었습니다. 다시 로그인 후 시도해주세요.")
+
+        val provider = request.provider.takeUnless { it == AuthProvider.Unknown }
+            ?: getCurrentAuthProvider()
+            ?: AuthProvider.Unknown
+        val appleAuthorizationCode = when (provider) {
+            AuthProvider.Apple -> request.appleAuthorizationCode
+                ?.trim()
+                ?.takeIf { it.isNotEmpty() }
+                ?: obtainAppleAuthorizationCodeForDeletion()
+            else -> null
+        }
+
+        return try {
+            val response = httpClient.post("${BuildConfig.SUPABASE_URL}/functions/v1/delete-account") {
+                header("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                header("Authorization", "Bearer $accessToken")
+                setBody(
+                    DeleteAccountRequestDto(
+                        provider = provider.name.lowercase(),
+                        appleAuthorizationCode = appleAuthorizationCode,
+                    )
+                )
+            }
+
+            if (response.status != HttpStatusCode.OK) {
+                val body = response.bodyAsText()
+                AuthResult.Error(
+                    parseDeleteAccountErrorMessage(body)
+                        ?: "회원탈퇴에 실패했습니다. 잠시 후 다시 시도해주세요."
+                )
+            } else {
+                runCatching {
+                    supabaseClient.auth.signOut(scope = SignOutScope.LOCAL)
+                }.onFailure { t ->
+                    if (t is CancellationException) throw t
+                    logSupabaseThrowable(t)
+                }
+                AuthResult.Success(Unit)
+            }
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            t.toAuthError(defaultMessage = "회원탈퇴에 실패했습니다.")
+        }
+    }
+
+    override fun getCurrentAuthProvider(): AuthProvider? {
+        val user = supabaseClient.auth.currentUserOrNull() ?: return null
+        return user.toDomainAuthProvider()
+    }
+
     override fun isLoggedIn(): Boolean {
         return supabaseClient.auth.currentUserOrNull() != null
     }
+
+    private suspend fun obtainAppleAuthorizationCodeForDeletion(): String {
+        return when (val result = appleNativeSignInClient.signIn()) {
+            is AppleNativeSignInResult.Success -> {
+                result.authorizationCode
+                    ?.trim()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: throw IllegalStateException("Apple 재인증 코드를 확인하지 못했습니다.")
+            }
+
+            is AppleNativeSignInResult.Error -> {
+                throw IllegalStateException(
+                    if (result.message.contains("취소")) "회원탈퇴를 취소했습니다." else result.message
+                )
+            }
+
+            is AppleNativeSignInResult.Unsupported -> {
+                throw IllegalStateException(result.reason)
+            }
+        }
+    }
+}
+
+private fun UserInfo.toDomainAuthProvider(): AuthProvider {
+    val identityProvider = identities
+        ?.firstNotNullOfOrNull { it.provider.toDomainAuthProviderOrNull() }
+    if (identityProvider != null) return identityProvider
+
+    val metadataProvider = appMetadata
+        ?.get("provider")
+        ?.jsonPrimitive
+        ?.contentOrNull
+        ?.toDomainAuthProviderOrNull()
+    return metadataProvider ?: AuthProvider.Unknown
+}
+
+private fun String?.toDomainAuthProviderOrNull(): AuthProvider? {
+    return when (this?.trim()?.lowercase()) {
+        "apple" -> AuthProvider.Apple
+        "google" -> AuthProvider.Google
+        "kakao" -> AuthProvider.Kakao
+        else -> null
+    }
+}
+
+private fun parseDeleteAccountErrorMessage(rawBody: String): String? {
+    if (rawBody.isBlank()) return null
+    return runCatching {
+        Json.parseToJsonElement(rawBody)
+            .jsonObject["error"]
+            ?.jsonPrimitive
+            ?.contentOrNull
+    }.getOrNull()?.takeIf { it.isNotBlank() }
 }
 
 private fun String.parseQueryParams(): Map<String, String> {

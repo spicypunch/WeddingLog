@@ -24,6 +24,15 @@ val firebaseAndroidApplicationId: String = localProperties.getProperty("FIREBASE
 val firebaseProjectId: String = localProperties.getProperty("FIREBASE_PROJECT_ID") ?: ""
 val firebaseApiKey: String = localProperties.getProperty("FIREBASE_API_KEY") ?: ""
 val firebaseGcmSenderId: String = localProperties.getProperty("FIREBASE_GCM_SENDER_ID") ?: ""
+val admobAndroidBannerUnitId: String = localProperties.getProperty("ADMOB_ANDROID_BANNER_UNIT_ID")
+    ?.trim()
+    .orEmpty()
+val admobIosAppId: String = localProperties.getProperty("ADMOB_IOS_APP_ID")
+    ?.trim()
+    .orEmpty()
+val admobIosBannerUnitId: String = localProperties.getProperty("ADMOB_IOS_BANNER_UNIT_ID")
+    ?.trim()
+    .orEmpty()
 val kakaoNativeAppKey: String = localProperties.getProperty("KAKAO_NATIVE_APP_KEY")?.trim().orEmpty()
 val termsOfServiceUrl: String = localProperties.getProperty("TERMS_OF_SERVICE_URL")?.trim().orEmpty()
 val privacyPolicyUrl: String = localProperties.getProperty("PRIVACY_POLICY_URL")?.trim().orEmpty()
@@ -39,6 +48,11 @@ val enableGoogleLogin: Boolean = localProperties.getProperty("ENABLE_GOOGLE_LOGI
     ?.toBooleanStrictOrNull()
     ?: true
 val enableAppleLogin: Boolean = localProperties.getProperty("ENABLE_APPLE_LOGIN")
+    ?.trim()
+    ?.lowercase()
+    ?.toBooleanStrictOrNull()
+    ?: false
+val enableTestAdBanner: Boolean = localProperties.getProperty("ENABLE_TEST_AD_BANNER")
     ?.trim()
     ?.lowercase()
     ?.toBooleanStrictOrNull()
@@ -75,6 +89,7 @@ kotlin {
         androidMain.dependencies {
             implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.firebase.messaging)
+            implementation(libs.google.mobile.ads)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kakao.user)
         }
@@ -180,12 +195,16 @@ val generateBuildConfig by tasks.registering {
                 const val FIREBASE_PROJECT_ID = "$firebaseProjectId"
                 const val FIREBASE_API_KEY = "$firebaseApiKey"
                 const val FIREBASE_GCM_SENDER_ID = "$firebaseGcmSenderId"
+                const val ADMOB_ANDROID_BANNER_UNIT_ID = "$admobAndroidBannerUnitId"
+                const val ADMOB_IOS_APP_ID = "$admobIosAppId"
+                const val ADMOB_IOS_BANNER_UNIT_ID = "$admobIosBannerUnitId"
                 const val KAKAO_NATIVE_APP_KEY = "$kakaoNativeAppKey"
                 const val TERMS_OF_SERVICE_URL = "$termsOfServiceUrl"
                 const val PRIVACY_POLICY_URL = "$privacyPolicyUrl"
                 const val ENABLE_KAKAO_LOGIN = $enableKakaoLogin
                 const val ENABLE_GOOGLE_LOGIN = $enableGoogleLogin
                 const val ENABLE_APPLE_LOGIN = $enableAppleLogin
+                const val ENABLE_TEST_AD_BANNER = $enableTestAdBanner
                 const val APP_VERSION_NAME = "$appVersionName"
                 const val APP_VERSION_CODE = $appVersionCode
             }

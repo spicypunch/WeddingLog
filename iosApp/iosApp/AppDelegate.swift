@@ -2,6 +2,7 @@ import UIKit
 import UserNotifications
 import FirebaseCore
 import FirebaseMessaging
+import GoogleMobileAds
 import ComposeApp
 
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
@@ -10,6 +11,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         configureFirebaseIfPossible()
+        configureGoogleMobileAdsIfPossible()
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
         application.registerForRemoteNotifications()
@@ -62,5 +64,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         options.apiKey = normalizedApiKey
         options.bundleID = Bundle.main.bundleIdentifier ?? ""
         FirebaseApp.configure(options: options)
+    }
+
+    private func configureGoogleMobileAdsIfPossible() {
+        guard
+            let appID = Bundle.main.object(forInfoDictionaryKey: "GADApplicationIdentifier") as? String
+        else {
+            NSLog("[WL_ADS][WARN] admob_app_id_missing")
+            return
+        }
+
+        let normalizedAppID = appID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedAppID.isEmpty else {
+            NSLog("[WL_ADS][WARN] admob_app_id_blank")
+            return
+        }
+
+        MobileAds.shared.start()
+        NSLog("[WL_ADS][INFO] admob_initialized")
     }
 }

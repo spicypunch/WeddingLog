@@ -8,6 +8,7 @@ sealed interface AppleNativeSignInResult {
     data class Success(
         val idToken: String,
         val rawNonce: String,
+        val authorizationCode: String? = null,
     ) : AppleNativeSignInResult
 
     data class Unsupported(

@@ -27,6 +27,7 @@ supabase = "3.3.0"
 kakao = "2.23.2"
 kotlinxDatetime = "0.6.2"
 firebaseBom = "34.11.0"
+googleMobileAds = "24.7.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -90,6 +91,7 @@ kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.
 # Firebase
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { module = "com.google.firebase:firebase-messaging" }
+google-mobile-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "googleMobileAds" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
