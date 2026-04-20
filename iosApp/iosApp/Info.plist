@@ -35,6 +35,8 @@
 	<string>$(ADMOB_IOS_APP_ID)</string>
 	<key>ADMOB_IOS_BANNER_UNIT_ID</key>
 	<string>$(ADMOB_IOS_BANNER_UNIT_ID)</string>
+	<key>ENABLE_TEST_AD_BANNER</key>
+	<string>$(ENABLE_TEST_AD_BANNER)</string>
 	<key>KAKAO_NATIVE_APP_KEY</key>
 	<string>$(KAKAO_NATIVE_APP_KEY)</string>
 	<key>SKAdNetworkItems</key>

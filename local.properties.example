@@ -15,3 +15,7 @@ ENABLE_KAKAO_LOGIN=true
 ENABLE_GOOGLE_LOGIN=true
 ENABLE_APPLE_LOGIN=false
 ENABLE_TEST_AD_BANNER=false
+storeFile=/absolute/path/to/key.jks
+storePassword=
+keyAlias=
+keyPassword=

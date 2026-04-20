@@ -21,21 +21,42 @@ val admobAndroidAppId: String = localProperties.getProperty("ADMOB_ANDROID_APP_I
     ?.trim()
     .orEmpty()
     .ifBlank { "ca-app-pub-3940256099942544~3347511713" }
-val appVersionCode: Int = 1
-val appVersionName: String = "1.0.0"
+val releaseStoreFile: String = localProperties.getProperty("storeFile")?.trim().orEmpty()
+val releaseStorePassword: String = localProperties.getProperty("storePassword")?.trim().orEmpty()
+val releaseKeyAlias: String = localProperties.getProperty("keyAlias")?.trim().orEmpty()
+val releaseKeyPassword: String = localProperties.getProperty("keyPassword")?.trim().orEmpty()
+val hasReleaseSigningConfig: Boolean = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { it.isNotBlank() }
+val appVersionCode: Int = 2
+val appVersionName: String = "1.1.0"
 
 android {
     namespace = "kr.jm.weddingledger"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "kr.jm.weddingledger"
+        applicationId = "kr.jm.weddinglog"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = appVersionCode
         versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["kakaoNativeAppKeySchemeSuffix"] = kakaoNativeAppKeySchemeSuffix
+    }
+
+    signingConfigs {
+        if (hasReleaseSigningConfig) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -45,6 +66,9 @@ android {
         getByName("release") {
             isMinifyEnabled = false
             manifestPlaceholders["admobApplicationId"] = admobAndroidAppId
+            if (hasReleaseSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 

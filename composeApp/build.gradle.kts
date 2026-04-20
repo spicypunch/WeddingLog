@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.PathSensitivity
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -11,8 +12,8 @@ plugins {
     alias(libs.plugins.room)
 }
 
+val localPropertiesFile = rootProject.file("local.properties")
 val localProperties = Properties().apply {
-    val localPropertiesFile = rootProject.file("local.properties")
     if (localPropertiesFile.exists()) {
         load(localPropertiesFile.inputStream())
     }
@@ -57,8 +58,8 @@ val enableTestAdBanner: Boolean = localProperties.getProperty("ENABLE_TEST_AD_BA
     ?.lowercase()
     ?.toBooleanStrictOrNull()
     ?: false
-val appVersionCode: Int = 1
-val appVersionName: String = "1.0.0"
+val appVersionCode: Int = 2
+val appVersionName: String = "1.1.0"
 
 kotlin {
     androidLibrary {
@@ -178,6 +179,9 @@ room {
 val generateBuildConfig by tasks.registering {
     val outputFile = layout.buildDirectory.file("generated/buildconfig/kr/jm/weddingledger/core/config/BuildConfig.kt")
 
+    inputs.file(localPropertiesFile)
+        .optional()
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.file(outputFile)
     notCompatibleWithConfigurationCache("BuildConfig is generated from local.properties at execution time.")
 

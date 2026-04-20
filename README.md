@@ -66,7 +66,7 @@ ENABLE_TEST_AD_BANNER=false
 - Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - iOS 카카오 로그인도 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - `ENABLE_APPLE_LOGIN=false`면 앱에서 Apple 로그인 버튼/동작이 비활성화됩니다.
-- `ENABLE_TEST_AD_BANNER=true`면 Android/iOS 메인 탭 화면 하단에 배너를 표시합니다. debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID를 사용합니다.
+- `ENABLE_TEST_AD_BANNER=false`가 첫 출시 기본값입니다. `true`로 바꾸면 Android/iOS 메인 탭 화면 하단에 배너를 표시합니다. debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID를 사용합니다.
 - iOS Apple 로그인은 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로를 사용합니다.
 - Apple 로그인을 활성화하려면 Supabase Apple Provider `Client IDs`에 아래 두 값을 함께 넣어야 합니다.
   - `kr.jm.weddingledger.service`
