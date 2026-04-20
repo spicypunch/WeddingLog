@@ -93,9 +93,16 @@ private fun SignInScreen(
     val scrollState = rememberScrollState()
     val isAndroid = getPlatform().name.startsWith("Android", ignoreCase = true)
     val socialOrder = if (isAndroid) {
-        listOf(SocialProvider.Kakao, SocialProvider.Google)
+        listOf(
+            SocialProvider.Kakao,
+            // SocialProvider.Google, // 첫 출시 안정화를 위해 일시 미노출
+        )
     } else {
-        listOf(SocialProvider.Kakao, SocialProvider.Apple, SocialProvider.Google)
+        listOf(
+            SocialProvider.Kakao,
+            SocialProvider.Apple,
+            // SocialProvider.Google, // 첫 출시 안정화를 위해 일시 미노출
+        )
     }
     val orderedSocialProviders = socialOrder
 
