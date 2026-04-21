@@ -5,23 +5,22 @@
 ## 0) 최신 메모 (2026-04-21)
 
 - 첫 출시 인증 정책 정리
-  - Android 로그인 화면은 `Kakao + Email OTP`
-  - iOS 로그인 화면은 `Kakao + Apple + Email OTP`
+  - Android 로그인 화면은 `Kakao + Email/Password`
+  - iOS 로그인 화면은 `Kakao + Apple + Email/Password`
   - Google 로그인 구현은 유지하지만 버튼은 첫 출시 안정화를 위해 주석 처리로 미노출
 - Google 미노출 사유
   - Android에서 Google OAuth 진입 시 Gmail 앱 작성 화면으로 빠지는 케이스가 재현됨
   - 심사/스토어 스크린샷/지인 테스트 단계에서 외부 앱 라우팅 오류가 보이면 출시 리스크가 큼
   - Custom Tabs 또는 네이티브 Google Sign-In/Credential Manager 방식으로 정리하기 전까지 숨김 유지
-- Email OTP 복구 사유
+- 이메일/비밀번호 임시 로그인 노출 사유
   - Kakao 계정만으로는 리뷰어 테스트 계정 제공이 번거롭고 2FA/보안 정책에 막힐 수 있음
   - Apple 로그인은 iOS 전용이라 Android 심사용 공통 계정 수단이 되지 못함
-  - Email OTP는 Android/iOS 공통으로 같은 리뷰 계정을 제공할 수 있어 심사 재현성이 높음
-  - 기존 ViewModel/use case/repository 구현이 유지되어 UI 주석 해제 중심으로 낮은 리스크로 복구 가능했음
+  - 이메일/비밀번호는 Android/iOS 공통으로 같은 리뷰 계정을 제공할 수 있고 리뷰어가 외부 메일함에 접근할 필요가 없음
 - 운영 메모
-  - `sendEmailOtp()`는 `createUser = false`라 신규 가입을 만들지 않음
-  - 심사용 Email OTP 계정은 Supabase Auth에 미리 생성해야 함
-  - 리뷰어가 OTP 수신 메일함에 접근할 수 있어야 함
-  - OTP 전송/확인도 약관 및 개인정보 처리방침 동의 후에만 진행
+  - 이메일 회원가입은 열지 않음
+  - 심사용 이메일/비밀번호 계정은 Supabase Auth에 미리 생성해야 함
+  - 리뷰어에게 이메일과 비밀번호를 리뷰 메모로 제공
+  - 이메일/비밀번호 로그인도 약관 및 개인정보 처리방침 동의 후에만 진행
 
 ## 0-1) 이전 메모 (2026-04-08)
 
@@ -161,8 +160,8 @@
 - 당시 로그인 화면 소셜 버튼 정렬/동작 변경 반영.
   - iOS: `Kakao -> Apple -> Google`
   - Android: `Kakao -> Google -> Apple`
-- 이메일 OTP 보조 로그인은 접힘/펼침 UI로 동작.
-- 비밀번호 회원가입/로그인은 비활성 처리.
+- 이메일/비밀번호 보조 로그인은 접힘/펼침 UI로 동작.
+- 이메일 회원가입은 비활성 처리.
 
 ## 1-1) 후속 반영 사항 (2026-03-08)
 
@@ -176,8 +175,8 @@
   - `SupabaseRepositorySupportTest`
   - `AuthResultTest`
   - 관련 ViewModel 테스트 갱신
-- 이메일/OTP 로그인 UI는 2026-04-21에 첫 출시 심사용 공통 로그인 수단으로 복구됨.
-  - 현재 OTP는 `createUser = false`라 기존 Supabase Auth 계정 로그인만 허용
+- 이메일/비밀번호 로그인 UI는 2026-04-21에 첫 출시 심사용 공통 로그인 수단으로 임시 노출됨.
+  - 회원가입은 열지 않고 기존 Supabase Auth 계정 로그인만 허용
 - Android Kakao 로그인 키는 루트 `local.properties`의 `KAKAO_NATIVE_APP_KEY`를 사용함.
   - iOS `Config.xcconfig`에만 키가 있으면 Android에서 `KakaoSdk.isInitialized == false` 상태가 됨
 
@@ -196,7 +195,7 @@
 
 1. 한 기기 계정 전환 시 push 토큰 누수 QA
 2. 3초 강제 스플래시 완화
-3. Kakao/Apple/Email OTP 로그인 + Android/iOS push 회귀 QA 1회
+3. Kakao/Apple/Email Password 로그인 + Android/iOS push 회귀 QA 1회
 4. Google 로그인 복구 방식(Custom Tabs 또는 네이티브 Google Sign-In/Credential Manager) 별도 정리
 
 ## 4) 필수 설정 체크리스트
@@ -247,7 +246,7 @@
   - ID Token 기반 Supabase 로그인 흐름 정리
 - `composeApp/src/commonMain/kotlin/.../feature/auth/presentation/*`
   - 소셜 로그인 버튼 정렬/동작
-  - 이메일 OTP 접힘/펼침 UX
+  - 이메일/비밀번호 접힘/펼침 UX
 
 ### 플랫폼별 Kakao 브리지
 - Android:

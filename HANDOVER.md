@@ -43,10 +43,10 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - Supabase Apple Provider `Client IDs`에는 아래 두 값을 함께 넣어야 한다.
    - `kr.jm.weddingledger.service`
    - `kr.jm.weddingledger.WeddingLedger`
-8) 첫 출시 인증 정책은 `Kakao/Apple + Email OTP` 중심으로 정리했다(2026-04-21).
+8) 첫 출시 인증 정책은 `Kakao/Apple + Email/Password` 중심으로 정리했다(2026-04-21).
    - Google 로그인 구현은 유지하지만 Android에서 Gmail 작성 화면으로 빠지는 케이스가 있어 화면에서는 일시 미노출
-   - Email OTP는 심사용 공통 로그인 수단으로 다시 노출
-   - 현재 OTP는 `createUser = false`라 신규 가입이 아니라 기존 Supabase Auth 계정 로그인용
+   - Email OTP는 다시 숨기고, 심사용 임시 이메일/비밀번호 로그인을 노출
+   - 회원가입은 열지 않고 Supabase Auth에 미리 만든 리뷰 계정으로만 로그인
 
 ---
 
@@ -56,8 +56,8 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 2. Android Studio는 필요 시 터미널 실행 방식으로 열기
 3. `local.properties` 값 확인
 4. 심사용 로그인 계정 준비
-   - Kakao/Apple 계정만 믿지 말고 Email OTP용 기존 Supabase Auth 계정을 준비
-   - 리뷰어가 OTP 메일함에 접근할 수 있는지 확인
+   - Kakao/Apple 계정만 믿지 말고 이메일/비밀번호용 기존 Supabase Auth 계정을 준비
+   - App Store Connect / Play Console 리뷰 메모에 이메일과 비밀번호를 제공
    - 필요하면 해당 계정으로 온보딩/샘플 데이터까지 먼저 구성
 5. **계정 전환 push QA를 먼저 확인**
    - 같은 기기에서 계정 A 로그인
@@ -81,7 +81,7 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - iOS도 실제 OS push까지 오는지 교차 확인
 9. **회원탈퇴 QA**
    - Android에서 Kakao 계정 회원탈퇴
-   - Android 또는 iOS에서 Email OTP 계정 회원탈퇴
+   - Android 또는 iOS에서 이메일/비밀번호 계정 회원탈퇴
    - iOS에서 Apple 계정 회원탈퇴
    - 탈퇴 후 로그인 화면으로 복귀하는지
    - 탈퇴한 계정 세션으로 재진입되지 않는지
@@ -111,12 +111,12 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - 이메일 인증 딥링크 E2E 연결 완료(Android `intent-filter` + iOS `onOpenURL` + KMP bridge)
   - 딥링크 처리 성공/실패 시 로그인 화면 안내 배너 표시(`AuthMessage.Info/Error`)
   - 로그인 미인증 전용 안내 카드 + 재전송 60초 쿨다운 + 최대 5회 제한 추가
-  - 첫 출시 로그인 정책: Android는 `Kakao + Email OTP`, iOS는 `Kakao + Apple + Email OTP`
+  - 첫 출시 로그인 정책: Android는 `Kakao + Email/Password`, iOS는 `Kakao + Apple + Email/Password`
   - Google 로그인은 Android에서 Gmail 작성 화면으로 잘못 라우팅되는 케이스가 있어 첫 출시 안정화를 위해 화면에서 일시 미노출
-  - 이메일/OTP 로그인 UI는 심사용 공통 로그인 수단으로 복구
-  - Email OTP는 `createUser = false` 정책으로 기존 Supabase Auth 계정만 로그인 허용
-  - OTP 전송/확인도 약관 및 개인정보 처리방침 동의 후에만 진행
-  - `Email/Password` 로그인/회원가입은 비활성
+  - 이메일/비밀번호 로그인 UI는 심사용 공통 로그인 수단으로 임시 노출
+  - Email OTP UI는 다시 숨김
+  - 이메일/비밀번호 로그인도 약관 및 개인정보 처리방침 동의 후에만 진행
+  - 이메일 회원가입은 비활성
   - Kakao 로그인 네이티브 SDK 경로(iOS/Android) 적용 및 양 플랫폼 성공 검증 완료(2026-03-04)
   - 온보딩 엔트리 분기 도입(`혼자 시작하기` / `공유 코드로 시작하기`)
   - `혼자 시작하기` 경로: 프로필 입력(닉네임/역할/예식일) 후 즉시 온보딩 완료
@@ -318,23 +318,22 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 ## 1-6) 오늘 추가 변경 (2026-04-21)
 
 - 첫 출시 인증 정책 정리
-  - Android 로그인 화면: `Kakao + Email OTP`
-  - iOS 로그인 화면: `Kakao + Apple + Email OTP`
+  - Android 로그인 화면: `Kakao + Email/Password`
+  - iOS 로그인 화면: `Kakao + Apple + Email/Password`
   - Google 로그인 코드는 유지하지만 버튼은 주석 처리로 미노출
 - Google 미노출 사유
   - Android에서 Google OAuth 진입 시 Gmail 앱 작성 화면으로 빠지는 케이스가 재현됨
   - 첫 출시 심사/스토어 스크린샷/지인 테스트에서 잘못된 외부 앱 라우팅이 보이면 사용자 신뢰도가 크게 떨어짐
   - OAuth 처리 방식(Custom Tabs 또는 네이티브 Google Sign-In/Credential Manager) 정리 전까지 화면에서 숨기는 쪽이 안전함
-- Email OTP 복구 사유
+- 이메일/비밀번호 임시 로그인 노출 사유
   - Kakao 계정만 제공하면 리뷰어가 2FA, 전화번호, 지역, 보안 정책에 막힐 수 있음
   - Apple 로그인은 iOS 전용이라 Android 심사용 공통 계정 수단이 되지 않음
-  - Email OTP는 Android/iOS 양쪽에서 같은 리뷰 계정을 제공할 수 있고, 메일함 접근만 보장하면 재현성이 높음
-  - 기존 `AuthViewModel` / use case / repository 구현이 유지되어 있어 UI 주석 해제 중심의 저위험 변경으로 복구 가능했음
+  - 이메일/비밀번호는 Android/iOS 양쪽에서 같은 리뷰 계정을 제공할 수 있고, 리뷰어가 외부 메일함에 접근할 필요가 없음
 - 구현 메모
-  - `AuthScreen`의 Email OTP 접힘/펼침 UI를 다시 노출
-  - OTP 전송/확인도 약관 및 개인정보 처리방침 동의 후에만 실행되도록 `ensureLoginConsent`로 통합
-  - `sendEmailOtp()`는 여전히 `createUser = false`라 신규 가입을 만들지 않음
-  - 심사용 Email OTP 계정은 Supabase Auth에 미리 생성하고, 필요하면 온보딩/샘플 데이터를 먼저 구성해야 함
+  - `AuthScreen`의 이메일 접힘/펼침 UI를 이메일/비밀번호 로그인으로 전환
+  - `AuthRepositoryImpl.signIn()`을 Supabase `Email` provider 로그인으로 복구
+  - 이메일/비밀번호 로그인도 약관 및 개인정보 처리방침 동의 후에만 실행
+  - 심사용 이메일 계정은 Supabase Auth에 미리 생성하고, 필요하면 온보딩/샘플 데이터를 먼저 구성해야 함
 - 검증
   - `./gradlew :androidApp:assembleDebug` 성공
   - 기존 deprecation/configuration cache 경고는 남지만 이번 변경으로 인한 빌드 실패는 없음

@@ -49,6 +49,7 @@ data class AuthUiState(
         get() = when (mode) {
             AuthMode.SignIn -> email.isNotBlank() &&
                 password.isNotBlank() &&
+                isTermsAccepted &&
                 !isLoading &&
                 !isSendingOtp &&
                 !isVerifyingOtp &&

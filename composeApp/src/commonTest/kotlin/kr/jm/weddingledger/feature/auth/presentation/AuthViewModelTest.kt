@@ -49,7 +49,7 @@ class AuthViewModelTest {
         assertEquals(0, repository.signInWithGoogleCallCount)
         assertIs<AuthMessage.Info>(state.message)
         assertEquals(
-            "소셜 로그인 전에 이용약관과 개인정보 처리방침에 동의해주세요.",
+            "로그인 전에 이용약관과 개인정보 처리방침에 동의해주세요.",
             (state.message as AuthMessage.Info).text,
         )
     }
@@ -113,6 +113,7 @@ class AuthViewModelTest {
         }
         val viewModel = createViewModel(repository)
 
+        viewModel.onAction(AuthAction.OnTermsAcceptedChange(true))
         viewModel.onAction(AuthAction.OnEmailChange("otp@weddinglog.app"))
         viewModel.onAction(AuthAction.OnClickSendOtp)
         runCurrent()
@@ -126,6 +127,39 @@ class AuthViewModelTest {
         assertEquals(1, repository.verifyOtpCallCount)
         assertEquals("", state.otpCode)
         assertIs<AuthMessage.Info>(state.message)
+    }
+
+    @Test
+    fun `email password sign in requires terms`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel()
+        val viewModel = createViewModel(repository)
+
+        viewModel.onAction(AuthAction.OnEmailChange("review@weddinglog.app"))
+        viewModel.onAction(AuthAction.OnPasswordChange("Review1234!"))
+        viewModel.onAction(AuthAction.OnClickSubmit)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(0, repository.signInCallCount)
+        assertIs<AuthMessage.Info>(state.message)
+    }
+
+    @Test
+    fun `email password sign in with terms delegates to repository`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel().apply {
+            signInResult = AuthResult.Success(Unit)
+        }
+        val viewModel = createViewModel(repository)
+
+        viewModel.onAction(AuthAction.OnTermsAcceptedChange(true))
+        viewModel.onAction(AuthAction.OnEmailChange("review@weddinglog.app"))
+        viewModel.onAction(AuthAction.OnPasswordChange("Review1234!"))
+        viewModel.onAction(AuthAction.OnClickSubmit)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(1, repository.signInCallCount)
+        assertEquals(null, state.message)
     }
 
     @Test
@@ -179,6 +213,7 @@ private class FakeAuthRepositoryForViewModel : AuthRepository {
     var signInWithKakaoCallCount: Int = 0
     var signInWithGoogleCallCount: Int = 0
     var signInWithAppleCallCount: Int = 0
+    var signInCallCount: Int = 0
     var sendOtpCallCount: Int = 0
     var verifyOtpCallCount: Int = 0
     var resendCallCount: Int = 0
@@ -218,6 +253,7 @@ private class FakeAuthRepositoryForViewModel : AuthRepository {
     }
 
     override suspend fun signIn(email: String, password: String): AuthResult<Unit> {
+        signInCallCount += 1
         return signInResult
     }
 

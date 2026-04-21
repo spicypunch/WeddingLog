@@ -101,7 +101,7 @@ class AuthViewModel(
         _state.update {
             it.copy(
                 mode = AuthMode.SignIn,
-                message = AuthMessage.Info("비밀번호 로그인/회원가입은 현재 비활성화되어 있습니다. 소셜 로그인 또는 이메일 OTP를 이용해주세요."),
+                message = AuthMessage.Info("회원가입은 현재 비활성화되어 있습니다. 소셜 로그인 또는 이메일 로그인을 이용해주세요."),
             )
         }
         resendCooldownJob?.cancel()
@@ -116,11 +116,12 @@ class AuthViewModel(
                 it.copy(
                     mode = AuthMode.SignIn,
                     isLoading = false,
-                    message = AuthMessage.Info("비밀번호 로그인/회원가입은 현재 비활성화되어 있습니다. 소셜 로그인 또는 이메일 OTP를 이용해주세요."),
+                    message = AuthMessage.Info("회원가입은 현재 비활성화되어 있습니다. 소셜 로그인 또는 이메일 로그인을 이용해주세요."),
                 )
             }
             return
         }
+        if (!ensureLoginConsent(snapshot)) return
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {

@@ -18,13 +18,16 @@ import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 class AuthUseCaseAndFlowTest {
 
     @Test
-    fun `sign in use case returns disabled message`() = runBlocking {
-        val useCase = SignInUseCase(FakeAuthRepository())
+    fun `sign in use case delegates to repository`() = runBlocking {
+        val repository = FakeAuthRepository()
+        val useCase = SignInUseCase(repository)
 
         val result = useCase("user@weddinglog.app", "password")
 
-        val error = assertIs<AuthResult.Error>(result)
-        assertEquals("비밀번호 로그인은 현재 비활성화되어 있습니다.", error.message)
+        assertIs<AuthResult.Success<Unit>>(result)
+        assertEquals(1, repository.signInCallCount)
+        assertEquals("user@weddinglog.app", repository.lastSignInEmail)
+        assertEquals("password", repository.lastSignInPassword)
     }
 
     @Test
@@ -92,13 +95,16 @@ class AuthUseCaseAndFlowTest {
     }
 
     @Test
-    fun `integration flow sign in is blocked and keeps unauthenticated`() = runBlocking {
+    fun `integration flow sign in authenticates current user`() = runBlocking {
         val repository = FakeAuthRepository()
         val signInUseCase = SignInUseCase(repository)
         val currentUserUseCase = GetCurrentUserUseCase(repository)
 
         signInUseCase("bride@weddinglog.app", "password")
-        assertNull(currentUserUseCase().first())
+        assertEquals(
+            AuthUser(id = "user-1", email = "bride@weddinglog.app", createdAt = null),
+            currentUserUseCase().first(),
+        )
     }
 }
 

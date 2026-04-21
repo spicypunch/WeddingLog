@@ -11,6 +11,7 @@ import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.auth.providers.Apple
 import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.Kakao
+import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.providers.builtin.OTP
 import io.github.jan.supabase.auth.status.SessionStatus
@@ -257,7 +258,17 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun signIn(email: String, password: String): AuthResult<Unit> {
-        return AuthResult.Error("비밀번호 로그인은 현재 비활성화되어 있습니다.")
+        return try {
+            supabaseClient.auth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
+            AuthResult.Success(Unit)
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            logSupabaseThrowable(t)
+            t.toAuthError(defaultMessage = "이메일 로그인에 실패했습니다")
+        }
     }
 
     override suspend fun resendSignUpVerificationEmail(email: String): AuthResult<Unit> {
