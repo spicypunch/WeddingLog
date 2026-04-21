@@ -41,7 +41,7 @@ ADMOB_ANDROID_BANNER_UNIT_ID=ca-app-pub-3940256099942544/9214589741
 ADMOB_IOS_APP_ID=ca-app-pub-3940256099942544~1458002511
 ADMOB_IOS_BANNER_UNIT_ID=ca-app-pub-3940256099942544/2435281174
 
-# 소셜 로그인 노출/활성 토글 (기본값: Kakao/Google=true, Apple=false)
+# 소셜 로그인 활성 토글 (기본값: Kakao/Google=true, Apple=false)
 ENABLE_KAKAO_LOGIN=true
 ENABLE_GOOGLE_LOGIN=true
 ENABLE_APPLE_LOGIN=false
@@ -66,6 +66,12 @@ ENABLE_TEST_AD_BANNER=false
 - Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - iOS 카카오 로그인도 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
 - `ENABLE_APPLE_LOGIN=false`면 앱에서 Apple 로그인 버튼/동작이 비활성화됩니다.
+- 첫 출시 안정화를 위해 Google 로그인 코드는 유지하되 로그인 화면에서는 일시 미노출 상태입니다.
+  - Android에서 Supabase OAuth URL이 Gmail 앱 작성 화면으로 라우팅되는 케이스가 있어, 심사/첫 출시 전 노출 리스크를 줄이기 위한 결정입니다.
+  - 복구 시 `AuthScreen`의 `SocialProvider.Google` 주석과 Android OAuth 처리 방식을 함께 재검토합니다.
+- Email OTP 로그인은 로그인 화면에서 다시 노출합니다.
+  - 현재 구현은 `createUser = false`라서 신규 가입이 아니라 Supabase Auth에 이미 존재하는 이메일 계정 로그인용입니다.
+  - 심사용 Email OTP 계정은 미리 생성하고, 리뷰어가 OTP 메일함에 접근할 수 있게 준비해야 합니다.
 - `ENABLE_TEST_AD_BANNER=false`가 첫 출시 기본값입니다. `true`로 바꾸면 Android/iOS 메인 탭 화면 하단에 배너를 표시합니다. debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID를 사용합니다.
 - iOS Apple 로그인은 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로를 사용합니다.
 - Apple 로그인을 활성화하려면 Supabase Apple Provider `Client IDs`에 아래 두 값을 함께 넣어야 합니다.
@@ -224,6 +230,23 @@ Supabase 대시보드 권장값:
 - 참고
   - iOS에서 Firebase `GoogleService-Info.plist` 관련 경고 로그가 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실제 push 수신은 정상 동작 확인
 
+## 첫 출시 인증 정책 정리 (2026-04-21)
+
+- 현재 로그인 화면 노출 정책:
+  - Android: Kakao + Email OTP
+  - iOS: Kakao + Apple + Email OTP
+  - Google: 구현은 유지하지만 첫 출시 안정화를 위해 화면에서 미노출
+- Email OTP를 되살린 이유:
+  - Google 로그인이 Android에서 Gmail 작성 화면으로 빠지는 케이스가 있어 심사/스크린샷 촬영/첫 사용자 경험 리스크가 큼
+  - Kakao 계정만으로는 앱 심사용 테스트 계정 제공이 번거롭고, 2FA/지역/보안 정책에 따라 리뷰어가 막힐 수 있음
+  - Apple 로그인은 iOS 전용이라 Android 심사용 공통 계정 수단이 되지 못함
+  - Email OTP는 Android/iOS 공통으로 동일한 리뷰 계정을 제공할 수 있고, 메일함 접근만 보장하면 리뷰어 재현성이 높음
+  - 기존 ViewModel/use case/repository 구현이 살아 있어 UI 복구만으로 적용 가능해 변경 리스크가 낮음
+- 운영 주의:
+  - 현재 Email OTP는 `createUser = false`라 신규 가입을 열지 않습니다.
+  - 심사용 계정은 Supabase Auth에 미리 생성해야 하고, 필요하면 온보딩/샘플 데이터까지 준비합니다.
+  - OTP 전송/확인도 약관 및 개인정보 처리방침 동의 후에만 진행됩니다.
+
 ## QA
 
 - 통합 QA 체크리스트는 [qa.md](./qa.md)에서 확인할 수 있습니다.
@@ -239,8 +262,9 @@ Supabase 대시보드 권장값:
 - 테스트 보강:
   - `AuthResult`, `OnboardingViewModel`, `WeddingIdResolver` 중심 회귀 테스트 추가
 - 인증 화면 정책:
-  - 이메일/OTP 로그인 UI는 주석 처리로 숨김
-  - 내부 use case / repository 구현은 유지되어 필요 시 UI만 복구 가능
+  - Google 로그인 UI는 첫 출시 안정화를 위해 주석 처리로 숨김
+  - 이메일/OTP 로그인 UI는 첫 출시 심사용 공통 로그인 수단으로 복구
+  - Email OTP는 `createUser = false` 정책으로 기존 계정 로그인만 허용
 
 ## 인수인계
 

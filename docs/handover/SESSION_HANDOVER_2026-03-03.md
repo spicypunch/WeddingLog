@@ -1,8 +1,29 @@
 # Session Handover (2026-03-03) - Kakao Native Login + Auth Refactor
 
-업데이트: 2026-04-08
+업데이트: 2026-04-21
 
-## 0) 최신 메모 (2026-04-08)
+## 0) 최신 메모 (2026-04-21)
+
+- 첫 출시 인증 정책 정리
+  - Android 로그인 화면은 `Kakao + Email OTP`
+  - iOS 로그인 화면은 `Kakao + Apple + Email OTP`
+  - Google 로그인 구현은 유지하지만 버튼은 첫 출시 안정화를 위해 주석 처리로 미노출
+- Google 미노출 사유
+  - Android에서 Google OAuth 진입 시 Gmail 앱 작성 화면으로 빠지는 케이스가 재현됨
+  - 심사/스토어 스크린샷/지인 테스트 단계에서 외부 앱 라우팅 오류가 보이면 출시 리스크가 큼
+  - Custom Tabs 또는 네이티브 Google Sign-In/Credential Manager 방식으로 정리하기 전까지 숨김 유지
+- Email OTP 복구 사유
+  - Kakao 계정만으로는 리뷰어 테스트 계정 제공이 번거롭고 2FA/보안 정책에 막힐 수 있음
+  - Apple 로그인은 iOS 전용이라 Android 심사용 공통 계정 수단이 되지 못함
+  - Email OTP는 Android/iOS 공통으로 같은 리뷰 계정을 제공할 수 있어 심사 재현성이 높음
+  - 기존 ViewModel/use case/repository 구현이 유지되어 UI 주석 해제 중심으로 낮은 리스크로 복구 가능했음
+- 운영 메모
+  - `sendEmailOtp()`는 `createUser = false`라 신규 가입을 만들지 않음
+  - 심사용 Email OTP 계정은 Supabase Auth에 미리 생성해야 함
+  - 리뷰어가 OTP 수신 메일함에 접근할 수 있어야 함
+  - OTP 전송/확인도 약관 및 개인정보 처리방침 동의 후에만 진행
+
+## 0-1) 이전 메모 (2026-04-08)
 
 - 회원탈퇴 v1 구현/배포
   - `설정 > 계정 관리`에서 회원탈퇴를 시작할 수 있도록 UI/VM 추가
@@ -22,7 +43,7 @@
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16' CODE_SIGNING_ALLOWED=NO build` 성공
   - `embedAndSignAppleFrameworkForXcode`는 Xcode 환경 밖에서 단독 실행하면 `Could not infer iOS target architectures`로 실패할 수 있음
 
-## 0-1) 이전 메모 (2026-04-01)
+## 0-2) 이전 메모 (2026-04-01)
 
 - push 토큰 계정 전환 보강
   - 새 Edge Function `manage-device-push-token` 추가/배포
@@ -48,7 +69,7 @@
   - clean 후 `BuildConfig.kt`가 사라져 깨지던 문제를 Gradle 생성 태스크 수정으로 보강
   - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만 Android debug / Android test assemble / iOS simulator compile은 통과
 
-## 0-2) 이전 메모 (2026-03-31)
+## 0-3) 이전 메모 (2026-03-31)
 
 - iOS 원격 push 실수신 확인
   - Apple Developer App ID / APNs key / Firebase APNs 업로드 / Xcode capability 설정 후 iPhone 실기기에서 push 수신 확인
@@ -63,7 +84,7 @@
 - 현재 남은 iOS 메모
   - Firebase `GoogleService-Info.plist` 관련 경고 로그는 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실수신은 모두 성공
 
-## 0-3) 이전 메모 (2026-03-22)
+## 0-4) 이전 메모 (2026-03-22)
 
 - 홈 결산 카드 정리
   - 큰 금액에서도 사용률 칩이 세로로 찌그러지지 않도록 금액 아래 행으로 이동
@@ -81,7 +102,7 @@
   - iOS `iosApp/Configuration/Config.xcconfig` Firebase 값
   - Supabase secret `FCM_SERVICE_ACCOUNT_JSON`
 
-## 0-4) 추가 메모 (2026-03-29)
+## 0-5) 추가 메모 (2026-03-29)
 
 - Android 파트너 활동 push는 실제 수신까지 확인함
   - FCM 토큰 등록 성공
@@ -107,7 +128,7 @@
 - iOS는 Firebase 값 반영 구조까지만 완료
   - Apple Developer 계정 + APNs capability가 준비돼야 원격 push / Apple 로그인까지 완결 가능
 
-## 0-5) 이전 메모 (2026-03-16)
+## 0-6) 이전 메모 (2026-03-16)
 
 - Android Studio 업데이트 후 IDE에서 `convertPbxprojToJson` / `plutil` 오류가 날 수 있었음.
   - 프로젝트 자체 문제는 아니었고, 터미널에서 Android Studio를 실행하면 정상 sync/실행됨.
@@ -137,7 +158,7 @@
   - iOS: `KakaoSDKUser`의 `loginWithKakaoTalk / loginWithKakaoAccount`
   - Android: Kakao SDK 네이티브 로그인
   - 공통: Kakao `idToken` + `accessToken`을 Supabase `signInWith(IDToken)` (`provider = Kakao`)로 교환
-- 로그인 화면 소셜 버튼 정렬/동작 변경 반영됨.
+- 당시 로그인 화면 소셜 버튼 정렬/동작 변경 반영.
   - iOS: `Kakao -> Apple -> Google`
   - Android: `Kakao -> Google -> Apple`
 - 이메일 OTP 보조 로그인은 접힘/펼침 UI로 동작.
@@ -155,8 +176,8 @@
   - `SupabaseRepositorySupportTest`
   - `AuthResultTest`
   - 관련 ViewModel 테스트 갱신
-- 이메일/OTP 로그인 UI는 현재 주석 처리로 숨겨져 있음.
-  - 구현은 유지되어 주석 해제만으로 복구 가능
+- 이메일/OTP 로그인 UI는 2026-04-21에 첫 출시 심사용 공통 로그인 수단으로 복구됨.
+  - 현재 OTP는 `createUser = false`라 기존 Supabase Auth 계정 로그인만 허용
 - Android Kakao 로그인 키는 루트 `local.properties`의 `KAKAO_NATIVE_APP_KEY`를 사용함.
   - iOS `Config.xcconfig`에만 키가 있으면 Android에서 `KakaoSdk.isInitialized == false` 상태가 됨
 
@@ -175,8 +196,8 @@
 
 1. 한 기기 계정 전환 시 push 토큰 누수 QA
 2. 3초 강제 스플래시 완화
-3. Kakao/Google/Apple 로그인 + Android/iOS push 회귀 QA 1회
-4. iOS Firebase 경고(`GoogleService-Info.plist`, `FirebaseApp.configure`) 원인 정리
+3. Kakao/Apple/Email OTP 로그인 + Android/iOS push 회귀 QA 1회
+4. Google 로그인 복구 방식(Custom Tabs 또는 네이티브 Google Sign-In/Credential Manager) 별도 정리
 
 ## 4) 필수 설정 체크리스트
 

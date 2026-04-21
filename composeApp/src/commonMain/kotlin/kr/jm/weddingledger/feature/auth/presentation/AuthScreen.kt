@@ -258,11 +258,6 @@ private fun SignInScreen(
                     )
                 }
 
-                /*
-                 * Email/OTP login UI is intentionally hidden for now.
-                 * The underlying ViewModel/use case/repository flow is still kept alive so
-                 * this block can be restored quickly by uncommenting it.
-                 *
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -291,7 +286,7 @@ private fun SignInScreen(
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
                     Text(
-                        text = if (isEmailLoginExpanded) "이메일 로그인 닫기" else "이메일로 로그인 하기",
+                        text = if (isEmailLoginExpanded) "이메일 로그인 닫기" else "이메일 OTP로 로그인",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF6B7280),
                     )
@@ -330,7 +325,7 @@ private fun SignInScreen(
                             verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             Text(
-                                text = "이메일 OTP 로그인 (보조)",
+                                text = "이메일 OTP 로그인",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = primary,
                                 fontWeight = FontWeight.SemiBold,
@@ -408,7 +403,6 @@ private fun SignInScreen(
                         }
                     }
                 }
-                */
 
                 if (state.shouldShowVerificationGuide) {
                     EmailVerificationGuideCard(

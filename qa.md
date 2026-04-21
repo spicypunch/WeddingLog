@@ -1,11 +1,12 @@
 # QA 체크리스트
 
-마지막 갱신: 2026-04-08
+마지막 갱신: 2026-04-21
 
 ## 0. 준비
 
 - [ ] 최신 `main` 브랜치 pull 완료
-- [ ] `local.properties`의 Supabase/Kakao/Google 키 확인
+- [ ] `local.properties`의 Supabase/Kakao 키 확인
+- [ ] Google 로그인은 첫 출시 안정화를 위해 화면에서 미노출 상태인지 확인
 - [ ] 파트너 활동 푸시 테스트를 할 경우 Firebase 값 확인
   - [ ] Android `local.properties`
     - [ ] `FIREBASE_ANDROID_APPLICATION_ID`
@@ -30,8 +31,10 @@
   - [ ] Android `ADMOB_ANDROID_APP_ID`, `ADMOB_ANDROID_BANNER_UNIT_ID`
   - [ ] iOS `Config.local.xcconfig`의 `ADMOB_IOS_APP_ID_RELEASE`, `ADMOB_IOS_BANNER_UNIT_ID_RELEASE`
 - [ ] 테스트 계정 2개 준비
-  - [ ] 신랑측 계정 1개
-  - [ ] 신부측 계정 1개
+  - [ ] 신랑측 Email OTP 계정 1개
+  - [ ] 신부측 Email OTP 계정 1개
+  - [ ] 두 계정 모두 Supabase Auth에 기존 계정으로 생성되어 있음
+  - [ ] 리뷰어가 OTP 메일함에 접근 가능
 - [ ] 현재 Supabase 데이터가 초기화된 상태인지 확인
   - [ ] 회원가입부터 다시 시작하는 흐름으로 QA
 
@@ -41,17 +44,17 @@
 - [ ] 로그인 화면에서 약관 동의 체크가 처음 1회만 보이는지 확인
 - [ ] `이용약관`, `개인정보 처리방침` 링크가 실제 문서로 열리는지 확인
 - [ ] 체크하지 않으면 소셜 로그인이 막히는지 확인
-- [ ] Android Google 로그인 성공
+- [ ] Android Google 로그인 버튼이 보이지 않음
 - [ ] Android Kakao 로그인 성공
 - [ ] iOS Apple 로그인 성공
   - [ ] Apple 인증 후 앱으로 정상 복귀
   - [ ] 홈 진입 및 세션 생성 확인
-- [ ] iOS Google 로그인 성공
+- [ ] iOS Google 로그인 버튼이 보이지 않음
 - [ ] iOS Kakao 로그인 성공
 
 ### 1-4. 회원탈퇴
-- [ ] Android Google 계정 회원탈퇴 성공
 - [ ] Android Kakao 계정 회원탈퇴 성공
+- [ ] Email OTP 계정 회원탈퇴 성공
 - [ ] iOS Apple 계정 회원탈퇴 성공
   - [ ] Apple 재인증 시트가 다시 뜨는지 확인
   - [ ] 재인증 완료 후 탈퇴가 마무리되는지 확인
@@ -60,9 +63,12 @@
 - [ ] 탈퇴 실패 시 로그인 상태가 유지되고 오류 메시지가 보이는지 확인
 
 ### 1-2. 이메일 OTP
-- [ ] 이메일 OTP 로그인 요청 성공
-- [ ] 메일 수신 후 앱 복귀 성공
+- [ ] 약관에 동의하지 않으면 이메일 OTP 요청이 막히는지 확인
+- [ ] 기존 Supabase Auth 계정 이메일로 OTP 요청 성공
+- [ ] 미리 만들지 않은 이메일은 신규 가입되지 않는지 확인
+- [ ] 메일 수신 후 6자리 OTP 코드 입력 성공
 - [ ] 로그인 완료 후 홈 진입 성공
+- [ ] Android/iOS 모두 같은 Email OTP 리뷰 계정으로 로그인 가능
 
 ### 1-3. 온보딩
 - [ ] `혼자 시작하기` 경로 완료

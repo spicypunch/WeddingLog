@@ -166,7 +166,7 @@ class AuthViewModel(
             return
         }
         if (snapshot.isLoading || snapshot.isSendingOtp || snapshot.isVerifyingOtp || snapshot.isResendingVerificationEmail) return
-        if (!ensureSocialLoginConsent(snapshot)) return
+        if (!ensureLoginConsent(snapshot)) return
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
@@ -200,7 +200,7 @@ class AuthViewModel(
             return
         }
         if (snapshot.isLoading || snapshot.isSendingOtp || snapshot.isVerifyingOtp || snapshot.isResendingVerificationEmail) return
-        if (!ensureSocialLoginConsent(snapshot)) return
+        if (!ensureLoginConsent(snapshot)) return
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
@@ -234,7 +234,7 @@ class AuthViewModel(
             return
         }
         if (snapshot.isLoading || snapshot.isSendingOtp || snapshot.isVerifyingOtp || snapshot.isResendingVerificationEmail) return
-        if (!ensureSocialLoginConsent(snapshot)) return
+        if (!ensureLoginConsent(snapshot)) return
 
         _state.update { it.copy(isLoading = true, message = null) }
         viewModelScope.launch {
@@ -265,6 +265,7 @@ class AuthViewModel(
         val snapshot = _state.value
         if (snapshot.isLoading || snapshot.isSendingOtp || snapshot.isVerifyingOtp) return
         if (snapshot.otpCooldownSeconds > 0) return
+        if (!ensureLoginConsent(snapshot)) return
 
         _state.update { it.copy(isSendingOtp = true, message = null) }
         viewModelScope.launch {
@@ -298,12 +299,12 @@ class AuthViewModel(
         }
     }
 
-    private fun ensureSocialLoginConsent(snapshot: AuthUiState): Boolean {
+    private fun ensureLoginConsent(snapshot: AuthUiState): Boolean {
         if (snapshot.isTermsAccepted) return true
         _state.update {
             it.copy(
                 message = AuthMessage.Info(
-                    "소셜 로그인 전에 이용약관과 개인정보 처리방침에 동의해주세요."
+                    "로그인 전에 이용약관과 개인정보 처리방침에 동의해주세요."
                 ),
             )
         }
@@ -334,6 +335,7 @@ class AuthViewModel(
     private fun verifyOtp() {
         val snapshot = _state.value
         if (snapshot.isLoading || snapshot.isSendingOtp || snapshot.isVerifyingOtp) return
+        if (!ensureLoginConsent(snapshot)) return
 
         _state.update { it.copy(isVerifyingOtp = true, message = null) }
         viewModelScope.launch {
