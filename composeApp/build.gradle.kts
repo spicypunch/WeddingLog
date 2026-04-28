@@ -58,8 +58,8 @@ val enableTestAdBanner: Boolean = localProperties.getProperty("ENABLE_TEST_AD_BA
     ?.lowercase()
     ?.toBooleanStrictOrNull()
     ?: false
-val appVersionCode: Int = 2
-val appVersionName: String = "1.1.0"
+val appVersionCode: Int = 3
+val appVersionName: String = "1.2.0"
 
 kotlin {
     androidLibrary {
