@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -84,29 +85,33 @@ fun App() {
                 }
             }
             is AuthState.Authenticated -> {
+                val authenticatedUser = (authState as AuthState.Authenticated).user
                 val signOutUseCase: SignOutUseCase = koinInject()
                 val partnerActivityNotifier: PartnerActivityNotifier = koinInject()
 
-                LaunchedEffect(Unit) {
+                LaunchedEffect(authenticatedUser.id) {
                     partnerActivityNotifier.syncCurrentDevicePushToken()
                 }
 
-                OnboardingGateRoute(
-                    themeStyle = themeStyle,
-                    holdSplash = !isMinimumSplashElapsed,
-                    onThemeStyleChange = {
-                        scope.launch { ThemeStylePreferenceStorage.saveThemeStyle(it) }
-                    },
-                    onLogout = {
-                        scope.launch {
-                            partnerActivityNotifier.deactivateCurrentDevicePushToken()
-                            signOutUseCase()
-                        }
-                    },
-                    onAccountDeleted = {
-                        authInitialMessage = AuthMessage.Info("회원탈퇴가 완료되었습니다.")
-                    },
-                )
+                key(authenticatedUser.id) {
+                    OnboardingGateRoute(
+                        userId = authenticatedUser.id,
+                        themeStyle = themeStyle,
+                        holdSplash = !isMinimumSplashElapsed,
+                        onThemeStyleChange = {
+                            scope.launch { ThemeStylePreferenceStorage.saveThemeStyle(it) }
+                        },
+                        onLogout = {
+                            scope.launch {
+                                partnerActivityNotifier.deactivateCurrentDevicePushToken()
+                                signOutUseCase()
+                            }
+                        },
+                        onAccountDeleted = {
+                            authInitialMessage = AuthMessage.Info("회원탈퇴가 완료되었습니다.")
+                        },
+                    )
+                }
             }
         }
     }

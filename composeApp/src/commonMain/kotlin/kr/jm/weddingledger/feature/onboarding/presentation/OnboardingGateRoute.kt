@@ -26,13 +26,14 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun OnboardingGateRoute(
+    userId: String,
     themeStyle: WeddingLogThemeStyle,
     holdSplash: Boolean,
     onThemeStyleChange: (WeddingLogThemeStyle) -> Unit,
     onLogout: () -> Unit,
     onAccountDeleted: () -> Unit,
 ) {
-    val viewModel: OnboardingViewModel = koinViewModel()
+    val viewModel: OnboardingViewModel = koinViewModel(key = "onboarding:$userId")
     val uiState by viewModel.state.collectAsState()
 
     when {
