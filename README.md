@@ -22,6 +22,27 @@ Android/iOS 공용 코드로 홈 결산, 가계부, 일정, 하객, 온보딩/�
 
 아키텍처 규칙은 [AGENTS.md](./AGENTS.md)를 따릅니다.
 
+## 현재 배포 상태 (2026-05-01)
+
+- Android
+  - `applicationId`: `kr.jm.weddinglog`
+  - `namespace`: `kr.jm.weddingledger`
+  - `versionName`: `1.2.0`
+  - `versionCode`: `3`
+- iOS
+  - Bundle ID: `kr.jm.weddingledger.WeddingLedger`
+  - `MARKETING_VERSION`: `1.2`
+  - `CURRENT_PROJECT_VERSION`: `4`
+  - `TARGETED_DEVICE_FAMILY = 1`로 iPhone only 설정
+- 첫 출시 노출 정책
+  - Android: Kakao + Email/Password
+  - iOS: Kakao + Apple + Email/Password
+  - Google 로그인은 구현을 유지하되 첫 출시 안정화를 위해 화면에서 미노출
+  - AdMob 배너 슬롯/SDK 연동은 유지하되 첫 출시 빌드에서는 배너 미노출
+- 계정 전환 안정화
+  - 로그아웃 후 새 계정으로 로그인할 때 이전 계정의 온보딩 완료 상태가 재사용되지 않도록 `OnboardingGateRoute`와 `OnboardingViewModel`을 사용자 ID 기준으로 분리했습니다.
+  - QA 시 `기존 계정 로그인 -> 로그아웃 -> 새 계정 로그인 -> 혼자 시작하기/공유 코드로 시작하기 화면 노출`을 반드시 확인합니다.
+
 ## 로컬 설정
 
 `local.properties`에 최소 아래 키가 필요합니다.
@@ -245,6 +266,21 @@ Supabase 대시보드 권장값:
   - 이메일 회원가입은 열지 않습니다.
   - 심사용 계정은 Supabase Auth에 미리 생성해야 하고, 필요하면 온보딩/샘플 데이터까지 준비합니다.
   - 이메일/비밀번호 로그인도 약관 및 개인정보 처리방침 동의 후에만 진행됩니다.
+
+## 최근 출시/계정 전환 반영 (2026-05-01)
+
+- Android 패키지명 정리
+  - Play Console에서 `kr.jm.weddingledger` 패키지명이 이미 사용 중인 상태로 확인되어, 실제 배포 `applicationId`를 `kr.jm.weddinglog`로 변경했습니다.
+  - Kotlin/패키지 namespace는 기존 `kr.jm.weddingledger`를 유지합니다.
+- iOS 배포 설정 정리
+  - App Store Connect 업로드용 버전은 `1.2 (4)` 기준입니다.
+  - iPad까지 타겟되지 않도록 `TARGETED_DEVICE_FAMILY = 1`로 iPhone only 설정을 확인했습니다.
+- 첫 출시 광고 정책
+  - AdMob 네이티브/호스트 연동 코드는 유지하지만, 첫 출시에서는 배너를 숨기는 설정을 기본으로 둡니다.
+  - 추후 광고를 다시 노출할 때는 Compose 내부 배너 배치와 하단 내비게이션 간격을 함께 재검토합니다.
+- 계정 전환 온보딩 버그 수정
+  - 기존 계정에서 온보딩 완료 후 로그아웃하고 새 계정으로 로그인하면, 이전 `OnboardingStep.Done` 상태가 재사용되어 홈으로 바로 이동할 수 있던 문제를 수정했습니다.
+  - `Authenticated.user.id`를 기준으로 온보딩 게이트 subtree와 `OnboardingViewModel` key를 분리해 계정별 초기 로딩이 다시 실행되도록 했습니다.
 
 ## QA
 

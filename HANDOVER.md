@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-04-21
+마지막 갱신: 2026-05-01
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -30,9 +30,9 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 "/Applications/Android Studio.app/Contents/MacOS/studio" /Users/jm/StudioProjects/WeddingLedger
 ```
 
-5) 현재 Supabase 데이터는 QA용으로 **앱 데이터 + auth.users까지 전부 비운 상태**다.
-   - 새로운 QA는 회원가입부터 다시 시작하면 된다.
-   - 단, 이메일 전송 rate limit은 데이터 삭제와 별개라 바로 초기화되지 않을 수 있다.
+5) Supabase QA 데이터 상태는 작업 전 Dashboard/MCP에서 먼저 확인한다.
+   - 최근에는 심사용 이메일/비밀번호 계정과 샘플 데이터가 수동으로 준비된 적이 있다.
+   - 비밀번호는 Supabase에서 평문 조회가 불가능하므로, 잊어버리면 Dashboard에서 재설정하거나 새 리뷰 계정을 만드는 편이 빠르다.
 6) 파트너 활동 푸시는 코드/DB/Edge Function까지 연결되어 있다.
    - Android는 `local.properties`의 Firebase 값이 필요하다.
    - iOS는 `iosApp/Configuration/Config.local.xcconfig`에 Firebase 값을 두고, `Config.xcconfig`에서 로컬 include 한다.
@@ -47,6 +47,13 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - Google 로그인 구현은 유지하지만 Android에서 Gmail 작성 화면으로 빠지는 케이스가 있어 화면에서는 일시 미노출
    - Email OTP는 다시 숨기고, 심사용 임시 이메일/비밀번호 로그인을 노출
    - 회원가입은 열지 않고 Supabase Auth에 미리 만든 리뷰 계정으로만 로그인
+9) 현재 배포 식별자/버전(2026-05-01)
+   - Android `applicationId`: `kr.jm.weddinglog`
+   - Android `namespace`: `kr.jm.weddingledger`
+   - Android `versionName/versionCode`: `1.2.0 / 3`
+   - iOS Bundle ID: `kr.jm.weddingledger.WeddingLedger`
+   - iOS `MARKETING_VERSION/CURRENT_PROJECT_VERSION`: `1.2 / 4`
+   - iOS는 `TARGETED_DEVICE_FAMILY = 1`로 iPhone only
 
 ---
 
@@ -59,13 +66,19 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - Kakao/Apple 계정만 믿지 말고 이메일/비밀번호용 기존 Supabase Auth 계정을 준비
    - App Store Connect / Play Console 리뷰 메모에 이메일과 비밀번호를 제공
    - 필요하면 해당 계정으로 온보딩/샘플 데이터까지 먼저 구성
-5. **계정 전환 push QA를 먼저 확인**
+5. **계정 전환 온보딩 QA를 먼저 확인**
+   - 기존에 온보딩 완료된 계정으로 로그인
+   - 로그아웃
+   - 새로 만든 계정으로 로그인
+   - 홈으로 바로 가지 않고 `혼자 시작하기 / 공유 코드로 시작하기` 화면이 나오는지 확인
+   - 앱을 완전히 종료 후 재실행해도 같은 계정 기준 분기가 유지되는지 확인
+6. **계정 전환 push QA를 확인**
    - 같은 기기에서 계정 A 로그인
    - 로그아웃
    - 계정 B 로그인
    - A 활동 push가 더 이상 새지 않는지 확인
    - `push_token_deactivated`, `push_token_synced` 로그 확인
-6. **홈 + 가계부 탭을 제일 먼저 QA**
+7. **홈 + 가계부 탭을 제일 먼저 QA**
    - 홈에서 큰 금액이 들어가도 결산 카드 레이아웃이 안 깨지는지
    - 홈에서 중간 CTA 카드와 FAB가 제거되었는지
    - 첫 진입 시 `예산` 탭이 기본 선택되는지
@@ -74,12 +87,12 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - `예산 항목 추가` / `지출 추가` 흐름이 쉬운지
    - 저장 실패 시 바텀시트가 닫히지 않고 입력값이 유지되는지
    - 아직도 복잡하면 어느 구간에서 막히는지 메모
-7. 그 다음 일정/하객/알림센터 순서로 통합 QA 진행
-8. 파트너 계정 2개로 지출/일정 추가 후
+8. 그 다음 일정/하객/알림센터 순서로 통합 QA 진행
+9. 파트너 계정 2개로 지출/일정 추가 후
    - 알림센터 `새 활동`에 상대방 활동이 뜨는지
    - Android는 실제 OS push까지 오는지 확인
    - iOS도 실제 OS push까지 오는지 교차 확인
-9. **회원탈퇴 QA**
+10. **회원탈퇴 QA**
    - Android에서 Kakao 계정 회원탈퇴
    - Android 또는 iOS에서 이메일/비밀번호 계정 회원탈퇴
    - iOS에서 Apple 계정 회원탈퇴
@@ -123,6 +136,7 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - `공유 코드로 시작하기` 경로: 닉네임 + 공유 코드 입력으로 파트너 연결
   - 초대 코드는 `6자리 숫자` 형식으로 통일(`W-` 접두어 제거)
   - 초대 코드 공유는 온보딩 필수 단계에서 제거하고 설정 화면에서 선택적으로 제공
+  - 계정 전환 시 이전 계정의 온보딩 완료 상태가 새 계정에 재사용되지 않도록 사용자 ID 기준으로 `OnboardingGateRoute`/`OnboardingViewModel` key 분리 완료
   - 회원가입/온보딩 프로필 화면에서 키보드 열림 시 고정 하단 CTA를 스크롤 영역 CTA로 전환(가림/과상승 완화)
   - iOS 키보드 대응 통합:
     - SwiftUI 키보드 safe-area 자동 회피 비활성화
@@ -337,6 +351,24 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 - 검증
   - `./gradlew :androidApp:assembleDebug` 성공
   - 기존 deprecation/configuration cache 경고는 남지만 이번 변경으로 인한 빌드 실패는 없음
+
+## 1-7) 오늘 추가 변경 (2026-05-01)
+
+- 출시/스토어 설정 최신화
+  - Android 실제 배포 패키지명을 `kr.jm.weddinglog`로 정리
+  - Kotlin namespace와 기존 코드 패키지는 `kr.jm.weddingledger` 유지
+  - Android 현재 버전은 `1.2.0 (3)`
+  - iOS 현재 버전은 `1.2 (4)`
+  - iOS는 App Store Connect 업로드 시 iPad까지 타겟되지 않도록 `TARGETED_DEVICE_FAMILY = 1` 확인
+- 첫 출시 노출 정책 유지
+  - Google 로그인은 구현을 유지하되 화면에서 미노출
+  - AdMob 배너는 첫 출시 빌드에서 숨김
+  - 광고를 다시 켤 때는 Compose 내부 배너 배치와 하단 내비게이션 여백을 함께 재설계 필요
+- 계정 전환 온보딩 버그 수정
+  - 증상: 기존 계정에서 온보딩 완료 후 로그아웃하고 새 계정으로 로그인하면 `혼자 시작하기 / 공유 코드로 시작하기` 화면 대신 홈으로 바로 이동
+  - 원인: `OnboardingViewModel`이 사용자 ID와 무관하게 재사용되어 이전 계정의 `OnboardingStep.Done` 상태가 남음
+  - 조치: `Authenticated.user.id`를 `OnboardingGateRoute`에 전달하고, Compose `key(userId)` 및 `koinViewModel(key = "onboarding:$userId")`를 적용
+  - 검증: `./gradlew :androidApp:assembleDebug` 성공
 
 ---
 
