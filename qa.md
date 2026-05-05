@@ -1,19 +1,23 @@
 # QA 체크리스트
 
-마지막 갱신: 2026-05-01
+마지막 갱신: 2026-05-05
 
 ## 0. 준비
 
 - [ ] 최신 `main` 브랜치 pull 완료
 - [ ] `local.properties`의 Supabase/Kakao 키 확인
 - [ ] 현재 배포 버전 확인
-  - [ ] Android `versionName=1.2.0`, `versionCode=3`
-  - [ ] iOS `MARKETING_VERSION=1.2`, `CURRENT_PROJECT_VERSION=4`
+  - [ ] Android `versionName=1.3.0`, `versionCode=4`
+  - [ ] iOS `MARKETING_VERSION=1.3`, `CURRENT_PROJECT_VERSION=5`
+- [ ] 이번 배포 산출물 확인
+  - [ ] Android AAB: `build/distributions/WeddingLog-android-1.3.0-b4.aab`
+  - [ ] iOS IPA: `build/distributions/WeddingLog-ios-1.3-b5.ipa`
 - [ ] Android 실제 배포 `applicationId`가 `kr.jm.weddinglog`인지 확인
 - [ ] iOS가 iPhone only인지 확인
   - [ ] `TARGETED_DEVICE_FAMILY = 1`
 - [ ] Google 로그인은 첫 출시 안정화를 위해 화면에서 미노출 상태인지 확인
-- [ ] 첫 출시 빌드에서는 AdMob 배너가 화면에 보이지 않는지 확인
+- [ ] `ENABLE_ADMOB_BANNER=true`에서 AdMob 배너가 바텀 내비게이션 위에 보이는지 확인
+- [ ] `ENABLE_ADMOB_BANNER=false`에서 AdMob 배너와 빈 여백이 모두 사라지는지 확인
 - [ ] 파트너 활동 푸시 테스트를 할 경우 Firebase 값 확인
   - [ ] Android `local.properties`
     - [ ] `FIREBASE_ANDROID_APPLICATION_ID`
@@ -37,11 +41,11 @@
 - [ ] AdMob 테스트/실광고 설정값 확인
   - [ ] Android `ADMOB_ANDROID_APP_ID`, `ADMOB_ANDROID_BANNER_UNIT_ID`
   - [ ] iOS `Config.local.xcconfig`의 `ADMOB_IOS_APP_ID_RELEASE`, `ADMOB_IOS_BANNER_UNIT_ID_RELEASE`
-- [ ] 테스트 계정 2개 준비
-  - [ ] 신랑측 이메일/비밀번호 계정 1개
-  - [ ] 신부측 이메일/비밀번호 계정 1개
-  - [ ] 두 계정 모두 Supabase Auth에 기존 계정으로 생성되어 있음
-  - [ ] App Store Connect / Play Console 리뷰 메모에 이메일과 비밀번호 제공 가능
+  - [ ] iOS TestFlight에서 하단에 큰 빈 여백이 생기지 않는지 확인
+- [ ] 소셜 로그인 테스트 계정 준비
+  - [ ] Android Kakao 계정 1개 이상
+  - [ ] iOS Kakao 계정 1개 이상
+  - [ ] iOS Apple 로그인 테스트 가능 Apple ID
 - [ ] 현재 Supabase 데이터가 초기화된 상태인지 확인
   - [ ] 회원가입부터 다시 시작하는 흐름으로 QA
 
@@ -52,16 +56,18 @@
 - [ ] `이용약관`, `개인정보 처리방침` 링크가 실제 문서로 열리는지 확인
 - [ ] 체크하지 않으면 소셜 로그인이 막히는지 확인
 - [ ] Android Google 로그인 버튼이 보이지 않음
+- [ ] Android 이메일 로그인 버튼/입력 영역이 보이지 않음
 - [ ] Android Kakao 로그인 성공
 - [ ] iOS Apple 로그인 성공
   - [ ] Apple 인증 후 앱으로 정상 복귀
   - [ ] 홈 진입 및 세션 생성 확인
 - [ ] iOS Google 로그인 버튼이 보이지 않음
+- [ ] iOS 이메일 로그인 버튼/입력 영역이 보이지 않음
 - [ ] iOS Kakao 로그인 성공
 
 ### 1-4. 회원탈퇴
 - [ ] Android Kakao 계정 회원탈퇴 성공
-- [ ] 이메일/비밀번호 계정 회원탈퇴 성공
+- [ ] iOS Kakao 계정 회원탈퇴 성공
 - [ ] iOS Apple 계정 회원탈퇴 성공
   - [ ] Apple 재인증 시트가 다시 뜨는지 확인
   - [ ] 재인증 완료 후 탈퇴가 마무리되는지 확인
@@ -69,13 +75,11 @@
 - [ ] 탈퇴한 계정 세션으로 앱 재실행 시 자동 로그인되지 않는지 확인
 - [ ] 탈퇴 실패 시 로그인 상태가 유지되고 오류 메시지가 보이는지 확인
 
-### 1-2. 이메일/비밀번호 임시 로그인
-- [ ] 약관에 동의하지 않으면 이메일 로그인이 막히는지 확인
-- [ ] 기존 Supabase Auth 계정 이메일/비밀번호로 로그인 성공
-- [ ] 미리 만들지 않은 이메일은 로그인되지 않고 신규 가입도 생성되지 않는지 확인
-- [ ] 잘못된 비밀번호 입력 시 오류 메시지 표시
-- [ ] 로그인 완료 후 홈 진입 성공
-- [ ] Android/iOS 모두 같은 이메일/비밀번호 리뷰 계정으로 로그인 가능
+### 1-2. 배포 후 이메일 로그인 제거 확인
+- [ ] 로그인 화면에 `이메일로 로그인` 텍스트가 보이지 않음
+- [ ] 이메일/비밀번호 입력창이 보이지 않음
+- [ ] OTP 받기/OTP 입력/인증 메일 재전송 UI가 보이지 않음
+- [ ] 약관 동의 후에도 로그인 수단은 소셜 버튼만 노출됨
 
 ### 1-3. 온보딩
 - [ ] `혼자 시작하기` 경로 완료

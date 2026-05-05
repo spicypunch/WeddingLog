@@ -19,7 +19,7 @@ import kr.jm.weddingledger.core.config.BuildConfig
 private const val AndroidTestBannerAdUnitId = "ca-app-pub-3940256099942544/9214589741"
 
 @Composable
-actual fun TestBannerAd(modifier: Modifier) {
+actual fun AdMobBanner(modifier: Modifier) {
     val context = LocalContext.current
     val screenWidthDp = LocalConfiguration.current.screenWidthDp
     val selectedAdUnitId = remember(context) {
@@ -53,5 +53,3 @@ actual fun TestBannerAd(modifier: Modifier) {
         factory = { adView },
     )
 }
-
-actual fun syncHostBannerVisibility(visible: Boolean) = Unit

@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-05-01
+마지막 갱신: 2026-05-05
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -31,7 +31,8 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 ```
 
 5) Supabase QA 데이터 상태는 작업 전 Dashboard/MCP에서 먼저 확인한다.
-   - 최근에는 심사용 이메일/비밀번호 계정과 샘플 데이터가 수동으로 준비된 적이 있다.
+   - 과거 심사용 이메일/비밀번호 계정과 샘플 데이터가 수동으로 준비된 적이 있다.
+   - 2026-05-05 기준 이메일/비밀번호 로그인 UI는 배포 후 제거됐다.
    - 비밀번호는 Supabase에서 평문 조회가 불가능하므로, 잊어버리면 Dashboard에서 재설정하거나 새 리뷰 계정을 만드는 편이 빠르다.
 6) 파트너 활동 푸시는 코드/DB/Edge Function까지 연결되어 있다.
    - Android는 `local.properties`의 Firebase 값이 필요하다.
@@ -43,16 +44,17 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - Supabase Apple Provider `Client IDs`에는 아래 두 값을 함께 넣어야 한다.
    - `kr.jm.weddingledger.service`
    - `kr.jm.weddingledger.WeddingLedger`
-8) 첫 출시 인증 정책은 `Kakao/Apple + Email/Password` 중심으로 정리했다(2026-04-21).
+8) 현재 인증 정책은 소셜 로그인 중심이다(2026-05-05).
+   - Android 로그인 화면: `Kakao`
+   - iOS 로그인 화면: `Kakao + Apple`
    - Google 로그인 구현은 유지하지만 Android에서 Gmail 작성 화면으로 빠지는 케이스가 있어 화면에서는 일시 미노출
-   - Email OTP는 다시 숨기고, 심사용 임시 이메일/비밀번호 로그인을 노출
-   - 회원가입은 열지 않고 Supabase Auth에 미리 만든 리뷰 계정으로만 로그인
+   - Email OTP와 이메일/비밀번호 로그인 UI는 숨김
 9) 현재 배포 식별자/버전(2026-05-01)
    - Android `applicationId`: `kr.jm.weddinglog`
    - Android `namespace`: `kr.jm.weddingledger`
-   - Android `versionName/versionCode`: `1.2.0 / 3`
+   - Android `versionName/versionCode`: `1.3.0 / 4`
    - iOS Bundle ID: `kr.jm.weddingledger.WeddingLedger`
-   - iOS `MARKETING_VERSION/CURRENT_PROJECT_VERSION`: `1.2 / 4`
+   - iOS `MARKETING_VERSION/CURRENT_PROJECT_VERSION`: `1.3 / 5`
    - iOS는 `TARGETED_DEVICE_FAMILY = 1`로 iPhone only
 
 ---
@@ -62,10 +64,10 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 1. `main` 최신 pull
 2. Android Studio는 필요 시 터미널 실행 방식으로 열기
 3. `local.properties` 값 확인
-4. 심사용 로그인 계정 준비
-   - Kakao/Apple 계정만 믿지 말고 이메일/비밀번호용 기존 Supabase Auth 계정을 준비
-   - App Store Connect / Play Console 리뷰 메모에 이메일과 비밀번호를 제공
-   - 필요하면 해당 계정으로 온보딩/샘플 데이터까지 먼저 구성
+4. 인증 화면 정책 확인
+   - Android는 Kakao만 보이는지 확인
+   - iOS는 Kakao + Apple만 보이는지 확인
+   - `이메일로 로그인`, OTP, Google 버튼이 보이지 않는지 확인
 5. **계정 전환 온보딩 QA를 먼저 확인**
    - 기존에 온보딩 완료된 계정으로 로그인
    - 로그아웃
@@ -94,7 +96,7 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - iOS도 실제 OS push까지 오는지 교차 확인
 10. **회원탈퇴 QA**
    - Android에서 Kakao 계정 회원탈퇴
-   - Android 또는 iOS에서 이메일/비밀번호 계정 회원탈퇴
+   - iOS에서 Kakao 계정 회원탈퇴
    - iOS에서 Apple 계정 회원탈퇴
    - 탈퇴 후 로그인 화면으로 복귀하는지
    - 탈퇴한 계정 세션으로 재진입되지 않는지
@@ -124,11 +126,10 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - 이메일 인증 딥링크 E2E 연결 완료(Android `intent-filter` + iOS `onOpenURL` + KMP bridge)
   - 딥링크 처리 성공/실패 시 로그인 화면 안내 배너 표시(`AuthMessage.Info/Error`)
   - 로그인 미인증 전용 안내 카드 + 재전송 60초 쿨다운 + 최대 5회 제한 추가
-  - 첫 출시 로그인 정책: Android는 `Kakao + Email/Password`, iOS는 `Kakao + Apple + Email/Password`
+  - 현재 로그인 정책: Android는 `Kakao`, iOS는 `Kakao + Apple`
   - Google 로그인은 Android에서 Gmail 작성 화면으로 잘못 라우팅되는 케이스가 있어 첫 출시 안정화를 위해 화면에서 일시 미노출
-  - 이메일/비밀번호 로그인 UI는 심사용 공통 로그인 수단으로 임시 노출
-  - Email OTP UI는 다시 숨김
-  - 이메일/비밀번호 로그인도 약관 및 개인정보 처리방침 동의 후에만 진행
+  - 이메일/비밀번호 로그인 UI는 배포 완료 후 제거
+  - Email OTP UI도 숨김
   - 이메일 회원가입은 비활성
   - Kakao 로그인 네이티브 SDK 경로(iOS/Android) 적용 및 양 플랫폼 성공 검증 완료(2026-03-04)
   - 온보딩 엔트리 분기 도입(`혼자 시작하기` / `공유 코드로 시작하기`)
@@ -357,18 +358,42 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 - 출시/스토어 설정 최신화
   - Android 실제 배포 패키지명을 `kr.jm.weddinglog`로 정리
   - Kotlin namespace와 기존 코드 패키지는 `kr.jm.weddingledger` 유지
-  - Android 현재 버전은 `1.2.0 (3)`
-  - iOS 현재 버전은 `1.2 (4)`
+  - Android 현재 버전은 `1.3.0 (4)`
+  - iOS 현재 버전은 `1.3 (5)`
   - iOS는 App Store Connect 업로드 시 iPad까지 타겟되지 않도록 `TARGETED_DEVICE_FAMILY = 1` 확인
 - 첫 출시 노출 정책 유지
   - Google 로그인은 구현을 유지하되 화면에서 미노출
-  - AdMob 배너는 첫 출시 빌드에서 숨김
-  - 광고를 다시 켤 때는 Compose 내부 배너 배치와 하단 내비게이션 여백을 함께 재설계 필요
+  - AdMob 배너는 Android/iOS 모두 다시 활성화
+  - iOS는 SwiftUI 호스트 하단 배너를 제거하고 Compose 내부 슬롯에서 바텀 내비게이션 위에 표시
 - 계정 전환 온보딩 버그 수정
   - 증상: 기존 계정에서 온보딩 완료 후 로그아웃하고 새 계정으로 로그인하면 `혼자 시작하기 / 공유 코드로 시작하기` 화면 대신 홈으로 바로 이동
   - 원인: `OnboardingViewModel`이 사용자 ID와 무관하게 재사용되어 이전 계정의 `OnboardingStep.Done` 상태가 남음
   - 조치: `Authenticated.user.id`를 `OnboardingGateRoute`에 전달하고, Compose `key(userId)` 및 `koinViewModel(key = "onboarding:$userId")`를 적용
   - 검증: `./gradlew :androidApp:assembleDebug` 성공
+
+## 1-8) 오늘 추가 변경 (2026-05-05)
+
+- 배포 후 인증 정책 반영
+  - Android/iOS 양 플랫폼 심사 완료 및 배포 확인 후 임시 이메일/비밀번호 로그인 UI 제거
+  - Android 로그인 화면은 Kakao만 노출
+  - iOS 로그인 화면은 Kakao + Apple만 노출
+  - Google 로그인은 코드 유지, 화면 미노출 상태 유지
+- 구현 메모
+  - `AuthScreen`에서 `또는`, `이메일로 로그인`, 이메일/비밀번호 입력 영역, 이메일 인증 재전송 카드를 제거
+  - `AuthViewModel.submit()`은 내부적으로 호출돼도 이메일 로그인을 진행하지 않고 소셜 로그인 안내 메시지만 표시
+  - `AuthViewModel` DI에서 `SignInUseCase` 주입 제거
+  - 이메일/OTP 관련 일부 domain/data 함수는 레거시 딥링크와 향후 복구 가능성을 위해 유지
+- AdMob 재활성화 및 배포 빌드
+  - Android/iOS 모두 `ENABLE_ADMOB_BANNER=true` 기준 배너 노출
+  - iOS는 SwiftUI 호스트 하단 배너 대신 Compose 내부 슬롯에서 `UIView` 컨테이너를 만들고 Swift `AdMobBannerBridge`가 그 안에 `BannerView`를 연결
+  - 배포용 버전은 Android `1.3.0 (4)`, iOS `1.3 (5)`
+  - Android AAB: `build/distributions/WeddingLog-android-1.3.0-b4.aab`
+  - iOS IPA: `build/distributions/WeddingLog-ios-1.3-b5.ipa`
+- 검증
+  - `./gradlew :composeApp:allTests :androidApp:assembleDebug` 성공
+  - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build -quiet` 성공
+  - `./gradlew :androidApp:bundleRelease` 성공
+  - `xcodebuild archive` 및 `xcodebuild -exportArchive` 성공
 
 ---
 

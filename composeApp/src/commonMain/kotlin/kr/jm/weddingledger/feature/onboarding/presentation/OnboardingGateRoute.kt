@@ -6,17 +6,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import kr.jm.weddingledger.core.ads.TestBannerAd
-import kr.jm.weddingledger.core.ads.shouldShowTestBanner
-import kr.jm.weddingledger.core.ads.syncHostBannerVisibility
+import kr.jm.weddingledger.core.ads.AdMobBanner
+import kr.jm.weddingledger.core.ads.shouldShowAdMobBanner
 import kr.jm.weddingledger.core.designsystem.WeddingLogThemeStyle
 import kr.jm.weddingledger.core.navigation.AppBottomBar
 import kr.jm.weddingledger.core.navigation.AppNavHost
@@ -64,17 +61,7 @@ private fun MainAppScaffold(
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val shouldShowBanner = shouldShowTestBanner(backStackEntry?.destination?.route)
-
-    LaunchedEffect(shouldShowBanner) {
-        syncHostBannerVisibility(shouldShowBanner)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            syncHostBannerVisibility(false)
-        }
-    }
+    val shouldShowBanner = shouldShowAdMobBanner(backStackEntry?.destination?.route)
 
     // Avoid recreating lambda in bottom bar recompositions.
     val onNavigate: (kr.jm.weddingledger.core.navigation.TopLevelDestination) -> Unit = remember(navController) {
@@ -94,7 +81,7 @@ private fun MainAppScaffold(
         bottomBar = {
             Column {
                 if (shouldShowBanner) {
-                    TestBannerAd()
+                    AdMobBanner()
                 }
                 AppBottomBar(
                     currentRoute = backStackEntry?.destination?.route,

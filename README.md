@@ -22,23 +22,24 @@ Android/iOS 공용 코드로 홈 결산, 가계부, 일정, 하객, 온보딩/�
 
 아키텍처 규칙은 [AGENTS.md](./AGENTS.md)를 따릅니다.
 
-## 현재 배포 상태 (2026-05-01)
+## 현재 배포 상태 (2026-05-05)
 
 - Android
   - `applicationId`: `kr.jm.weddinglog`
   - `namespace`: `kr.jm.weddingledger`
-  - `versionName`: `1.2.0`
-  - `versionCode`: `3`
+  - `versionName`: `1.3.0`
+  - `versionCode`: `4`
 - iOS
   - Bundle ID: `kr.jm.weddingledger.WeddingLedger`
-  - `MARKETING_VERSION`: `1.2`
-  - `CURRENT_PROJECT_VERSION`: `4`
+  - `MARKETING_VERSION`: `1.3`
+  - `CURRENT_PROJECT_VERSION`: `5`
   - `TARGETED_DEVICE_FAMILY = 1`로 iPhone only 설정
-- 첫 출시 노출 정책
-  - Android: Kakao + Email/Password
-  - iOS: Kakao + Apple + Email/Password
+- 현재 로그인 화면 노출 정책
+  - Android: Kakao
+  - iOS: Kakao + Apple
   - Google 로그인은 구현을 유지하되 첫 출시 안정화를 위해 화면에서 미노출
-  - AdMob 배너 슬롯/SDK 연동은 유지하되 첫 출시 빌드에서는 배너 미노출
+  - 이메일/비밀번호 로그인은 양 플랫폼 심사 완료 후 사용자 화면에서 제거
+  - AdMob 배너는 Android/iOS 메인 탭에서 바텀 내비게이션 위 Compose 슬롯에 노출
 - 계정 전환 안정화
   - 로그아웃 후 새 계정으로 로그인할 때 이전 계정의 온보딩 완료 상태가 재사용되지 않도록 `OnboardingGateRoute`와 `OnboardingViewModel`을 사용자 ID 기준으로 분리했습니다.
   - QA 시 `기존 계정 로그인 -> 로그아웃 -> 새 계정 로그인 -> 혼자 시작하기/공유 코드로 시작하기 화면 노출`을 반드시 확인합니다.
@@ -66,7 +67,7 @@ ADMOB_IOS_BANNER_UNIT_ID=ca-app-pub-3940256099942544/2435281174
 ENABLE_KAKAO_LOGIN=true
 ENABLE_GOOGLE_LOGIN=true
 ENABLE_APPLE_LOGIN=false
-ENABLE_TEST_AD_BANNER=false
+ENABLE_ADMOB_BANNER=true
 ```
 
 - `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
@@ -90,10 +91,11 @@ ENABLE_TEST_AD_BANNER=false
 - 첫 출시 안정화를 위해 Google 로그인 코드는 유지하되 로그인 화면에서는 일시 미노출 상태입니다.
   - Android에서 Supabase OAuth URL이 Gmail 앱 작성 화면으로 라우팅되는 케이스가 있어, 심사/첫 출시 전 노출 리스크를 줄이기 위한 결정입니다.
   - 복구 시 `AuthScreen`의 `SocialProvider.Google` 주석과 Android OAuth 처리 방식을 함께 재검토합니다.
-- 첫 출시 심사용으로 이메일/비밀번호 로그인을 임시 노출합니다.
-  - 회원가입은 열지 않고, Supabase Auth에 미리 만든 리뷰 계정으로만 로그인합니다.
-  - 심사 통과 후에는 이메일 로그인 UI를 다시 숨기고 소셜 로그인 중심으로 복귀합니다.
-- `ENABLE_TEST_AD_BANNER=false`가 첫 출시 기본값입니다. `true`로 바꾸면 Android/iOS 메인 탭 화면 하단에 배너를 표시합니다. debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID를 사용합니다.
+- 이메일/비밀번호 로그인 UI는 양 플랫폼 심사 완료 후 제거했습니다.
+  - `AuthViewModel`의 이메일 submit 경로도 소셜 로그인 안내로 차단합니다.
+  - 관련 repository/usecase 일부는 레거시 딥링크/향후 복구 가능성을 위해 남아 있지만, 사용자 화면에서는 진입 경로가 없습니다.
+- `ENABLE_ADMOB_BANNER=true`면 Android/iOS 메인 탭 화면에서 바텀 내비게이션 위에 배너를 표시합니다. debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID를 사용합니다.
+- 현재 ATT 권한 팝업은 추가하지 않고, AdMob SDK 기반 배너 광고만 활성화합니다.
 - iOS Apple 로그인은 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로를 사용합니다.
 - Apple 로그인을 활성화하려면 Supabase Apple Provider `Client IDs`에 아래 두 값을 함께 넣어야 합니다.
   - `kr.jm.weddingledger.service`
@@ -234,8 +236,8 @@ Supabase 대시보드 권장값:
 - Tools / 샘플 데이터 정리
   - `웨딩홀 비교`, `가치관 설문`은 현재 클릭 시 `준비 중인 기능이에요.` 안내를 보여줍니다.
   - shared 공용 상태의 `sample()` 더미 데이터를 제거하고, smoke test는 실제 최소 상태 생성 방식으로 정리했습니다.
-- AdMob 배너 1차 구현
-  - Android/iOS 메인 탭 하단에 공통 배너 슬롯을 추가했습니다.
+- AdMob 배너 구현
+  - Android/iOS 메인 탭에서 바텀 내비게이션 위에 공통 배너 슬롯을 추가했습니다.
   - debug 빌드는 공식 테스트 App ID / 배너 unit ID를 사용합니다.
   - release 빌드는 `local.properties`와 `iosApp/Configuration/Config.local.xcconfig`의 실제 광고 ID를 사용합니다.
 - 회원탈퇴 v1
@@ -251,9 +253,9 @@ Supabase 대시보드 권장값:
 - 참고
   - iOS에서 Firebase `GoogleService-Info.plist` 관련 경고 로그가 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실제 push 수신은 정상 동작 확인
 
-## 첫 출시 인증 정책 정리 (2026-04-21)
+## 첫 출시 인증 정책 정리 (2026-04-21, 이력)
 
-- 현재 로그인 화면 노출 정책:
+- 당시 로그인 화면 노출 정책:
   - Android: Kakao + Email/Password
   - iOS: Kakao + Apple + Email/Password
   - Google: 구현은 유지하지만 첫 출시 안정화를 위해 화면에서 미노출
@@ -266,6 +268,7 @@ Supabase 대시보드 권장값:
   - 이메일 회원가입은 열지 않습니다.
   - 심사용 계정은 Supabase Auth에 미리 생성해야 하고, 필요하면 온보딩/샘플 데이터까지 준비합니다.
   - 이메일/비밀번호 로그인도 약관 및 개인정보 처리방침 동의 후에만 진행됩니다.
+  - 2026-05-05 양 플랫폼 배포 완료 후 이메일/비밀번호 로그인 UI는 제거했습니다.
 
 ## 최근 출시/계정 전환 반영 (2026-05-01)
 
@@ -273,14 +276,35 @@ Supabase 대시보드 권장값:
   - Play Console에서 `kr.jm.weddingledger` 패키지명이 이미 사용 중인 상태로 확인되어, 실제 배포 `applicationId`를 `kr.jm.weddinglog`로 변경했습니다.
   - Kotlin/패키지 namespace는 기존 `kr.jm.weddingledger`를 유지합니다.
 - iOS 배포 설정 정리
-  - App Store Connect 업로드용 버전은 `1.2 (4)` 기준입니다.
+  - App Store Connect 업로드용 버전은 `1.3 (5)` 기준입니다.
   - iPad까지 타겟되지 않도록 `TARGETED_DEVICE_FAMILY = 1`로 iPhone only 설정을 확인했습니다.
 - 첫 출시 광고 정책
-  - AdMob 네이티브/호스트 연동 코드는 유지하지만, 첫 출시에서는 배너를 숨기는 설정을 기본으로 둡니다.
-  - 추후 광고를 다시 노출할 때는 Compose 내부 배너 배치와 하단 내비게이션 간격을 함께 재검토합니다.
+  - 첫 출시 당시에는 AdMob 배너를 숨겼습니다.
+  - 2026-05-05 이후 Android/iOS 배너를 다시 활성화했고, iOS는 SwiftUI 호스트 하단 배너 대신 Compose 내부 슬롯에서 표시합니다.
 - 계정 전환 온보딩 버그 수정
   - 기존 계정에서 온보딩 완료 후 로그아웃하고 새 계정으로 로그인하면, 이전 `OnboardingStep.Done` 상태가 재사용되어 홈으로 바로 이동할 수 있던 문제를 수정했습니다.
   - `Authenticated.user.id`를 기준으로 온보딩 게이트 subtree와 `OnboardingViewModel` key를 분리해 계정별 초기 로딩이 다시 실행되도록 했습니다.
+
+## 배포 후 인증 정책 반영 (2026-05-05)
+
+- Android/iOS 심사 완료 및 배포 후 임시 이메일/비밀번호 로그인 UI를 제거했습니다.
+- 현재 사용자 로그인 경로:
+  - Android: Kakao
+  - iOS: Kakao + Apple
+- Google 로그인은 여전히 코드만 유지하고 화면에서는 미노출입니다.
+- 이메일 OTP/비밀번호 로그인 관련 일부 domain/data 코드는 레거시 딥링크와 향후 복구 가능성을 위해 남겨두되, `AuthScreen`에서는 진입할 수 없습니다.
+
+## AdMob 재활성화 및 배포 빌드 (2026-05-05)
+
+- Android/iOS AdMob 배너를 다시 활성화했습니다.
+- iOS는 SwiftUI 호스트 하단 배너를 제거하고 Compose 내부 `Scaffold.bottomBar` 슬롯에서 바텀 내비게이션 위에 표시합니다.
+- 이번 배포 산출물:
+  - Android AAB: `build/distributions/WeddingLog-android-1.3.0-b4.aab`
+  - iOS IPA: `build/distributions/WeddingLog-ios-1.3-b5.ipa`
+- 검증:
+  - `./gradlew :androidApp:bundleRelease` 성공
+  - `xcodebuild archive` 및 `xcodebuild -exportArchive` 성공
+  - iOS archive 기준 `CFBundleShortVersionString=1.3`, `CFBundleVersion=5`, `UIDeviceFamily=[1]` 확인
 
 ## QA
 
@@ -298,8 +322,8 @@ Supabase 대시보드 권장값:
   - `AuthResult`, `OnboardingViewModel`, `WeddingIdResolver` 중심 회귀 테스트 추가
 - 인증 화면 정책:
   - Google 로그인 UI는 첫 출시 안정화를 위해 주석 처리로 숨김
-  - 이메일/비밀번호 로그인 UI는 첫 출시 심사용 공통 로그인 수단으로 임시 노출
-  - Email OTP UI는 다시 숨김
+  - 이메일/비밀번호 로그인 UI는 2026-05-05 배포 후 제거
+  - Email OTP UI도 숨김 상태 유지
 
 ## 인수인계
 

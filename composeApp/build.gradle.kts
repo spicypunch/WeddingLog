@@ -53,13 +53,13 @@ val enableAppleLogin: Boolean = localProperties.getProperty("ENABLE_APPLE_LOGIN"
     ?.lowercase()
     ?.toBooleanStrictOrNull()
     ?: false
-val enableTestAdBanner: Boolean = localProperties.getProperty("ENABLE_TEST_AD_BANNER")
+val enableAdMobBanner: Boolean = localProperties.getProperty("ENABLE_ADMOB_BANNER")
     ?.trim()
     ?.lowercase()
     ?.toBooleanStrictOrNull()
-    ?: false
-val appVersionCode: Int = 3
-val appVersionName: String = "1.2.0"
+    ?: true
+val appVersionCode: Int = 4
+val appVersionName: String = "1.3.0"
 
 kotlin {
     androidLibrary {
@@ -208,7 +208,7 @@ val generateBuildConfig by tasks.registering {
                 const val ENABLE_KAKAO_LOGIN = $enableKakaoLogin
                 const val ENABLE_GOOGLE_LOGIN = $enableGoogleLogin
                 const val ENABLE_APPLE_LOGIN = $enableAppleLogin
-                const val ENABLE_TEST_AD_BANNER = $enableTestAdBanner
+                const val ENABLE_ADMOB_BANNER = $enableAdMobBanner
                 const val APP_VERSION_NAME = "$appVersionName"
                 const val APP_VERSION_CODE = $appVersionCode
             }

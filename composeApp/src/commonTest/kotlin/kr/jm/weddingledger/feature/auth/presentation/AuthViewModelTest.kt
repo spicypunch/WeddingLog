@@ -15,7 +15,6 @@ import kr.jm.weddingledger.feature.auth.domain.repository.AuthRepository
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResendSignUpVerificationEmailUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResetPasswordUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SendEmailOtpUseCase
-import kr.jm.weddingledger.feature.auth.domain.usecase.SignInUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithAppleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithGoogleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithKakaoUseCase
@@ -145,10 +144,8 @@ class AuthViewModelTest {
     }
 
     @Test
-    fun `email password sign in with terms delegates to repository`() = runMainDispatcherTest {
-        val repository = FakeAuthRepositoryForViewModel().apply {
-            signInResult = AuthResult.Success(Unit)
-        }
+    fun `email password sign in with terms is disabled after release`() = runMainDispatcherTest {
+        val repository = FakeAuthRepositoryForViewModel()
         val viewModel = createViewModel(repository)
 
         viewModel.onAction(AuthAction.OnTermsAcceptedChange(true))
@@ -158,8 +155,12 @@ class AuthViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.state.value
-        assertEquals(1, repository.signInCallCount)
-        assertEquals(null, state.message)
+        assertEquals(0, repository.signInCallCount)
+        assertIs<AuthMessage.Info>(state.message)
+        assertEquals(
+            "이메일 로그인은 현재 지원하지 않습니다. 소셜 로그인을 이용해주세요.",
+            (state.message as AuthMessage.Info).text,
+        )
     }
 
     @Test
@@ -185,7 +186,6 @@ private fun createViewModel(
     privacyPolicyUrl: String = "https://example.com/privacy",
 ): AuthViewModel {
     return AuthViewModel(
-        signInUseCase = SignInUseCase(repository),
         signInWithKakaoUseCase = SignInWithKakaoUseCase(repository),
         signInWithGoogleUseCase = SignInWithGoogleUseCase(repository),
         signInWithAppleUseCase = SignInWithAppleUseCase(repository),

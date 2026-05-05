@@ -46,26 +46,7 @@ data class AuthUiState(
         }
 
     val isSubmitEnabled: Boolean
-        get() = when (mode) {
-            AuthMode.SignIn -> email.isNotBlank() &&
-                password.isNotBlank() &&
-                isTermsAccepted &&
-                !isLoading &&
-                !isSendingOtp &&
-                !isVerifyingOtp &&
-                !isResendingVerificationEmail
-            AuthMode.SignUp -> {
-                email.isNotBlank() &&
-                    password.isNotBlank() &&
-                    passwordConfirm.isNotBlank() &&
-                    password == passwordConfirm &&
-                    isTermsAccepted &&
-                    !isLoading &&
-                    !isSendingOtp &&
-                    !isVerifyingOtp &&
-                    !isResendingVerificationEmail
-            }
-        }
+        get() = false
 
     val isSocialSignInEnabled: Boolean
         get() = !isLoading &&

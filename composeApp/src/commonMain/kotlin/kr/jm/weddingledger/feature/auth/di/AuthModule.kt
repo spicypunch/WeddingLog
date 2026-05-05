@@ -15,7 +15,6 @@ import kr.jm.weddingledger.feature.auth.domain.usecase.DeleteAccountUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithAppleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithGoogleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithKakaoUseCase
-import kr.jm.weddingledger.feature.auth.domain.usecase.SignInUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignOutUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignUpUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.VerifyEmailOtpUseCase
@@ -29,7 +28,6 @@ val authModule = module {
     single<AuthRepository> { AuthRepositoryImpl(get(), get(), get(), get()) }
     
     factory { SignUpUseCase(get()) }
-    factory { SignInUseCase(get()) }
     factory { SignOutUseCase(get()) }
     factory { HandleAuthDeepLinkUseCase(get()) }
     factory { ResetPasswordUseCase(get()) }
@@ -46,7 +44,6 @@ val authModule = module {
 
     viewModel {
         AuthViewModel(
-            signInUseCase = get(),
             signInWithKakaoUseCase = get(),
             signInWithGoogleUseCase = get(),
             signInWithAppleUseCase = get(),

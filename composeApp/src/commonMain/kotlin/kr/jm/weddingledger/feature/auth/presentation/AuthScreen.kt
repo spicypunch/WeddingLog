@@ -16,50 +16,31 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBackIosNew
 import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.Visibility
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -72,10 +53,7 @@ fun AuthScreen(
     state: AuthUiState,
     onAction: (AuthAction) -> Unit,
 ) {
-    when (state.mode) {
-        AuthMode.SignIn -> SignInScreen(state = state, onAction = onAction)
-        AuthMode.SignUp -> SignUpScreen(state = state, onAction = onAction)
-    }
+    SignInScreen(state = state, onAction = onAction)
 }
 
 @Composable
@@ -85,7 +63,6 @@ private fun SignInScreen(
 ) {
     val primary = Color(0xFF7D7463)
     val background = Color(0xFFF9F8F6)
-    val surface = Color(0xFFFFFFFF)
     val border = Color(0xFFE5E5E5)
     val textMain = Color(0xFF333333)
     val textMuted = Color(0xFF999999)
@@ -258,165 +235,6 @@ private fun SignInScreen(
                     )
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    HorizontalDivider(
-                        modifier = Modifier.weight(1f),
-                        color = border,
-                    )
-                    Text(
-                        text = "또는",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = textMuted,
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.weight(1f),
-                        color = border,
-                    )
-                }
-
-                var isEmailLoginExpanded by remember { mutableStateOf(false) }
-
-                TextButton(
-                    onClick = { isEmailLoginExpanded = !isEmailLoginExpanded },
-                    enabled = !state.isLoading,
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                ) {
-                    Text(
-                        text = if (isEmailLoginExpanded) "이메일 로그인 닫기" else "이메일로 로그인",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF6B7280),
-                    )
-                }
-
-                if (isEmailLoginExpanded) {
-                    Surface(
-                        color = primary.copy(alpha = 0.06f),
-                        shape = RoundedCornerShape(12.dp),
-                        border = BorderStroke(1.dp, primary.copy(alpha = 0.18f)),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 12.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Text(
-                                text = "이메일 로그인",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = primary,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-
-                            LabeledOutlinedField(
-                                label = "이메일",
-                                value = state.email,
-                                onValueChange = { onAction(AuthAction.OnEmailChange(it)) },
-                                placeholder = "이메일 주소",
-                                enabled = !state.isLoading,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Email,
-                                    imeAction = ImeAction.Next,
-                                    capitalization = KeyboardCapitalization.None,
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                containerColor = surface,
-                                borderColor = border,
-                                focusedBorderColor = primary,
-                                textColor = textMain,
-                                labelColor = Color(0xFF4B5563),
-                            )
-
-                            LabeledOutlinedField(
-                                label = "비밀번호",
-                                value = state.password,
-                                onValueChange = { onAction(AuthAction.OnPasswordChange(it)) },
-                                placeholder = "비밀번호",
-                                enabled = !state.isLoading,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Password,
-                                    imeAction = ImeAction.Done,
-                                    capitalization = KeyboardCapitalization.None,
-                                ),
-                                shape = RoundedCornerShape(10.dp),
-                                containerColor = surface,
-                                borderColor = border,
-                                focusedBorderColor = primary,
-                                textColor = textMain,
-                                labelColor = Color(0xFF4B5563),
-                                visualTransformation = if (state.isPasswordVisible) {
-                                    VisualTransformation.None
-                                } else {
-                                    PasswordVisualTransformation()
-                                },
-                                trailingIcon = {
-                                    IconButton(
-                                        onClick = { onAction(AuthAction.OnClickTogglePasswordVisibility) },
-                                        enabled = !state.isLoading,
-                                    ) {
-                                        Icon(
-                                            imageVector = if (state.isPasswordVisible) {
-                                                Icons.Rounded.Visibility
-                                            } else {
-                                                Icons.Rounded.VisibilityOff
-                                            },
-                                            contentDescription = null,
-                                            tint = textMuted,
-                                        )
-                                    }
-                                },
-                            )
-
-                            Text(
-                                text = "",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = textMuted,
-                            )
-
-                            Button(
-                                onClick = { onAction(AuthAction.OnClickSubmit) },
-                                enabled = state.isSubmitEnabled,
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = primary,
-                                    contentColor = Color.White,
-                                    disabledContainerColor = primary.copy(alpha = 0.35f),
-                                    disabledContentColor = Color.White.copy(alpha = 0.85f),
-                                ),
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                if (state.isLoading) {
-                                    CircularProgressIndicator(
-                                        color = Color.White,
-                                        strokeWidth = 2.dp,
-                                        modifier = Modifier.size(14.dp),
-                                    )
-                                } else {
-                                    Text(
-                                        text = "이메일로 로그인",
-                                        style = MaterialTheme.typography.labelLarge,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (state.shouldShowVerificationGuide) {
-                    EmailVerificationGuideCard(
-                        email = state.email.trim(),
-                        remainingAttempts = state.remainingResendAttempts,
-                        resendButtonLabel = state.resendButtonLabel,
-                        canResend = state.isResendVerificationEnabled,
-                        isResending = state.isResendingVerificationEmail,
-                        onClickResend = { onAction(AuthAction.OnClickResendVerificationEmail) },
-                    )
-                }
-
                 if (state.message != null) {
                     AuthMessageBanner(
                         message = state.message,
@@ -533,258 +351,6 @@ private fun TermsAgreementRow(
 }
 
 @Composable
-private fun SignUpScreen(
-    state: AuthUiState,
-    onAction: (AuthAction) -> Unit,
-) {
-    val primary = Color(0xFFEF3948)
-    val surface = Color(0xFFFFFFFF)
-    val background = Color(0xFFF8F6F6)
-
-    // Field colors (filled look with subtle border)
-    val fieldContainer = Color(0xFFF9FAFB)
-    val fieldBorder = Color(0xFFE5E7EB)
-    val textMain = Color(0xFF111827)
-    val textSub = Color(0xFF6B7280)
-    val isImeVisible = rememberImeVisible()
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(background),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(surface),
-        ) {
-            // Top navigation (back)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(top = 56.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(
-                    onClick = { onAction(AuthAction.OnClickToggleMode) },
-                    enabled = !state.isLoading,
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowBackIosNew,
-                        contentDescription = null,
-                        tint = textMain,
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 32.dp)
-                    .padding(
-                        top = 12.dp,
-                        bottom = keyboardAwareBottomPadding(
-                            normalBottomPadding = 120.dp,
-                            imeVisibleBottomPadding = 24.dp,
-                        ),
-                    ),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "회원가입",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = textMain,
-                    )
-                    Text(
-                        text = "웨딩로그와 함께\n결혼 준비를 시작해보세요.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = textSub,
-                    )
-                }
-
-                LabeledOutlinedField(
-                    label = "이메일",
-                    value = state.email,
-                    onValueChange = { onAction(AuthAction.OnEmailChange(it)) },
-                    placeholder = "example@email.com",
-                    enabled = !state.isLoading,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Email,
-                        imeAction = ImeAction.Next,
-                        capitalization = KeyboardCapitalization.None,
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    containerColor = fieldContainer,
-                    borderColor = fieldBorder,
-                    focusedBorderColor = primary,
-                    textColor = textMain,
-                    labelColor = Color(0xFF374151),
-                )
-
-                LabeledOutlinedField(
-                    label = "비밀번호",
-                    value = state.password,
-                    onValueChange = { onAction(AuthAction.OnPasswordChange(it)) },
-                    placeholder = "8자리 이상 입력",
-                    enabled = !state.isLoading,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Next,
-                        capitalization = KeyboardCapitalization.None,
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    containerColor = fieldContainer,
-                    borderColor = fieldBorder,
-                    focusedBorderColor = primary,
-                    textColor = textMain,
-                    labelColor = Color(0xFF374151),
-                    visualTransformation = if (state.isPasswordVisible) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { onAction(AuthAction.OnClickTogglePasswordVisibility) },
-                            enabled = !state.isLoading,
-                        ) {
-                            Icon(
-                                imageVector = if (state.isPasswordVisible) {
-                                    Icons.Rounded.Visibility
-                                } else {
-                                    Icons.Rounded.VisibilityOff
-                                },
-                                contentDescription = null,
-                                tint = textSub,
-                            )
-                        }
-                    },
-                )
-
-                LabeledOutlinedField(
-                    label = "비밀번호 확인",
-                    value = state.passwordConfirm,
-                    onValueChange = { onAction(AuthAction.OnPasswordConfirmChange(it)) },
-                    placeholder = "비밀번호를 다시 입력해주세요",
-                    enabled = !state.isLoading,
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Password,
-                        imeAction = ImeAction.Done,
-                        capitalization = KeyboardCapitalization.None,
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    containerColor = fieldContainer,
-                    borderColor = fieldBorder,
-                    focusedBorderColor = primary,
-                    textColor = textMain,
-                    labelColor = Color(0xFF374151),
-                    visualTransformation = if (state.isPasswordVisible) {
-                        VisualTransformation.None
-                    } else {
-                        PasswordVisualTransformation()
-                    },
-                )
-
-                if (!state.isTermsAccepted) {
-                    TermsAgreementRow(
-                        state = state,
-                        primary = primary,
-                        textColor = textSub,
-                        checkboxColor = fieldBorder,
-                        onAction = onAction,
-                    )
-                }
-
-                if (state.message != null) {
-                    AuthMessageBanner(
-                        message = state.message,
-                        primary = primary,
-                        onDismiss = { onAction(AuthAction.OnDismissMessage) },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-
-                if (isImeVisible) {
-                    Button(
-                        onClick = { onAction(AuthAction.OnClickSubmit) },
-                        enabled = state.isSubmitEnabled,
-                        shape = RoundedCornerShape(16.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = primary,
-                            contentColor = Color.White,
-                            disabledContainerColor = primary.copy(alpha = 0.35f),
-                            disabledContentColor = Color.White.copy(alpha = 0.85f),
-                        ),
-                        contentPadding = PaddingValues(vertical = 16.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                    ) {
-                        if (state.isLoading) {
-                            CircularProgressIndicator(
-                                color = Color.White,
-                                strokeWidth = 2.dp,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        } else {
-                            Text(
-                                text = "가입하기",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Bottom action bar
-            if (!isImeVisible) {
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    HorizontalDivider(color = fieldBorder)
-                    Box(modifier = Modifier.padding(24.dp)) {
-                        Button(
-                            onClick = { onAction(AuthAction.OnClickSubmit) },
-                            enabled = state.isSubmitEnabled,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = primary,
-                                contentColor = Color.White,
-                                disabledContainerColor = primary.copy(alpha = 0.35f),
-                                disabledContentColor = Color.White.copy(alpha = 0.85f),
-                            ),
-                            contentPadding = PaddingValues(vertical = 16.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                        ) {
-                            if (state.isLoading) {
-                                CircularProgressIndicator(
-                                    color = Color.White,
-                                    strokeWidth = 2.dp,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            } else {
-                                Text(
-                                    text = "가입하기",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun BackgroundBlobs(primary: Color) {
     val alpha = 0.05f
     val blurRadius = 80.dp
@@ -806,61 +372,6 @@ private fun BackgroundBlobs(primary: Color) {
                 .size(360.dp)
                 .background(primary.copy(alpha = alpha), CircleShape)
                 .blur(blurRadius)
-        )
-    }
-}
-
-@Composable
-private fun LabeledOutlinedField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    placeholder: String,
-    enabled: Boolean,
-    keyboardOptions: KeyboardOptions,
-    shape: Shape,
-    containerColor: Color,
-    borderColor: Color,
-    focusedBorderColor: Color,
-    textColor: Color,
-    labelColor: Color = textColor,
-    visualTransformation: VisualTransformation = VisualTransformation.None,
-    trailingIcon: @Composable (() -> Unit)? = null,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = labelColor,
-            modifier = Modifier.padding(start = 4.dp),
-        )
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(text = placeholder, style = MaterialTheme.typography.bodyMedium) },
-            singleLine = true,
-            enabled = enabled,
-            keyboardOptions = keyboardOptions,
-            visualTransformation = visualTransformation,
-            trailingIcon = trailingIcon,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = focusedBorderColor,
-                unfocusedBorderColor = borderColor,
-                disabledBorderColor = borderColor.copy(alpha = 0.5f),
-                focusedContainerColor = containerColor,
-                unfocusedContainerColor = containerColor,
-                disabledContainerColor = containerColor,
-                cursorColor = focusedBorderColor,
-                focusedTextColor = textColor,
-                unfocusedTextColor = textColor,
-                disabledTextColor = textColor.copy(alpha = 0.6f),
-                focusedPlaceholderColor = borderColor,
-                unfocusedPlaceholderColor = borderColor,
-                disabledPlaceholderColor = borderColor.copy(alpha = 0.6f),
-            ),
-            shape = shape,
-            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -893,72 +404,5 @@ private fun AuthMessageBanner(
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
         )
-    }
-}
-
-@Composable
-private fun EmailVerificationGuideCard(
-    email: String,
-    remainingAttempts: Int,
-    resendButtonLabel: String,
-    canResend: Boolean,
-    isResending: Boolean,
-    onClickResend: () -> Unit,
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f),
-        contentColor = MaterialTheme.colorScheme.primary,
-        shape = RoundedCornerShape(12.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = "이메일 인증이 필요합니다",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = if (email.isNotBlank()) {
-                    "${email} 메일함에서 인증 링크를 눌러주세요."
-                } else {
-                    "메일함에서 인증 링크를 눌러주세요."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "남은 재전송 ${remainingAttempts}회",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                TextButton(
-                    onClick = onClickResend,
-                    enabled = canResend,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                ) {
-                    if (isResending) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            strokeWidth = 2.dp,
-                            modifier = Modifier.size(14.dp),
-                        )
-                    } else {
-                        Text(
-                            text = resendButtonLabel,
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                    }
-                }
-            }
-        }
     }
 }

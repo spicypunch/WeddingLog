@@ -15,7 +15,7 @@ class WeddingLedgerApp : Application() {
         if (BuildConfig.KAKAO_NATIVE_APP_KEY.isNotBlank()) {
             KakaoSdk.init(context = this, appKey = BuildConfig.KAKAO_NATIVE_APP_KEY)
         }
-        if (BuildConfig.ENABLE_TEST_AD_BANNER) {
+        if (BuildConfig.ENABLE_ADMOB_BANNER) {
             MobileAds.initialize(this)
         }
         startKoin {

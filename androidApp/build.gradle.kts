@@ -31,8 +31,8 @@ val hasReleaseSigningConfig: Boolean = listOf(
     releaseKeyAlias,
     releaseKeyPassword,
 ).all { it.isNotBlank() }
-val appVersionCode: Int = 3
-val appVersionName: String = "1.2.0"
+val appVersionCode: Int = 4
+val appVersionName: String = "1.3.0"
 
 android {
     namespace = "kr.jm.weddingledger"

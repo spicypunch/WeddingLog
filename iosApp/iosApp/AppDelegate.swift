@@ -67,7 +67,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     }
 
     private func configureGoogleMobileAdsIfPossible() {
-        guard isTestAdBannerEnabled() else {
+        guard isAdMobBannerEnabled() else {
             NSLog("[WL_ADS][INFO] admob_disabled")
             return
         }
@@ -86,14 +86,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         }
 
         MobileAds.shared.start()
+        AdMobBannerBridge.shared.start()
         NSLog("[WL_ADS][INFO] admob_initialized")
     }
 
-    private func isTestAdBannerEnabled() -> Bool {
+    private func isAdMobBannerEnabled() -> Bool {
         guard
-            let rawValue = Bundle.main.object(forInfoDictionaryKey: "ENABLE_TEST_AD_BANNER") as? String
+            let rawValue = Bundle.main.object(forInfoDictionaryKey: "ENABLE_ADMOB_BANNER") as? String
         else {
-            return false
+            return true
         }
 
         switch rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {

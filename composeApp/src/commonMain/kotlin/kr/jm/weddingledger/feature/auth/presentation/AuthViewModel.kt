@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.coroutines.cancellation.CancellationException
 import kr.jm.weddingledger.core.config.BuildConfig
-import kr.jm.weddingledger.feature.auth.domain.model.AuthErrorType
 import kr.jm.weddingledger.feature.auth.domain.model.AuthResult
 import kr.jm.weddingledger.feature.auth.domain.usecase.SendEmailOtpUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.ResendSignUpVerificationEmailUseCase
@@ -21,11 +20,9 @@ import kr.jm.weddingledger.feature.auth.domain.usecase.ResetPasswordUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithAppleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithGoogleUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.SignInWithKakaoUseCase
-import kr.jm.weddingledger.feature.auth.domain.usecase.SignInUseCase
 import kr.jm.weddingledger.feature.auth.domain.usecase.VerifyEmailOtpUseCase
 
 class AuthViewModel(
-    private val signInUseCase: SignInUseCase,
     private val signInWithKakaoUseCase: SignInWithKakaoUseCase,
     private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
     private val signInWithAppleUseCase: SignInWithAppleUseCase,
@@ -101,7 +98,7 @@ class AuthViewModel(
         _state.update {
             it.copy(
                 mode = AuthMode.SignIn,
-                message = AuthMessage.Info("회원가입은 현재 비활성화되어 있습니다. 소셜 로그인 또는 이메일 로그인을 이용해주세요."),
+                message = AuthMessage.Info("회원가입은 현재 비활성화되어 있습니다. 소셜 로그인을 이용해주세요."),
             )
         }
         resendCooldownJob?.cancel()
@@ -116,47 +113,18 @@ class AuthViewModel(
                 it.copy(
                     mode = AuthMode.SignIn,
                     isLoading = false,
-                    message = AuthMessage.Info("회원가입은 현재 비활성화되어 있습니다. 소셜 로그인 또는 이메일 로그인을 이용해주세요."),
+                    message = AuthMessage.Info("회원가입은 현재 비활성화되어 있습니다. 소셜 로그인을 이용해주세요."),
                 )
             }
             return
         }
         if (!ensureLoginConsent(snapshot)) return
 
-        _state.update { it.copy(isLoading = true, message = null) }
-        viewModelScope.launch {
-            val result = try {
-                signInUseCase(snapshot.email.trim(), snapshot.password)
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
-                AuthResult.Error("요청 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.")
-            }
-
-            when (result) {
-                is AuthResult.Success -> {
-                    _state.update { it.copy(isLoading = false).clearVerificationGuide() }
-                }
-                is AuthResult.Error -> {
-                    if (result.type == AuthErrorType.EmailVerificationRequired) {
-                        _state.update {
-                            it.copy(
-                                isLoading = false,
-                                isEmailVerificationRequired = true,
-                                message = AuthMessage.Info(
-                                    "이메일 인증이 아직 완료되지 않았습니다. 메일함의 인증 링크를 눌러 완료해주세요."
-                                ),
-                            )
-                        }
-                    } else {
-                        _state.update {
-                            it.copy(
-                                isLoading = false,
-                                message = AuthMessage.Error(result.message),
-                            )
-                        }
-                    }
-                }
-            }
+        _state.update {
+            it.copy(
+                isLoading = false,
+                message = AuthMessage.Info("이메일 로그인은 현재 지원하지 않습니다. 소셜 로그인을 이용해주세요."),
+            )
         }
     }
 

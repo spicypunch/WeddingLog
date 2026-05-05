@@ -20,18 +20,18 @@ import kr.jm.weddingledger.feature.settings.presentation.ProfileEditUiState
 class UiStateContractTest {
 
     @Test
-    fun `auth sign in submit enabled only when email password and terms are provided`() {
+    fun `auth sign in submit stays disabled because email login is removed`() {
         val disabled = AuthUiState(mode = AuthMode.SignIn, email = "", password = "")
         val missingTerms = AuthUiState(mode = AuthMode.SignIn, email = "hello@weddinglog.app", password = "pw")
         val enabled = missingTerms.copy(isTermsAccepted = true)
 
         assertFalse(disabled.isSubmitEnabled)
         assertFalse(missingTerms.isSubmitEnabled)
-        assertTrue(enabled.isSubmitEnabled)
+        assertFalse(enabled.isSubmitEnabled)
     }
 
     @Test
-    fun `auth sign up submit requires confirm password and terms`() {
+    fun `auth sign up submit stays disabled because email signup is removed`() {
         val invalid = AuthUiState(
             mode = AuthMode.SignUp,
             email = "hello@weddinglog.app",
@@ -42,7 +42,7 @@ class UiStateContractTest {
         val valid = invalid.copy(isTermsAccepted = true)
 
         assertFalse(invalid.isSubmitEnabled)
-        assertTrue(valid.isSubmitEnabled)
+        assertFalse(valid.isSubmitEnabled)
     }
 
     @Test
