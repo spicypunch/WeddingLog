@@ -71,6 +71,9 @@ ENABLE_ADMOB_BANNER=true
 ```
 
 - `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
+- Android Kakao 플랫폼 설정은 현재 패키지명 `kr.jm.weddinglog` 기준입니다.
+  - 배포 앱은 Play App Signing으로 재서명되므로 Kakao Developers의 Android `키 해시`에 Play 앱 서명 키 해시 `wpThrWMOAPe65XjIM/8p76kEG7Q=`가 등록되어 있어야 합니다.
+  - `Android keyHash validation failed`가 뜨면 Play Console `앱 무결성 > 앱 서명 키 인증서 > SHA-1 인증서 지문`을 Kakao key hash로 변환해 추가합니다.
 - `ADMOB_ANDROID_APP_ID`는 Android release 빌드용 AdMob App ID입니다. debug 빌드는 공식 테스트 App ID를 사용합니다.
 - `ADMOB_ANDROID_BANNER_UNIT_ID`는 Android release 빌드용 배너 광고 단위 ID입니다. debug 빌드는 공식 테스트 배너 unit ID를 사용합니다.
 - `ADMOB_IOS_APP_ID`는 iOS release 빌드용 AdMob App ID입니다. debug 빌드는 공식 테스트 App ID를 사용합니다.

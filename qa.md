@@ -6,6 +6,7 @@
 
 - [ ] 최신 `main` 브랜치 pull 완료
 - [ ] `local.properties`의 Supabase/Kakao 키 확인
+- [ ] Kakao Developers Android 패키지명 `kr.jm.weddinglog` 및 Play App Signing key hash `wpThrWMOAPe65XjIM/8p76kEG7Q=` 등록 확인
 - [ ] 현재 배포 버전 확인
   - [ ] Android `versionName=1.3.0`, `versionCode=4`
   - [ ] iOS `MARKETING_VERSION=1.3`, `CURRENT_PROJECT_VERSION=5`

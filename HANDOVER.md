@@ -1,7 +1,7 @@
 # WeddingLedger 인수인계서 (KMP + Compose Multiplatform)
 
 작성일: 2026-02-24  
-마지막 갱신: 2026-05-05
+마지막 갱신: 2026-05-06
 워크스페이스: `/Users/jm/StudioProjects/WeddingLedger`
 
 ---
@@ -233,6 +233,8 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 - Android Kakao 설정 주의
   - Android/shared 쪽 Kakao native key는 루트 `local.properties`의 `KAKAO_NATIVE_APP_KEY`를 읽음
   - iOS `Config.xcconfig`만 채워져 있으면 Android Kakao SDK는 초기화되지 않음
+  - Kakao Developers Android 패키지명은 실제 배포 `applicationId`인 `kr.jm.weddinglog`여야 함
+  - Play Store 설치본은 Google Play App Signing 키로 재서명되므로, Kakao Developers Android `키 해시`에 Play 앱 서명 키 해시 `wpThrWMOAPe65XjIM/8p76kEG7Q=`가 등록되어 있어야 함
   - 다른 PC에서 작업 시 `local.properties` 누락 여부를 먼저 확인할 것
 
 ---
@@ -394,6 +396,24 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build -quiet` 성공
   - `./gradlew :androidApp:bundleRelease` 성공
   - `xcodebuild archive` 및 `xcodebuild -exportArchive` 성공
+
+## 1-9) Android Kakao 배포 앱 key hash 이슈 해결 (2026-05-06)
+
+- 증상
+  - Play Store로 설치한 Android 배포 앱에서 Kakao 로그인이 실패
+  - 앱 화면 에러: `InvalidRequest, Android keyHash validation failed., status=400`
+- 원인
+  - Android 패키지명 `kr.jm.weddinglog`, iOS Bundle ID `kr.jm.weddingledger.WeddingLedger`, 네이티브 앱 스킴은 코드와 Kakao Developers 설정이 일치
+  - 다만 Play Store 설치본은 로컬 release/upload key가 아니라 Google Play App Signing 키로 재서명됨
+  - Kakao Developers Android `키 해시`에 Play 앱 서명 키 기준 hash가 없어서 Kakao 서버가 인증 요청을 거절
+- 조치
+  - Play Console `앱 무결성 > 앱 서명 키 인증서 > SHA-1 인증서 지문`:
+    `C2:94:E1:AD:63:0E:00:F7:BA:E5:78:C8:33:FF:29:EF:A9:04:1B:B4`
+  - Kakao key hash로 변환:
+    `wpThrWMOAPe65XjIM/8p76kEG7Q=`
+  - Kakao Developers `앱 설정 > 플랫폼 > Android > 키 해시`에 위 값을 추가
+- 검증
+  - Play Store 설치 Android 배포 앱에서 Kakao 로그인 성공 확인
 
 ---
 
