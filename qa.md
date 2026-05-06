@@ -13,11 +13,11 @@
   - [ ] iOS `ADMOB_IOS_APP_ID_RELEASE=ca-app-pub-6140257895494497~4268029592`
   - [ ] iOS `ADMOB_IOS_BANNER_UNIT_ID_RELEASE=ca-app-pub-6140257895494497/8417431709`
 - [ ] 현재 배포 버전 확인
-  - [ ] Android `versionName=1.3.0`, `versionCode=4`
-  - [ ] iOS `MARKETING_VERSION=1.3`, `CURRENT_PROJECT_VERSION=5`
+  - [ ] Android `versionName=1.3.1`, `versionCode=5`
+  - [ ] iOS `MARKETING_VERSION=1.3.1`, `CURRENT_PROJECT_VERSION=7`
 - [ ] 이번 배포 산출물 확인
-  - [ ] Android AAB: `build/distributions/WeddingLog-android-1.3.0-b4.aab`
-  - [ ] iOS IPA: `build/distributions/WeddingLog-ios-1.3-b5.ipa`
+  - [ ] Android AAB: `build/distributions/WeddingLog-android-1.3.1-b5.aab`
+  - [ ] iOS IPA: `build/distributions/WeddingLog-ios-1.3.1-b7.ipa`
 - [ ] Android 실제 배포 `applicationId`가 `kr.jm.weddinglog`인지 확인
 - [ ] iOS가 iPhone only인지 확인
   - [ ] `TARGETED_DEVICE_FAMILY = 1`

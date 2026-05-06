@@ -27,12 +27,12 @@ Android/iOS 공용 코드로 홈 결산, 가계부, 일정, 하객, 온보딩/�
 - Android
   - `applicationId`: `kr.jm.weddinglog`
   - `namespace`: `kr.jm.weddingledger`
-  - `versionName`: `1.3.0`
-  - `versionCode`: `4`
+  - `versionName`: `1.3.1`
+  - `versionCode`: `5`
 - iOS
   - Bundle ID: `kr.jm.weddingledger.WeddingLedger`
-  - `MARKETING_VERSION`: `1.3`
-  - `CURRENT_PROJECT_VERSION`: `5`
+  - `MARKETING_VERSION`: `1.3.1`
+  - `CURRENT_PROJECT_VERSION`: `7`
   - `TARGETED_DEVICE_FAMILY = 1`로 iPhone only 설정
 - 현재 로그인 화면 노출 정책
   - Android: Kakao
@@ -283,7 +283,7 @@ Supabase 대시보드 권장값:
   - Play Console에서 `kr.jm.weddingledger` 패키지명이 이미 사용 중인 상태로 확인되어, 실제 배포 `applicationId`를 `kr.jm.weddinglog`로 변경했습니다.
   - Kotlin/패키지 namespace는 기존 `kr.jm.weddingledger`를 유지합니다.
 - iOS 배포 설정 정리
-  - App Store Connect 업로드용 버전은 `1.3 (5)` 기준입니다.
+  - App Store Connect 업로드용 버전은 `1.3.1 (7)` 기준입니다.
   - iPad까지 타겟되지 않도록 `TARGETED_DEVICE_FAMILY = 1`로 iPhone only 설정을 확인했습니다.
 - 첫 출시 광고 정책
   - 첫 출시 당시에는 AdMob 배너를 숨겼습니다.
@@ -306,8 +306,8 @@ Supabase 대시보드 권장값:
 - Android/iOS AdMob 배너를 다시 활성화했습니다.
 - iOS는 SwiftUI 호스트 하단 배너를 제거하고 Compose 내부 `Scaffold.bottomBar` 슬롯에서 바텀 내비게이션 위에 표시합니다.
 - 이번 배포 산출물:
-  - Android AAB: `build/distributions/WeddingLog-android-1.3.0-b4.aab`
-  - iOS IPA: `build/distributions/WeddingLog-ios-1.3-b5.ipa`
+  - Android AAB: `build/distributions/WeddingLog-android-1.3.1-b5.aab`
+  - iOS IPA: `build/distributions/WeddingLog-ios-1.3.1-b7.ipa`
 - 검증:
   - `./gradlew :androidApp:bundleRelease` 성공
   - `xcodebuild archive` 및 `xcodebuild -exportArchive` 성공

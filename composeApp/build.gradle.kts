@@ -58,8 +58,8 @@ val enableAdMobBanner: Boolean = localProperties.getProperty("ENABLE_ADMOB_BANNE
     ?.lowercase()
     ?.toBooleanStrictOrNull()
     ?: true
-val appVersionCode: Int = 4
-val appVersionName: String = "1.3.0"
+val appVersionCode: Int = 5
+val appVersionName: String = "1.3.1"
 
 kotlin {
     androidLibrary {

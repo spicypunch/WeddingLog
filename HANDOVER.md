@@ -52,9 +52,9 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 9) 현재 배포 식별자/버전(2026-05-01)
    - Android `applicationId`: `kr.jm.weddinglog`
    - Android `namespace`: `kr.jm.weddingledger`
-   - Android `versionName/versionCode`: `1.3.0 / 4`
+   - Android `versionName/versionCode`: `1.3.1 / 5`
    - iOS Bundle ID: `kr.jm.weddingledger.WeddingLedger`
-   - iOS `MARKETING_VERSION/CURRENT_PROJECT_VERSION`: `1.3 / 5`
+   - iOS `MARKETING_VERSION/CURRENT_PROJECT_VERSION`: `1.3.1 / 7`
    - iOS는 `TARGETED_DEVICE_FAMILY = 1`로 iPhone only
 
 ---
@@ -369,8 +369,8 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 - 출시/스토어 설정 최신화
   - Android 실제 배포 패키지명을 `kr.jm.weddinglog`로 정리
   - Kotlin namespace와 기존 코드 패키지는 `kr.jm.weddingledger` 유지
-  - Android 현재 버전은 `1.3.0 (4)`
-  - iOS 현재 버전은 `1.3 (5)`
+  - Android 현재 버전은 `1.3.1 (5)`
+  - iOS 현재 버전은 `1.3.1 (7)`
   - iOS는 App Store Connect 업로드 시 iPad까지 타겟되지 않도록 `TARGETED_DEVICE_FAMILY = 1` 확인
 - 첫 출시 노출 정책 유지
   - Google 로그인은 구현을 유지하되 화면에서 미노출
@@ -397,9 +397,9 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
 - AdMob 재활성화 및 배포 빌드
   - Android/iOS 모두 `ENABLE_ADMOB_BANNER=true` 기준 배너 노출
   - iOS는 SwiftUI 호스트 하단 배너 대신 Compose 내부 슬롯에서 `UIView` 컨테이너를 만들고 Swift `AdMobBannerBridge`가 그 안에 `BannerView`를 연결
-  - 배포용 버전은 Android `1.3.0 (4)`, iOS `1.3 (5)`
-  - Android AAB: `build/distributions/WeddingLog-android-1.3.0-b4.aab`
-  - iOS IPA: `build/distributions/WeddingLog-ios-1.3-b5.ipa`
+  - 배포용 버전은 Android `1.3.1 (5)`, iOS `1.3.1 (7)`
+  - Android AAB: `build/distributions/WeddingLog-android-1.3.1-b5.aab`
+  - iOS IPA: `build/distributions/WeddingLog-ios-1.3.1-b7.ipa`
 - 검증
   - `./gradlew :composeApp:allTests :androidApp:assembleDebug` 성공
   - `xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build -quiet` 성공
