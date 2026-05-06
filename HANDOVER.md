@@ -68,19 +68,28 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - Android는 Kakao만 보이는지 확인
    - iOS는 Kakao + Apple만 보이는지 확인
    - `이메일로 로그인`, OTP, Google 버튼이 보이지 않는지 확인
-5. **계정 전환 온보딩 QA를 먼저 확인**
+5. **AdMob 정본 ID로 재배포 준비**
+   - AdMob에서 스토어 연결된 `웨딩로그(결혼가계부)` 앱 기준 ID를 사용
+   - Android `local.properties`
+     - `ADMOB_ANDROID_APP_ID=ca-app-pub-6140257895494497~2545168246`
+     - `ADMOB_ANDROID_BANNER_UNIT_ID=ca-app-pub-6140257895494497/2073111096`
+   - iOS `iosApp/Configuration/Config.local.xcconfig`
+     - `ADMOB_IOS_APP_ID_RELEASE=ca-app-pub-6140257895494497~4268029592`
+     - `ADMOB_IOS_BANNER_UNIT_ID_RELEASE=ca-app-pub-6140257895494497/8417431709`
+   - 위 값으로 Android/iOS 새 빌드를 만들어 양 스토어에 업데이트 배포
+6. **계정 전환 온보딩 QA를 먼저 확인**
    - 기존에 온보딩 완료된 계정으로 로그인
    - 로그아웃
    - 새로 만든 계정으로 로그인
    - 홈으로 바로 가지 않고 `혼자 시작하기 / 공유 코드로 시작하기` 화면이 나오는지 확인
    - 앱을 완전히 종료 후 재실행해도 같은 계정 기준 분기가 유지되는지 확인
-6. **계정 전환 push QA를 확인**
+7. **계정 전환 push QA를 확인**
    - 같은 기기에서 계정 A 로그인
    - 로그아웃
    - 계정 B 로그인
    - A 활동 push가 더 이상 새지 않는지 확인
    - `push_token_deactivated`, `push_token_synced` 로그 확인
-7. **홈 + 가계부 탭을 제일 먼저 QA**
+8. **홈 + 가계부 탭을 제일 먼저 QA**
    - 홈에서 큰 금액이 들어가도 결산 카드 레이아웃이 안 깨지는지
    - 홈에서 중간 CTA 카드와 FAB가 제거되었는지
    - 첫 진입 시 `예산` 탭이 기본 선택되는지
@@ -89,12 +98,12 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
    - `예산 항목 추가` / `지출 추가` 흐름이 쉬운지
    - 저장 실패 시 바텀시트가 닫히지 않고 입력값이 유지되는지
    - 아직도 복잡하면 어느 구간에서 막히는지 메모
-8. 그 다음 일정/하객/알림센터 순서로 통합 QA 진행
-9. 파트너 계정 2개로 지출/일정 추가 후
+9. 그 다음 일정/하객/알림센터 순서로 통합 QA 진행
+10. 파트너 계정 2개로 지출/일정 추가 후
    - 알림센터 `새 활동`에 상대방 활동이 뜨는지
    - Android는 실제 OS push까지 오는지 확인
    - iOS도 실제 OS push까지 오는지 교차 확인
-10. **회원탈퇴 QA**
+11. **회원탈퇴 QA**
    - Android에서 Kakao 계정 회원탈퇴
    - iOS에서 Kakao 계정 회원탈퇴
    - iOS에서 Apple 계정 회원탈퇴
@@ -414,6 +423,30 @@ xcodebuild -project iosApp/iosApp.xcodeproj -scheme iosApp -configuration Debug 
   - Kakao Developers `앱 설정 > 플랫폼 > Android > 키 해시`에 위 값을 추가
 - 검증
   - Play Store 설치 Android 배포 앱에서 Kakao 로그인 성공 확인
+
+## 1-10) AdMob 스토어 연결 앱 기준 ID 정리 (2026-05-06)
+
+- 상황
+  - AdMob에 수동 생성한 `wedding_log_*` 앱과, 스토어 연결 후 생성된 `웨딩로그(결혼가계부)` 앱이 함께 존재
+  - AdMob `검토 필요` / `Verify app` 상태는 스토어 연결된 `웨딩로그(결혼가계부)` 앱 기준으로 표시됨
+  - 현재 배포 앱이 수동 생성 앱의 App ID/광고 단위 ID를 사용하면 AdMob 콘솔의 스토어 연결 상태와 광고 요청 집계가 분리되어 운영이 헷갈릴 수 있음
+- 결정
+  - 앞으로는 스토어 연결된 `웨딩로그(결혼가계부)` AdMob 앱을 정본으로 사용
+  - 기존 수동 생성 `wedding_log_*` 앱은 당장 삭제하지 말고, 새 ID로 업데이트가 충분히 배포된 뒤 정리
+- 정본 AdMob 값
+  - Android App ID: `ca-app-pub-6140257895494497~2545168246`
+  - Android Banner Unit ID: `ca-app-pub-6140257895494497/2073111096`
+  - iOS App ID: `ca-app-pub-6140257895494497~4268029592`
+  - iOS Banner Unit ID: `ca-app-pub-6140257895494497/8417431709`
+- 집 맥에서 해야 할 일
+  - 루트 `local.properties`의 Android AdMob release 값을 위 Android 값으로 교체
+  - `iosApp/Configuration/Config.local.xcconfig`의 iOS AdMob release 값을 위 iOS 값으로 교체
+  - Android/iOS 새 빌드 생성 후 Play Store/App Store에 업데이트 배포
+  - 스토어 등록정보의 개발자 웹사이트/Marketing URL이 `app-ads.txt`를 호스팅하는 도메인을 가리키는지 확인
+  - AdMob에서 `Verify app` 또는 app-ads.txt 업데이트 확인을 요청
+- 참고
+  - AdMob `검토 필요` 해제 자체는 app-ads.txt/스토어 URL 인증 문제라 앱 재배포 없이 풀릴 수 있음
+  - 다만 앱 바이너리에 포함된 AdMob App ID/광고 단위 ID를 정본 앱 기준으로 맞추려면 Android/iOS 재배포가 필요
 
 ---
 

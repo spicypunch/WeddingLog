@@ -58,10 +58,10 @@ FIREBASE_GCM_SENDER_ID=...
 KAKAO_NATIVE_APP_KEY=...
 TERMS_OF_SERVICE_URL=https://example.com/terms
 PRIVACY_POLICY_URL=https://example.com/privacy
-ADMOB_ANDROID_APP_ID=ca-app-pub-3940256099942544~3347511713
-ADMOB_ANDROID_BANNER_UNIT_ID=ca-app-pub-3940256099942544/9214589741
-ADMOB_IOS_APP_ID=ca-app-pub-3940256099942544~1458002511
-ADMOB_IOS_BANNER_UNIT_ID=ca-app-pub-3940256099942544/2435281174
+ADMOB_ANDROID_APP_ID=ca-app-pub-6140257895494497~2545168246
+ADMOB_ANDROID_BANNER_UNIT_ID=ca-app-pub-6140257895494497/2073111096
+ADMOB_IOS_APP_ID=ca-app-pub-6140257895494497~4268029592
+ADMOB_IOS_BANNER_UNIT_ID=ca-app-pub-6140257895494497/8417431709
 
 # 소셜 로그인 활성 토글 (기본값: Kakao/Google=true, Apple=false)
 ENABLE_KAKAO_LOGIN=true
@@ -78,6 +78,10 @@ ENABLE_ADMOB_BANNER=true
 - `ADMOB_ANDROID_BANNER_UNIT_ID`는 Android release 빌드용 배너 광고 단위 ID입니다. debug 빌드는 공식 테스트 배너 unit ID를 사용합니다.
 - `ADMOB_IOS_APP_ID`는 iOS release 빌드용 AdMob App ID입니다. debug 빌드는 공식 테스트 App ID를 사용합니다.
 - `ADMOB_IOS_BANNER_UNIT_ID`는 iOS release 빌드용 배너 광고 단위 ID입니다. debug 빌드는 공식 테스트 배너 unit ID를 사용합니다.
+- 위 AdMob release 값은 AdMob에서 실제 스토어 앱과 연결된 `웨딩로그(결혼가계부)` 앱 기준입니다.
+  - Android: `kr.jm.weddinglog`
+  - iOS: App Store ID `6762365581`
+  - 이전에 수동 생성한 `wedding_log_*` AdMob 앱 ID/광고 단위 ID는 새 배포에는 사용하지 않습니다.
 - `TERMS_OF_SERVICE_URL`, `PRIVACY_POLICY_URL`은 로그인 화면에서 여는 실제 약관/개인정보 처리방침 문서 URL입니다.
 - 약관 동의는 로그인 화면에서 최초 1회만 받고, 현재 약관 버전 동의 상태를 DataStore에 저장합니다.
 - 파트너 활동 푸시까지 쓰려면 Android Firebase 앱의 `Application ID`, `Project ID`, `Web API Key`, `Sender ID`를 `local.properties`에 넣어야 합니다.
