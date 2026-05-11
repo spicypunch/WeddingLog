@@ -1,337 +1,82 @@
-# WeddingLedger
+# WeddingLog
 
-Kotlin Multiplatform + Compose Multiplatform 기반의 결혼 준비/가계부 앱입니다.  
-Android/iOS 공용 코드로 홈 결산, 가계부, 일정, 하객, 온보딩/연결 코드, 알림센터 기능을 제공합니다.
+결혼 준비에 필요한 예산, 일정, 하객 정보를 한곳에서 정리하는 모바일 앱입니다.
+
+예비부부가 결혼 준비를 하다 보면 예산표, 일정표, 하객 명단이 여러 곳에 흩어지기 쉽습니다. WeddingLog는 이 정보를 하나의 앱에서 관리하고, 파트너와 같은 데이터를 함께 확인할 수 있도록 만든 Android/iOS 앱입니다.
+
+## 주요 기능
+
+### 예산과 지출 관리
+
+- 전체 예산, 총 지출, 잔액을 한눈에 확인할 수 있어요.
+- 예식장, 스드메, 예물, 혼수처럼 결혼 준비 항목별 예산을 나눠 관리할 수 있어요.
+- 계약금, 중도금, 잔금처럼 결제 단계를 기록할 수 있어요.
+- 신랑, 신부, 공동 지출을 구분해서 볼 수 있어요.
+
+### 일정과 체크리스트
+
+- 결혼 준비 일정을 날짜별로 정리할 수 있어요.
+- 다가오는 일정과 마감이 가까운 체크리스트를 함께 확인할 수 있어요.
+- 홈 화면에서 예산과 일정을 같이 볼 수 있어 준비 상황을 빠르게 파악할 수 있어요.
+
+### 하객 관리
+
+- 신랑측, 신부측, 공통 하객을 나눠서 관리할 수 있어요.
+- 참석 가능성과 동반 인원을 기준으로 예상 하객 수를 확인할 수 있어요.
+- 실제 참석 여부와 축의금 기록도 함께 정리할 수 있어요.
+
+### 파트너와 함께 준비
+
+- 초대 코드를 통해 파트너와 같은 결혼 준비 데이터를 공유할 수 있어요.
+- 예산, 일정, 하객 정보를 함께 확인하면서 준비할 수 있어요.
+- 파트너가 지출이나 일정을 추가했을 때 알림으로 확인할 수 있어요.
 
 ## 기술 스택
 
-- Kotlin Multiplatform (KMP)
-- Compose Multiplatform (CMP)
-- Koin (DI)
-- Ktor Client
-- Supabase (Auth + Postgrest + Realtime)
-- Room/SQLite + DataStore
+- Kotlin Multiplatform
+- Compose Multiplatform
+- Android / iOS
+- Koin
+- Supabase Kotlin SDK
+- Supabase Auth, Postgrest, Realtime, Edge Functions
+- Ktor Client for Supabase Edge Function calls
+- Room / SQLite
+- DataStore
+- Firebase Cloud Messaging
+- Google AdMob
+
+## 개발 포인트
+
+### KMP + CMP 기반의 양 플랫폼 앱
+
+비즈니스 로직과 대부분의 UI를 `commonMain`에 두고 Android/iOS에서 함께 사용합니다. 플랫폼별로 달라야 하는 로그인, 푸시, 광고, 키보드 처리 같은 영역은 `expect/actual`과 네이티브 호스트 코드로 분리했습니다.
+
+### Feature-first 구조
+
+기능 단위로 코드를 나누고, 각 기능 안에서 `presentation`, `domain`, `data` 레이어를 분리했습니다. 화면은 최대한 stateless하게 유지하고, 상태와 이벤트 처리는 ViewModel에서 관리합니다.
+
+### 실제 배포까지 고려한 앱
+
+단순 토이 프로젝트가 아니라 스토어 심사, 소셜 로그인, 회원탈퇴, 푸시 알림, 광고, 앱 아이콘, 스토어 메타데이터까지 실제 출시 과정에서 필요한 요소를 함께 다뤘습니다.
+
+## 화면
+
+앱은 홈, 가계부, 일정, 하객, 도구 탭을 중심으로 구성되어 있습니다.
+
+- 홈: 결산 대시보드, 다가오는 일정, 카테고리별 결산
+- 가계부: 예산 관리, 지출 기록, 결제 단계 관리
+- 일정: 날짜별 일정, 체크리스트, 마감 임박 항목
+- 하객: 예상 하객, 실제 참석, 축의금 기록
+- 도구: 결혼 준비에 필요한 보조 기능
 
 ## 프로젝트 구조
 
-- Android 앱 셸: `androidApp/`
-- 공용 코드: `composeApp/src/commonMain/kotlin`
-- Android 전용: `composeApp/src/androidMain/kotlin`
-- iOS 전용: `composeApp/src/iosMain/kotlin`
-- iOS 호스트(Swift): `iosApp/iosApp`
-
-아키텍처 규칙은 [AGENTS.md](./AGENTS.md)를 따릅니다.
-
-## 현재 배포 상태 (2026-05-05)
-
-- Android
-  - `applicationId`: `kr.jm.weddinglog`
-  - `namespace`: `kr.jm.weddingledger`
-  - `versionName`: `1.3.1`
-  - `versionCode`: `5`
-- iOS
-  - Bundle ID: `kr.jm.weddingledger.WeddingLedger`
-  - `MARKETING_VERSION`: `1.3.1`
-  - `CURRENT_PROJECT_VERSION`: `7`
-  - `TARGETED_DEVICE_FAMILY = 1`로 iPhone only 설정
-- 현재 로그인 화면 노출 정책
-  - Android: Kakao
-  - iOS: Kakao + Apple
-  - Google 로그인은 구현을 유지하되 첫 출시 안정화를 위해 화면에서 미노출
-  - 이메일/비밀번호 로그인은 양 플랫폼 심사 완료 후 사용자 화면에서 제거
-  - AdMob 배너는 Android/iOS 메인 탭에서 바텀 내비게이션 위 Compose 슬롯에 노출
-- 계정 전환 안정화
-  - 로그아웃 후 새 계정으로 로그인할 때 이전 계정의 온보딩 완료 상태가 재사용되지 않도록 `OnboardingGateRoute`와 `OnboardingViewModel`을 사용자 ID 기준으로 분리했습니다.
-  - QA 시 `기존 계정 로그인 -> 로그아웃 -> 새 계정 로그인 -> 혼자 시작하기/공유 코드로 시작하기 화면 노출`을 반드시 확인합니다.
-
-## 로컬 설정
-
-`local.properties`에 최소 아래 키가 필요합니다.
-
-```properties
-SUPABASE_URL=...
-SUPABASE_ANON_KEY=...
-FIREBASE_ANDROID_APPLICATION_ID=...
-FIREBASE_PROJECT_ID=...
-FIREBASE_API_KEY=...
-FIREBASE_GCM_SENDER_ID=...
-KAKAO_NATIVE_APP_KEY=...
-TERMS_OF_SERVICE_URL=https://example.com/terms
-PRIVACY_POLICY_URL=https://example.com/privacy
-ADMOB_ANDROID_APP_ID=ca-app-pub-6140257895494497~2545168246
-ADMOB_ANDROID_BANNER_UNIT_ID=ca-app-pub-6140257895494497/2073111096
-ADMOB_IOS_APP_ID=ca-app-pub-6140257895494497~4268029592
-ADMOB_IOS_BANNER_UNIT_ID=ca-app-pub-6140257895494497/8417431709
-
-# 소셜 로그인 활성 토글 (기본값: Kakao/Google=true, Apple=false)
-ENABLE_KAKAO_LOGIN=true
-ENABLE_GOOGLE_LOGIN=true
-ENABLE_APPLE_LOGIN=false
-ENABLE_ADMOB_BANNER=true
+```text
+androidApp/                       # Android 앱 셸
+iosApp/                           # iOS 호스트 앱
+composeApp/src/commonMain/kotlin  # 공용 UI/비즈니스 로직
+composeApp/src/androidMain/kotlin # Android 전용 구현
+composeApp/src/iosMain/kotlin     # iOS 전용 구현
 ```
 
-- `KAKAO_NATIVE_APP_KEY`는 Kakao Developers 콘솔의 `네이티브 앱 키`를 사용합니다.
-- Android Kakao 플랫폼 설정은 현재 패키지명 `kr.jm.weddinglog` 기준입니다.
-  - 배포 앱은 Play App Signing으로 재서명되므로 Kakao Developers의 Android `키 해시`에 Play 앱 서명 키 해시 `wpThrWMOAPe65XjIM/8p76kEG7Q=`가 등록되어 있어야 합니다.
-  - `Android keyHash validation failed`가 뜨면 Play Console `앱 무결성 > 앱 서명 키 인증서 > SHA-1 인증서 지문`을 Kakao key hash로 변환해 추가합니다.
-- `ADMOB_ANDROID_APP_ID`는 Android release 빌드용 AdMob App ID입니다. debug 빌드는 공식 테스트 App ID를 사용합니다.
-- `ADMOB_ANDROID_BANNER_UNIT_ID`는 Android release 빌드용 배너 광고 단위 ID입니다. debug 빌드는 공식 테스트 배너 unit ID를 사용합니다.
-- `ADMOB_IOS_APP_ID`는 iOS release 빌드용 AdMob App ID입니다. debug 빌드는 공식 테스트 App ID를 사용합니다.
-- `ADMOB_IOS_BANNER_UNIT_ID`는 iOS release 빌드용 배너 광고 단위 ID입니다. debug 빌드는 공식 테스트 배너 unit ID를 사용합니다.
-- 위 AdMob release 값은 AdMob에서 실제 스토어 앱과 연결된 `웨딩로그(결혼가계부)` 앱 기준입니다.
-  - Android: `kr.jm.weddinglog`
-  - iOS: App Store ID `6762365581`
-  - 이전에 수동 생성한 `wedding_log_*` AdMob 앱 ID/광고 단위 ID는 새 배포에는 사용하지 않습니다.
-- `TERMS_OF_SERVICE_URL`, `PRIVACY_POLICY_URL`은 로그인 화면에서 여는 실제 약관/개인정보 처리방침 문서 URL입니다.
-- 약관 동의는 로그인 화면에서 최초 1회만 받고, 현재 약관 버전 동의 상태를 DataStore에 저장합니다.
-- 파트너 활동 푸시까지 쓰려면 Android Firebase 앱의 `Application ID`, `Project ID`, `Web API Key`, `Sender ID`를 `local.properties`에 넣어야 합니다.
-- iOS 파트너 활동 푸시는 `iosApp/Configuration/Config.local.xcconfig`에 아래 값을 채워야 동작합니다.
-  - `FIREBASE_IOS_GOOGLE_APP_ID`
-  - `FIREBASE_PROJECT_ID`
-  - `FIREBASE_API_KEY`
-  - `FIREBASE_GCM_SENDER_ID`
-- `iosApp/Configuration/Config.xcconfig`는 로컬 전용 `Config.local.xcconfig`를 include 하도록 정리되어 있습니다.
-- Supabase Edge Function `send-partner-activity-push`가 실제 OS push까지 보내려면 Supabase 프로젝트 secret `FCM_SERVICE_ACCOUNT_JSON`도 별도로 설정해야 합니다.
-- Android 카카오 로그인은 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
-- iOS 카카오 로그인도 네이티브 SDK + Supabase `signInWithIdToken` 경로를 사용합니다.
-- `ENABLE_APPLE_LOGIN=false`면 앱에서 Apple 로그인 버튼/동작이 비활성화됩니다.
-- 첫 출시 안정화를 위해 Google 로그인 코드는 유지하되 로그인 화면에서는 일시 미노출 상태입니다.
-  - Android에서 Supabase OAuth URL이 Gmail 앱 작성 화면으로 라우팅되는 케이스가 있어, 심사/첫 출시 전 노출 리스크를 줄이기 위한 결정입니다.
-  - 복구 시 `AuthScreen`의 `SocialProvider.Google` 주석과 Android OAuth 처리 방식을 함께 재검토합니다.
-- 이메일/비밀번호 로그인 UI는 양 플랫폼 심사 완료 후 제거했습니다.
-  - `AuthViewModel`의 이메일 submit 경로도 소셜 로그인 안내로 차단합니다.
-  - 관련 repository/usecase 일부는 레거시 딥링크/향후 복구 가능성을 위해 남아 있지만, 사용자 화면에서는 진입 경로가 없습니다.
-- `ENABLE_ADMOB_BANNER=true`면 Android/iOS 메인 탭 화면에서 바텀 내비게이션 위에 배너를 표시합니다. debug 빌드는 테스트 광고, release 빌드는 실제 광고 ID를 사용합니다.
-- 현재 ATT 권한 팝업은 추가하지 않고, AdMob SDK 기반 배너 광고만 활성화합니다.
-- iOS Apple 로그인은 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로를 사용합니다.
-- Apple 로그인을 활성화하려면 Supabase Apple Provider `Client IDs`에 아래 두 값을 함께 넣어야 합니다.
-  - `kr.jm.weddingledger.service`
-  - `kr.jm.weddingledger.WeddingLedger`
-- iOS 타깃은 Xcode에서 `Sign In with Apple`, `Push Notifications`, `Background Modes > Remote notifications` capability가 켜져 있어야 합니다.
-- Apple Developer 유료 계정 / Supabase Apple Provider / Xcode capability 설정이 끝나면 `ENABLE_APPLE_LOGIN=true`로 바로 활성화할 수 있습니다.
-- 회원탈퇴 v1은 새 Supabase Edge Function `delete-account`를 사용합니다.
-  - Apple 계정 revoke까지 포함하려면 Supabase secret `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_CLIENT_ID`, `APPLE_PRIVATE_KEY`가 설정돼 있어야 합니다.
-
-## 빌드/테스트
-
-```bash
-cd /Users/jm/StudioProjects/WeddingLedger
-
-# Android debug 빌드
-./gradlew :androidApp:assembleDebug
-
-# Android instrumented test assemble
-./gradlew :composeApp:assembleAndroidTest
-
-# Android unit test
-./gradlew :androidApp:testDebugUnitTest
-
-# KMP shared test
-./gradlew :composeApp:allTests
-
-# iOS 공용 framework 링크 확인
-./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
-```
-
-Android Studio 업데이트 이후 간헐적으로 Gradle sync에서 `convertPbxprojToJson` / `plutil` 오류가 날 수 있습니다.
-그 경우 Finder/Launcher 대신 아래처럼 터미널에서 Android Studio를 실행하면 정상화된 사례가 있습니다.
-
-```bash
-"/Applications/Android Studio.app/Contents/MacOS/studio" /Users/jm/StudioProjects/WeddingLedger
-```
-
-## 인증 딥링크
-
-- 앱 딥링크 스킴: `weddingledger://auth`
-- Android: `AndroidManifest.xml`의 `intent-filter` 등록
-- iOS: `Info.plist` `CFBundleURLTypes` + `iOSApp.swift` `onOpenURL`
-
-Supabase 대시보드 권장값:
-
-- `Authentication > URL Configuration`
-  - `Site URL`: `weddingledger://auth`
-  - `Redirect URLs`: `weddingledger://auth`
-
-## 최근 UX 반영 (2026-02-25)
-
-- 온보딩 플로우 개편:
-  - 첫 진입 화면을 `혼자 시작하기 / 공유 코드로 시작하기` 분기형으로 변경
-  - `혼자 시작하기` 경로: 프로필 입력(닉네임/역할/예식일) 후 즉시 온보딩 완료
-  - `공유 코드로 시작하기` 경로: 닉네임 + 공유 코드 입력으로 파트너 연결
-  - 공유 코드는 `6자리 숫자` 형식으로 통일(`W-` 접두어 제거)
-  - 온보딩의 초대 코드 공유 단계를 필수 경로에서 제거(코드 공유는 설정 화면에서 선택적으로 수행)
-- iOS 키보드 대응 보강:
-  - SwiftUI 호스트의 키보드 자동 safe-area 회피를 비활성화해 이중 보정 제거
-  - 전역 탭 dismiss는 키보드가 보일 때만 동작하도록 제한(첫 포커스 탭 간섭 방지)
-- 회원가입/온보딩 프로필: 키보드 열림 시 고정 하단 CTA 대신 스크롤 영역 CTA 사용
-- 입력 중심 화면 공통 정책:
-  - `core/ui/keyboard/KeyboardAware.kt`로 IME 표시 상태/하단 패딩 계산 통일
-  - 주요 입력 바텀시트 하단 액션 영역에 `imePadding()` 적용
-- 딥링크 처리 성공/실패 안내 배너를 로그인 화면에 표시
-- 다크모드 분기 정리:
-  - 로그인/회원가입/온보딩 화면의 다크모드 분기를 제거하고 단일 스타일 기준으로 통일
-- 탭별 새로고침 UX 정리:
-  - `홈/일정/하객` 탭에 아래로 당겨 새로고침(Pull-to-refresh) 적용
-  - `돈` 탭은 기존 새로고침 유지, `도구` 탭은 제외
-- 알림 권한 요청 타이밍 변경:
-  - 로그인/온보딩 완료 후 첫 홈 진입 시 알림 권한을 1회 요청하도록 적용
-  - 재진입 시 반복 팝업 방지를 위해 DataStore 플래그로 요청 이력 저장
-- 파트너 연결 알림 현황:
-  - 현재 알림센터 피드는 일정/체크리스트/예산 초과 기반이며, 파트너 연결 즉시 알림은 미구현 상태
-
-## 최근 제품 개편 (2026-03-15)
-
-- Home:
-  - 결산 대시보드 구조로 재편
-  - 총 예산/총 지출/잔액, 신랑/신부/공동 분담, 카테고리 결산, 다가오는 일정 표시
-  - 큰 금액에서도 깨지지 않도록 결산 카드의 사용률 칩을 금액 아래 별도 행으로 이동
-  - 중간 `지출 추가하기 / 일정 확인하기` 카드 및 홈 FAB 제거
-- 가계부:
-  - 하단 탭명을 `돈`에서 `가계부`로 변경
-  - `예산 / 지출` 분리 구조로 재배치
-  - 카테고리 기반 예산/지출 입력 흐름으로 단순화
-  - 지출은 `카테고리 필수`, `예산 항목 선택` 구조 지원
-  - `남은 결제`, `분담 요약` 추가
-- 일정:
-  - 선택 날짜 일정, 다가오는 일정, 마감 임박 체크리스트를 한 화면에서 항상 보이도록 개편
-- 하객:
-  - `예상 하객 | 축의대` 이중 구조로 재설계
-  - 보증인원, 예상 하객 수(꼭 옴/애매/안 옴 + 동반 인원), 실제 참석/실제 축의금 기록 지원
-- 알림:
-  - 알림센터를 `새 활동 / 리마인더` 2섹션으로 확장
-  - 지출 추가 / 일정 추가 시 파트너 활동 기록 생성
-  - Android/iOS 원격 푸시 토큰 저장소 및 Supabase Edge Function 발송 경로 추가
-- Supabase:
-  - 리포지토리 SQL 파일 생성 없이 원격 DB에 직접 migration 적용
-  - `budget_items.stage`, `budget_items.due_date`
-  - `guests.attendance_likelihood`, `guests.companion_count`, `guests.actual_attended`, `guests.actual_gift_money`
-  - `guest_settings.guaranteed_guest_count`
-  - `expenses.created_by`, `schedule_events.created_by`
-  - `device_push_tokens`, `partner_activity_notifications`
-  - `join_wedding`는 원격 DB 함수에서 제3자 합류를 차단하도록 직접 보강
-
-## 최근 안정화/푸시 반영 (2026-04-08)
-
-- Android 파트너 활동 push
-  - 실기기에서 FCM 토큰 등록, Edge Function 발송, foreground 수신, 시스템 알림 표시까지 확인
-  - Android는 `WL_SUPABASE` 로그 태그로 다음 흐름을 추적할 수 있습니다.
-    - `remote_push_token_fetch_success`
-    - `push_token_synced`
-    - `partner_activity_dispatch_start/success`
-    - `onMessageReceived`
-    - `notification_displayed`
-- 일정 저장 안정화
-  - `schedule_events` insert 반환 형식 변화에 덜 민감하도록 client-generated UUID + 안전 파싱 방식으로 변경
-  - 일정 추가 시트의 제목/장소 placeholder 예시 제거
-- iOS 파트너 활동 push
-  - Apple Developer App ID / APNs key / Firebase APNs 업로드 / Xcode capability 설정 후 실기기 push 수신까지 확인
-  - iOS도 `push_token_synced platform=ios` 이후 실제 시스템 알림 표시 확인
-- iOS Apple 로그인
-  - 브라우저 OAuth 교환 대신 네이티브 `AuthenticationServices` + Supabase `signInWith(IDToken)` 경로로 마무리
-  - Kakao 딥링크 처리와 충돌하지 않도록 iOS 호스트의 URL 라우팅을 안전화
-- Push 토큰 계정 전환 보강
-  - `manage-device-push-token` Edge Function을 추가해 `installation_id` 기준 stale row 정리 후 `sync/deactivate` 하도록 변경
-  - 남은 검증은 같은 기기에서 계정 A/B 전환 시 이전 계정 push가 새지 않는지 QA 확인입니다.
-- 저장 UX / 알림 읽음 처리 개선
-  - 가계부/일정/하객 저장 바텀시트는 저장 성공 시에만 닫히고, 실패 시 입력값을 그대로 유지합니다.
-  - 알림센터 `새 활동`은 fetch 시 자동 읽음 처리하지 않고, 사용자가 활동 카드를 눌렀을 때만 read 처리합니다.
-- 가계부 안정화 / 문구 정리
-  - `expenses`는 예산 항목을 선택하지 않은 지출도 저장 가능하도록 RLS를 조정했습니다.
-  - 지출 저장은 client-generated UUID + plain insert 방식으로 바꿔 `JsonDecodingException` 재발을 줄였습니다.
-  - 지출 필터 기본 기간을 `전체 기간`으로 변경했습니다.
-  - 예산 화면의 `목표` 문구를 `예산`으로 통일했습니다.
-- Tools / 샘플 데이터 정리
-  - `웨딩홀 비교`, `가치관 설문`은 현재 클릭 시 `준비 중인 기능이에요.` 안내를 보여줍니다.
-  - shared 공용 상태의 `sample()` 더미 데이터를 제거하고, smoke test는 실제 최소 상태 생성 방식으로 정리했습니다.
-- AdMob 배너 구현
-  - Android/iOS 메인 탭에서 바텀 내비게이션 위에 공통 배너 슬롯을 추가했습니다.
-  - debug 빌드는 공식 테스트 App ID / 배너 unit ID를 사용합니다.
-  - release 빌드는 `local.properties`와 `iosApp/Configuration/Config.local.xcconfig`의 실제 광고 ID를 사용합니다.
-- 회원탈퇴 v1
-  - `설정 > 계정 관리`에서 회원탈퇴를 시작할 수 있습니다.
-  - 일반 계정은 즉시 탈퇴를 요청하고, Apple 계정은 탈퇴 직전에 네이티브 재인증으로 `authorizationCode`를 다시 받아 서버에 전달합니다.
-  - Supabase Edge Function `delete-account`가 `device_push_tokens`, `partner_activity_notifications`, `profiles`, `auth.users`를 순차 삭제합니다.
-  - Apple 계정은 서버에서 사용자 provider를 직접 판별해 revoke를 강제하고, `auth.users` 삭제 실패 시 public row를 복구하도록 보강했습니다.
-  - Android에서 Edge Function 게이트웨이의 `Invalid JWT` 응답이 재현되어, 현재 `delete-account`는 `--no-verify-jwt`로 배포하고 함수 내부 `auth.getUser(jwt)` 검증을 사용합니다.
-  - 클라이언트는 `401 Invalid JWT` 응답을 받으면 `refreshCurrentSession()` 후 한 번 자동 재시도합니다.
-- Build 메모
-  - clean 후 사라지던 `BuildConfig.kt` 생성 문제를 `composeApp/build.gradle.kts`에서 보강했습니다.
-  - 현재 `generateBuildConfig`는 configuration cache 경고가 남지만 Android/iOS 빌드는 성공합니다.
-- 참고
-  - iOS에서 Firebase `GoogleService-Info.plist` 관련 경고 로그가 남을 수 있으나, 현재 기준 FCM 토큰 발급 / Supabase 토큰 등록 / 실제 push 수신은 정상 동작 확인
-
-## 첫 출시 인증 정책 정리 (2026-04-21, 이력)
-
-- 당시 로그인 화면 노출 정책:
-  - Android: Kakao + Email/Password
-  - iOS: Kakao + Apple + Email/Password
-  - Google: 구현은 유지하지만 첫 출시 안정화를 위해 화면에서 미노출
-- 이메일/비밀번호 임시 로그인을 노출한 이유:
-  - Google 로그인이 Android에서 Gmail 작성 화면으로 빠지는 케이스가 있어 심사/스크린샷 촬영/첫 사용자 경험 리스크가 큼
-  - Kakao 계정만으로는 앱 심사용 테스트 계정 제공이 번거롭고, 2FA/지역/보안 정책에 따라 리뷰어가 막힐 수 있음
-  - Apple 로그인은 iOS 전용이라 Android 심사용 공통 계정 수단이 되지 못함
-  - 이메일/비밀번호는 Android/iOS 공통으로 동일한 리뷰 계정 정보를 제공할 수 있고, 리뷰어가 외부 메일함에 접근할 필요가 없음
-- 운영 주의:
-  - 이메일 회원가입은 열지 않습니다.
-  - 심사용 계정은 Supabase Auth에 미리 생성해야 하고, 필요하면 온보딩/샘플 데이터까지 준비합니다.
-  - 이메일/비밀번호 로그인도 약관 및 개인정보 처리방침 동의 후에만 진행됩니다.
-  - 2026-05-05 양 플랫폼 배포 완료 후 이메일/비밀번호 로그인 UI는 제거했습니다.
-
-## 최근 출시/계정 전환 반영 (2026-05-01)
-
-- Android 패키지명 정리
-  - Play Console에서 `kr.jm.weddingledger` 패키지명이 이미 사용 중인 상태로 확인되어, 실제 배포 `applicationId`를 `kr.jm.weddinglog`로 변경했습니다.
-  - Kotlin/패키지 namespace는 기존 `kr.jm.weddingledger`를 유지합니다.
-- iOS 배포 설정 정리
-  - App Store Connect 업로드용 버전은 `1.3.1 (7)` 기준입니다.
-  - iPad까지 타겟되지 않도록 `TARGETED_DEVICE_FAMILY = 1`로 iPhone only 설정을 확인했습니다.
-- 첫 출시 광고 정책
-  - 첫 출시 당시에는 AdMob 배너를 숨겼습니다.
-  - 2026-05-05 이후 Android/iOS 배너를 다시 활성화했고, iOS는 SwiftUI 호스트 하단 배너 대신 Compose 내부 슬롯에서 표시합니다.
-- 계정 전환 온보딩 버그 수정
-  - 기존 계정에서 온보딩 완료 후 로그아웃하고 새 계정으로 로그인하면, 이전 `OnboardingStep.Done` 상태가 재사용되어 홈으로 바로 이동할 수 있던 문제를 수정했습니다.
-  - `Authenticated.user.id`를 기준으로 온보딩 게이트 subtree와 `OnboardingViewModel` key를 분리해 계정별 초기 로딩이 다시 실행되도록 했습니다.
-
-## 배포 후 인증 정책 반영 (2026-05-05)
-
-- Android/iOS 심사 완료 및 배포 후 임시 이메일/비밀번호 로그인 UI를 제거했습니다.
-- 현재 사용자 로그인 경로:
-  - Android: Kakao
-  - iOS: Kakao + Apple
-- Google 로그인은 여전히 코드만 유지하고 화면에서는 미노출입니다.
-- 이메일 OTP/비밀번호 로그인 관련 일부 domain/data 코드는 레거시 딥링크와 향후 복구 가능성을 위해 남겨두되, `AuthScreen`에서는 진입할 수 없습니다.
-
-## AdMob 재활성화 및 배포 빌드 (2026-05-05)
-
-- Android/iOS AdMob 배너를 다시 활성화했습니다.
-- iOS는 SwiftUI 호스트 하단 배너를 제거하고 Compose 내부 `Scaffold.bottomBar` 슬롯에서 바텀 내비게이션 위에 표시합니다.
-- 이번 배포 산출물:
-  - Android AAB: `build/distributions/WeddingLog-android-1.3.1-b5.aab`
-  - iOS IPA: `build/distributions/WeddingLog-ios-1.3.1-b7.ipa`
-- 검증:
-  - `./gradlew :androidApp:bundleRelease` 성공
-  - `xcodebuild archive` 및 `xcodebuild -exportArchive` 성공
-  - iOS archive 기준 `CFBundleShortVersionString=1.3`, `CFBundleVersion=5`, `UIDeviceFamily=[1]` 확인
-
-## QA
-
-- 통합 QA 체크리스트는 [qa.md](./qa.md)에서 확인할 수 있습니다.
-
-## 최근 기술 반영 (2026-03-08)
-
-- Android 프로젝트 구조 정리:
-  - `composeApp`를 Android-KMP shared library로 전환
-  - `androidApp` 모듈을 추가해 `MainActivity`, `Application`, Android `Manifest`, launcher 리소스를 분리
-- Auth/Onboarding 안정성 보강:
-  - Auth/Onboarding 에러 분기를 문자열 기반에서 타입 기반으로 정리
-  - 공통 Supabase repository 지원 로직(`wedding_id` 조회/로그) 추출
-- 테스트 보강:
-  - `AuthResult`, `OnboardingViewModel`, `WeddingIdResolver` 중심 회귀 테스트 추가
-- 인증 화면 정책:
-  - Google 로그인 UI는 첫 출시 안정화를 위해 주석 처리로 숨김
-  - 이메일/비밀번호 로그인 UI는 2026-05-05 배포 후 제거
-  - Email OTP UI도 숨김 상태 유지
-
-## 인수인계
-
-상세 변경 이력/백로그/검증 결과는 [HANDOVER.md](./HANDOVER.md)에서 확인할 수 있습니다.
+개발 환경과 내부 설정 메모는 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)에 따로 정리했습니다.
