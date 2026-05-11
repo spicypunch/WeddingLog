@@ -78,5 +78,3 @@ composeApp/src/commonMain/kotlin  # 공용 UI/비즈니스 로직
 composeApp/src/androidMain/kotlin # Android 전용 구현
 composeApp/src/iosMain/kotlin     # iOS 전용 구현
 ```
-
-개발 환경과 내부 설정 메모는 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)에 따로 정리했습니다.
