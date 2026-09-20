@@ -1,5 +1,7 @@
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_DEV_URL=https://your-dev-project.supabase.co
+SUPABASE_DEV_ANON_KEY=your-dev-anon-key
+SUPABASE_PROD_URL=https://your-production-project.supabase.co
+SUPABASE_PROD_ANON_KEY=your-production-anon-key
 FIREBASE_ANDROID_APPLICATION_ID=
 FIREBASE_PROJECT_ID=
 FIREBASE_API_KEY=

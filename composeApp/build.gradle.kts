@@ -1,5 +1,6 @@
 import org.gradle.api.tasks.PathSensitivity
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -19,8 +20,85 @@ val localProperties = Properties().apply {
     }
 }
 
-val supabaseUrl: String = localProperties.getProperty("SUPABASE_URL") ?: ""
-val supabaseAnonKey: String = localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""
+val requestedSupabaseEnvironment: String? = providers.gradleProperty("weddingLedgerEnvironment").orNull
+    ?: providers.environmentVariable("WEDDINGLEDGER_ENV").orNull
+val xcodeConfiguration: String? = providers.environmentVariable("CONFIGURATION").orNull
+val isReleaseInvocation: Boolean = xcodeConfiguration
+    ?.equals("release", ignoreCase = true) == true ||
+    gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+val isDebugInvocation: Boolean = xcodeConfiguration
+    ?.equals("debug", ignoreCase = true) == true ||
+    gradle.startParameter.taskNames.any { it.contains("debug", ignoreCase = true) }
+val hasAmbiguousAggregateTask: Boolean = gradle.startParameter.taskNames.any { taskName ->
+    taskName.substringAfterLast(':').lowercase() in setOf("assemble", "build", "bundle")
+}
+val supabaseEnvironment: String = when (
+    requestedSupabaseEnvironment
+        ?.trim()
+        ?.lowercase()
+        ?: if (isReleaseInvocation) "production" else "development"
+) {
+    "dev", "development" -> "development"
+    "prod", "production", "release" -> "production"
+    else -> throw GradleException(
+        "Unknown Supabase environment. Use development/dev or production/prod."
+    )
+}
+val supabasePropertyPrefix: String = if (supabaseEnvironment == "production") {
+    "SUPABASE_PROD"
+} else {
+    "SUPABASE_DEV"
+}
+val supabaseUrl: String = localProperties.getProperty("${supabasePropertyPrefix}_URL")
+    ?.trim()
+    .orEmpty()
+val supabaseAnonKey: String = localProperties.getProperty("${supabasePropertyPrefix}_ANON_KEY")
+    ?.trim()
+    .orEmpty()
+val expectedSupabaseProjectRef: String = if (supabaseEnvironment == "production") {
+    "wmfzhnoxdmfniewgcmzu"
+} else {
+    "naxjvhpulhgcnantbsdx"
+}
+val expectedSupabaseUrl: String = "https://$expectedSupabaseProjectRef.supabase.co"
+val supabaseAnonKeyPayload: String? = runCatching {
+    val payloadSegment = supabaseAnonKey.split('.').getOrNull(1) ?: error("Not a JWT")
+    val paddedPayload = payloadSegment.padEnd(
+        payloadSegment.length + (4 - payloadSegment.length % 4) % 4,
+        '=',
+    )
+    Base64.getUrlDecoder().decode(paddedPayload).toString(Charsets.UTF_8)
+}.getOrNull()
+
+gradle.taskGraph.whenReady {
+    val containsReleaseVariant = isReleaseInvocation ||
+        allTasks.any { it.name.endsWith("Release", ignoreCase = true) }
+    val containsDebugVariant = isDebugInvocation ||
+        allTasks.any { it.name.endsWith("Debug", ignoreCase = true) }
+
+    if (hasAmbiguousAggregateTask) {
+        throw GradleException(
+            "Aggregate build tasks are disabled because Debug and Release use different Supabase projects. " +
+                "Run an explicit variant task such as assembleDebug or bundleRelease."
+        )
+    }
+    if (containsReleaseVariant && containsDebugVariant) {
+        throw GradleException(
+            "Debug and Release cannot be built in one Gradle invocation because they use different " +
+                "Supabase projects. Run the variants separately."
+        )
+    }
+    if (containsReleaseVariant && supabaseEnvironment != "production") {
+        throw GradleException(
+            "A Release task is present, but Supabase is $supabaseEnvironment."
+        )
+    }
+    if (containsDebugVariant && supabaseEnvironment != "development") {
+        throw GradleException(
+            "A Debug task is present, but Supabase is $supabaseEnvironment."
+        )
+    }
+}
 val firebaseAndroidApplicationId: String = localProperties.getProperty("FIREBASE_ANDROID_APPLICATION_ID") ?: ""
 val firebaseProjectId: String = localProperties.getProperty("FIREBASE_PROJECT_ID") ?: ""
 val firebaseApiKey: String = localProperties.getProperty("FIREBASE_API_KEY") ?: ""
@@ -58,8 +136,8 @@ val enableAdMobBanner: Boolean = localProperties.getProperty("ENABLE_ADMOB_BANNE
     ?.lowercase()
     ?.toBooleanStrictOrNull()
     ?: true
-val appVersionCode: Int = 5
-val appVersionName: String = "1.3.1"
+val appVersionCode: Int = 10
+val appVersionName: String = "1.3.4"
 
 kotlin {
     androidLibrary {
@@ -182,8 +260,29 @@ val generateBuildConfig by tasks.registering {
     inputs.file(localPropertiesFile)
         .optional()
         .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.property("supabaseEnvironment", supabaseEnvironment)
     outputs.file(outputFile)
     notCompatibleWithConfigurationCache("BuildConfig is generated from local.properties at execution time.")
+
+    doFirst {
+        if (supabaseUrl != expectedSupabaseUrl) {
+            throw GradleException(
+                "${supabasePropertyPrefix}_URL must point to $expectedSupabaseProjectRef " +
+                    "for the $supabaseEnvironment build."
+            )
+        }
+        val keyProjectRef = supabaseAnonKeyPayload
+            ?.let { Regex("\"ref\"\\s*:\\s*\"([^\"]+)\"").find(it)?.groupValues?.getOrNull(1) }
+        val keyRole = supabaseAnonKeyPayload
+            ?.let { Regex("\"role\"\\s*:\\s*\"([^\"]+)\"").find(it)?.groupValues?.getOrNull(1) }
+        if (keyProjectRef != expectedSupabaseProjectRef || keyRole != "anon") {
+            throw GradleException(
+                "${supabasePropertyPrefix}_ANON_KEY must be the anon JWT for " +
+                    "$expectedSupabaseProjectRef; got ref=${keyProjectRef ?: "invalid"}, " +
+                    "role=${keyRole ?: "invalid"}."
+            )
+        }
+    }
 
     doLast {
         val buildConfigFile = outputFile.get().asFile
@@ -193,6 +292,8 @@ val generateBuildConfig by tasks.registering {
             package kr.jm.weddingledger.core.config
 
             object BuildConfig {
+                const val SUPABASE_ENVIRONMENT = "$supabaseEnvironment"
+                const val SUPABASE_PROJECT_REF = "$expectedSupabaseProjectRef"
                 const val SUPABASE_URL = "$supabaseUrl"
                 const val SUPABASE_ANON_KEY = "$supabaseAnonKey"
                 const val FIREBASE_ANDROID_APPLICATION_ID = "$firebaseAndroidApplicationId"

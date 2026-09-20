@@ -78,3 +78,8 @@ composeApp/src/commonMain/kotlin  # 공용 UI/비즈니스 로직
 composeApp/src/androidMain/kotlin # Android 전용 구현
 composeApp/src/iosMain/kotlin     # iOS 전용 구현
 ```
+
+## 로컬 설정
+
+환경별 Supabase 설정은 `local.properties.example`을 참고해 `local.properties`에 입력합니다.
+Debug 빌드는 `SUPABASE_DEV_*`, Release 빌드는 `SUPABASE_PROD_*` 키를 사용합니다.
